@@ -9,7 +9,7 @@ pkgs=$(shell $(GO) list ./... | egrep -v "(vendor)")
 
 DOCKERHUB_USER=matthsmi
 DOCKERHUB_REPO=butler
-DOCKERHUB_VERSION=v0.3.1
+DOCKERHUB_VERSION=v0.3.2
 
 default: ci
 
@@ -41,4 +41,4 @@ push-$(DOCKERHUB_REPO):
 	docker push $(DOCKERHUB_USER)/$(DOCKERHUB_REPO):$(DOCKERHUB_VERSION)
 
 run:
-	@$(GO) run butler.go -config.url http://git1.dev.or1.adobe.net/cgit/adobe-platform/ethos-monitoring/plain/oncluster -config.cluster-id ethos01-dev-or1 -config.schedule-interval 1
+	$(GO) run butler.go -config.url http://git1.dev.or1.adobe.net/cgit/adobe-platform/ethos-monitoring/plain/oncluster -config.cluster-id ethos01-dev-or1 -config.schedule-interval 1

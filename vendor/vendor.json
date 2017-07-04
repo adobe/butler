@@ -1,0 +1,25 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "OjjL/hCz0GDh/c0U0w+c8glE7OE=",
+			"path": "github.com/hoisie/mustache",
+			"revision": "6375acf62c69d9d3ad20fd0599d82ca94ea12284",
+			"revisionTime": "2016-08-04T23:50:33Z"
+		},
+		{
+			"checksumSHA1": "Epx/Fewr0QrXZRdg26+97oIoV2k=",
+			"path": "github.com/jasonlvhit/gocron",
+			"revision": "42a5804d37aa0b9239b265e894a16b8edbf52d54",
+			"revisionTime": "2016-06-29T18:10:17Z"
+		},
+		{
+			"checksumSHA1": "Tr7GpIXn+mS9UBt08vXBwGnUOVc=",
+			"path": "github.com/udhos/equalfile",
+			"revision": "c92b0e41854b49e567ba269dcc572ada60e48e7b",
+			"revisionTime": "2016-12-13T21:39:29Z"
+		}
+	],
+	"rootPath": "git.corp.adobe.com/TechOps-IAO/butler"
+}

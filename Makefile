@@ -28,6 +28,10 @@ pre-deploy-build:
 post-deploy-build:
 	@echo "Nothing is defined in post-deploy-build step"
 
+test:
+	@docker build -t $(TESTER_TAG) -f Dockerfile-test .
+	@docker run -it --rm $(TESTER_TAG)
+
 build-$(DOCKERHUB_REPO):
 	@docker build -t $(DOCKERHUB_REPO):$(DOCKERHUB_VERSION) .
 
@@ -41,4 +45,4 @@ push-$(DOCKERHUB_REPO):
 	docker push $(DOCKERHUB_USER)/$(DOCKERHUB_REPO):$(DOCKERHUB_VERSION)
 
 run:
-	$(GO) run butler.go -config.url http://git1.dev.or1.adobe.net/cgit/adobe-platform/ethos-monitoring/plain/oncluster -config.cluster-id ethos01-dev-or1 -config.schedule-interval 1
+	$(GO) run butler.go -config.url http://git1.dev.or1.adobe.net/cgit/adobe-platform/ethos-monitoring/plain/oncluster -config.cluster-id ethos01-dev-or1 -config.scheduler-interval 10

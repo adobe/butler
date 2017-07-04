@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/hoisie/mustache"
@@ -20,8 +21,8 @@ import (
 )
 
 var (
-	version                 = "v0.3.4"
-	JsonFiles               = `{"files": ["prometheus.yml", "alerts/commonalerts.yml", "alerts/tenant.yml"]}`
+	version                 = "v0.3.5"
+	FileList                = "prometheus.yml,alerts/commonalerts.yml,alerts/tenant.yml"
 	PrometheusRootDirectory = "/opt/prometheus"
 	PrometheusHost          string
 	ClusterId               string
@@ -227,24 +228,18 @@ func PCMSHandler() {
 	LastRun = time.Now()
 }
 
-func ParseConfigFilesJson(file *ConfigFiles, configJson string) error {
-	if configJson == "" {
-		err := json.Unmarshal([]byte(JsonFiles), &file)
-		if err != nil {
-			log.Printf(err.Error())
-			return err
-		}
-	} else {
-		err := json.Unmarshal([]byte(configJson), &file)
-		if err != nil {
-			// The provided json Unmarshal failed. Use default.
-			err2 := json.Unmarshal([]byte(JsonFiles), &file)
-			if err2 != nil {
-				return err2
-			}
-		}
+func ParseConfigFiles(file *ConfigFiles, configFiles string) error {
+	if len(file.Files) > 0 {
+		file.Files = make([]string, 0)
 	}
-	// Otherwise, we're ok
+	files := strings.Split(configFiles, ",")
+	for _, f := range files {
+		f = strings.TrimSpace(f)
+		if f == "" {
+			continue
+		}
+		file.Files = append(file.Files, f)
+	}
 	return nil
 }
 
@@ -254,13 +249,13 @@ func NewMonitor() *Monitor {
 
 func main() {
 	var (
-		err                   error
-		versionFlag           = flag.Bool("version", false, "Print version information.")
-		configUrlFlag         = flag.String("config.url", "", "The base url to grab prometheus configuration files")
-		configClusterIdFlag   = flag.String("config.cluster-id", "", "The ethos cluster identifier.")
-		configFilesJsonFlag   = flag.String("config.files", JsonFiles, "The prometheus configuration files to grab.")
+		err                    error
+		versionFlag            = flag.Bool("version", false, "Print version information.")
+		configUrlFlag          = flag.String("config.url", "", "The base url to grab prometheus configuration files")
+		configClusterIdFlag    = flag.String("config.cluster-id", "", "The ethos cluster identifier.")
+		configFilesFlag        = flag.String("config.files", FileList, "The prometheus configuration files to grab in comma separated format.")
 		configSchedulerIntFlag = flag.Int("config.scheduler-interval", 300, "The interval, in seconds, to run the scheduler.")
-		configPrometheusHost  = flag.String("config.prometheus-host", os.Getenv("HOST"), "The prometheus host to reload.")
+		configPrometheusHost   = flag.String("config.prometheus-host", os.Getenv("HOST"), "The prometheus host to reload.")
 	)
 	flag.Parse()
 
@@ -290,7 +285,7 @@ func main() {
 		ClusterId = *configClusterIdFlag
 	}
 
-	ParseConfigFilesJson(&Files, *configFilesJsonFlag)
+	ParseConfigFiles(&Files, *configFilesFlag)
 
 	if _, err = url.ParseRequestURI(ConfigUrl); err != nil {
 		log.Fatalf("Cannot parse ConfigUrl=%s", ConfigUrl)

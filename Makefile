@@ -1,5 +1,6 @@
 SERVICE_NAME=butler
 BUILDER_TAG?=$(or $(sha),$(SERVICE_NAME)-builder)
+TESTER_TAG?=$(or $(sha),$(SERVICE_NAME)-tester)
 
 IMAGE_TAG=$(SERVICE_NAME)-img
 
@@ -8,7 +9,7 @@ pkgs=$(shell $(GO) list ./... | egrep -v "(vendor)")
 
 DOCKERHUB_USER=matthsmi
 DOCKERHUB_REPO=butler
-DOCKERHUB_VERSION=0.1.5
+DOCKERHUB_VERSION=0.2.0
 
 default: ci
 
@@ -19,6 +20,13 @@ build:
 	@docker build -t $(BUILDER_TAG) -f Dockerfile-build .
 	@docker run -v m2:/root/.m2 -v `pwd`:/build $(BUILDER_TAG) cp /root/butler/butler /build
 	@docker build -t $(IMAGE_TAG) .
+
+pre-deploy-build:
+	@docker build -t $(TESTER_TAG) -f Dockerfile-test .
+	@docker run -it --rm $(TESTER_TAG)
+
+post-deploy-build:
+	@echo "Nothing is defined in post-deploy-build step"
 
 build-$(DOCKERHUB_REPO):
 	@docker build -t $(DOCKERHUB_REPO):$(DOCKERHUB_VERSION) .

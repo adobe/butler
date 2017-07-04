@@ -38,6 +38,10 @@ func (s *ButlerTestSuite) TestParseConfigFilesJsonNotOkCustom(c *C) {
 
 func (s *ButlerTestSuite) TestGetPrometheusPaths(c *C) {
 	paths := GetPrometheusPaths()
-	c.Logf("paths=%#v\n", paths)
 	c.Assert(paths, HasLen, 3)
+}
+
+func (s *ButlerTestSuite) TestGetPCMSUrls(c *C) {
+	urls := GetPCMSUrls()
+	c.Assert(urls, HasLen, 3)
 }

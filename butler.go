@@ -20,7 +20,7 @@ import (
 )
 
 var (
-	version                 = "v0.3.2"
+	version                 = "v0.3.4"
 	JsonFiles               = `{"files": ["prometheus.yml", "alerts/commonalerts.yml", "alerts/tenant.yml"]}`
 	PrometheusRootDirectory = "/opt/prometheus"
 	PrometheusHost          string

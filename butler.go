@@ -7,10 +7,12 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/hoisie/mustache"
 	"github.com/jasonlvhit/gocron"
@@ -18,17 +20,54 @@ import (
 )
 
 var (
-	version                 = "v0.2.0"
+	version                 = "v0.2.5"
 	JsonFiles               = `{"files": ["prometheus.yml", "alerts/commonalerts.yml", "alerts/tenant.yml"]}`
 	PrometheusRootDirectory = "/opt/prometheus"
 	PrometheusHost          string
 	ClusterId               string
 	ConfigUrl               string
 	Files                   ConfigFiles
+	LastRun                 time.Time
 )
 
 type ConfigFiles struct {
-	Files []string `json:files"`
+	Files []string `json:"files"`
+}
+
+type Monitor struct {
+}
+
+type MonitorOutput struct {
+	ClusterID      string `json:"cluster_id"`
+	ConfigURL      string `json:"config_url"`
+	PrometheusHost string `json:"prometheus_host"`
+	ConfigFiles
+	LastRun time.Time `json:"last_run"`
+}
+
+func (m *Monitor) Start() {
+	http.HandleFunc("/health-check", m.MonitorHandler)
+	server := &http.Server{}
+	listener, err := net.Listen("tcp", ":8080")
+	if err != nil {
+		log.Fatalf("Error creating listener: %s", err.Error())
+	}
+	go server.Serve(listener)
+}
+
+func (m *Monitor) MonitorHandler(w http.ResponseWriter, r *http.Request) {
+	mOut := MonitorOutput{ClusterID: ClusterId,
+		ConfigURL:      ConfigUrl,
+		PrometheusHost: PrometheusHost,
+		ConfigFiles:    Files,
+		LastRun:        LastRun}
+	resp, err := json.Marshal(mOut)
+	if err != nil {
+		w.Header().Set("Content-Type", "text/html")
+		fmt.Fprintf(w, "Could not Marshal JSON, but I promise I'm up!")
+	}
+	w.Header().Set("Content-Type", "application/json")
+	fmt.Fprintf(w, string(resp))
 }
 
 func GetPrometheusPaths() []string {
@@ -123,7 +162,7 @@ func RenderPrometheusYaml(f *os.File) {
 	}
 }
 
-func taskHandler() {
+func PCMSHandler() {
 	IsModified := false
 	log.Println("Processing PCMS Files.")
 
@@ -170,6 +209,7 @@ func taskHandler() {
 	} else {
 		log.Printf("Found no differences in PCMS files.")
 	}
+	LastRun = time.Now()
 }
 
 func ParseConfigFilesJson(file *ConfigFiles, configJson string) error {
@@ -191,6 +231,10 @@ func ParseConfigFilesJson(file *ConfigFiles, configJson string) error {
 	}
 	// Otherwise, we're ok
 	return nil
+}
+
+func NewMonitor() *Monitor {
+	return &Monitor{}
 }
 
 func main() {
@@ -253,7 +297,13 @@ func main() {
 		}
 	}
 
+	monitor := NewMonitor()
+	monitor.Start()
+
+	// Do one run of PCMSHandler() then start off the scheduler
+	PCMSHandler()
+
 	sched := gocron.NewScheduler()
-	sched.Every(uint64(*configScheduleIntFlag)).Minutes().Do(taskHandler)
+	sched.Every(uint64(*configScheduleIntFlag)).Minutes().Do(PCMSHandler)
 	<-sched.Start()
 }

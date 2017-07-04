@@ -20,7 +20,7 @@ import (
 )
 
 var (
-	version                 = "v0.3.1"
+	version                 = "v0.3.2"
 	JsonFiles               = `{"files": ["prometheus.yml", "alerts/commonalerts.yml", "alerts/tenant.yml"]}`
 	PrometheusRootDirectory = "/opt/prometheus"
 	PrometheusHost          string
@@ -43,7 +43,7 @@ type MonitorOutput struct {
 	PrometheusHost string `json:"prometheus_host"`
 	ConfigFiles
 	LastRun time.Time `json:"last_run"`
-	Version	string	`json:"version"`
+	Version string    `json:"version"`
 }
 
 func (m *Monitor) Start() {
@@ -62,7 +62,7 @@ func (m *Monitor) MonitorHandler(w http.ResponseWriter, r *http.Request) {
 		PrometheusHost: PrometheusHost,
 		ConfigFiles:    Files,
 		LastRun:        LastRun,
-		Version:	version}
+		Version:        version}
 	resp, err := json.Marshal(mOut)
 	if err != nil {
 		w.Header().Set("Content-Type", "text/html")
@@ -137,7 +137,7 @@ func CopyFile(src string, dst string) error {
 		out, err = os.Create(dst)
 	} else {
 		//log.Printf("opening file \"%s\"", dst)
-		out, err = os.OpenFile(dst, os.O_WRONLY, 0644)
+		out, err = os.OpenFile(dst, os.O_WRONLY|os.O_TRUNC, 0644)
 	}
 	if err != nil {
 		return err
@@ -153,7 +153,7 @@ func CopyFile(src string, dst string) error {
 
 func RenderPrometheusYaml(f *os.File) {
 	out := mustache.RenderFile(f.Name(), map[string]string{"ethos-cluster-id": ClusterId})
-	f, err := os.OpenFile(f.Name(), os.O_WRONLY, 0644)
+	f, err := os.OpenFile(f.Name(), os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
@@ -196,7 +196,7 @@ func PCMSHandler() {
 		cmp := equalfile.New(nil, equalfile.Options{})
 		equal, err := cmp.CompareFile(f.Name(), GetPrometheusPaths()[i])
 		if !equal {
-			log.Printf("Found difference in \"%s\"... Updating.", GetPrometheusPaths()[i])
+			log.Printf("Found difference in \"%s.\"  Updating.", GetPrometheusPaths()[i])
 			err = CopyFile(f.Name(), GetPrometheusPaths()[i])
 			if err != nil {
 				log.Fatal(err.Error())

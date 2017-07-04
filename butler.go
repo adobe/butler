@@ -20,7 +20,7 @@ import (
 )
 
 var (
-	version                 = "v0.2.5"
+	version                 = "v0.3.0"
 	JsonFiles               = `{"files": ["prometheus.yml", "alerts/commonalerts.yml", "alerts/tenant.yml"]}`
 	PrometheusRootDirectory = "/opt/prometheus"
 	PrometheusHost          string
@@ -43,6 +43,7 @@ type MonitorOutput struct {
 	PrometheusHost string `json:"prometheus_host"`
 	ConfigFiles
 	LastRun time.Time `json:"last_run"`
+	Version	string	`json:"version"`
 }
 
 func (m *Monitor) Start() {
@@ -60,7 +61,8 @@ func (m *Monitor) MonitorHandler(w http.ResponseWriter, r *http.Request) {
 		ConfigURL:      ConfigUrl,
 		PrometheusHost: PrometheusHost,
 		ConfigFiles:    Files,
-		LastRun:        LastRun}
+		LastRun:        LastRun,
+		Version:	version}
 	resp, err := json.Marshal(mOut)
 	if err != nil {
 		w.Header().Set("Content-Type", "text/html")
@@ -248,6 +250,8 @@ func main() {
 		configPrometheusHost  = flag.String("config.prometheus-host", os.Getenv("HOST"), "The prometheus host to reload.")
 	)
 	flag.Parse()
+
+	log.Printf("Starting butler version %s\n", version)
 
 	if *versionFlag {
 		fmt.Fprintln(os.Stdout, version)

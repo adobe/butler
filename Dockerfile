@@ -5,4 +5,6 @@ RUN apk update && apk add bash
 
 COPY ./butler /butler
 
+EXPOSE 8080
+
 ENTRYPOINT ["/butler"]

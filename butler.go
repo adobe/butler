@@ -20,7 +20,7 @@ import (
 )
 
 var (
-	version                 = "v0.3.0"
+	version                 = "v0.3.1"
 	JsonFiles               = `{"files": ["prometheus.yml", "alerts/commonalerts.yml", "alerts/tenant.yml"]}`
 	PrometheusRootDirectory = "/opt/prometheus"
 	PrometheusHost          string
@@ -168,6 +168,19 @@ func PCMSHandler() {
 	IsModified := false
 	log.Println("Processing PCMS Files.")
 
+	// Check to see if the files currently exist. If the docker path is properly mounted from the prometheus
+	// container, then we should see those files.  Error out if we cannot see those files.
+	for _, file := range GetPrometheusPaths() {
+		if _, err := os.Stat(file); err != nil {
+			dir := filepath.Dir(file)
+			err = os.MkdirAll(dir, 0755)
+			if err != nil {
+				log.Fatalf(err.Error())
+			}
+			log.Printf("Created directory \"%s\"", dir)
+		}
+	}
+
 	for i, u := range GetPCMSUrls() {
 		f := DownloadPCMSFile(u)
 		if f == nil {
@@ -286,19 +299,6 @@ func main() {
 	// Check that we can connect to the url
 	if _, err = http.Get(ConfigUrl); err != nil {
 		log.Fatalf("Cannot connect to \"%s\", err=%s", ConfigUrl, err.Error())
-	}
-
-	// Check to see if the files currently exist. If the docker path is properly mounted from the prometheus
-	// container, then we should see those files.  Error out if we cannot see those files.
-	for _, file := range GetPrometheusPaths() {
-		if _, err = os.Stat(file); err != nil {
-			dir := filepath.Dir(file)
-			err = os.MkdirAll(dir, 0755)
-			if err != nil {
-				log.Fatalf(err.Error())
-			}
-			log.Printf("Created directory \"%s\"", dir)
-		}
 	}
 
 	monitor := NewMonitor()

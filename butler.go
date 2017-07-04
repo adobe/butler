@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 
 	"github.com/hoisie/mustache"
 	"github.com/jasonlvhit/gocron"
@@ -17,7 +18,7 @@ import (
 )
 
 var (
-	version                 = "v0.1.0"
+	version                 = "v0.1.5"
 	jsonFiles               = `{"files": ["prometheus.yml", "alerts/commonalerts.yml", "alerts/tenant.yml"]}`
 	PrometheusRootDirectory = "/opt/prometheus"
 	PrometheusHost          string
@@ -231,7 +232,12 @@ func main() {
 	// container, then we should see those files.  Error out if we cannot see those files.
 	for _, file := range GetPrometheusPaths() {
 		if _, err = os.Stat(file); err != nil {
-			log.Fatalf("Cannot find file \"%s\". Is the directory properly mounted to docker?", file)
+			dir := filepath.Dir(file)
+			err = os.MkdirAll(dir, 0755)
+			if err != nil {
+				log.Fatalf(err.Error())
+			}
+			log.Printf("Created directory \"%s\"", dir)
 		}
 	}
 

@@ -1,10 +1,11 @@
 FROM golang:1.8.1-alpine
 LABEL maintaner="Stegen Smith <matthsmi@adobe.com>
 
+RUN mkdir /root/butler
 COPY ./files/build.sh /root/build.sh
+COPY butler.go /root/butler/butler.go
+COPY ./vendor /root/butler/vendor
 
-RUN apk update && apk add alpine-sdk autoconf automake bash curl git \
-    libtool linux-headers musl-dev openssh-client openssl openssl-dev perl \
-    pcre pcre-dev perl-dev wget
+RUN apk update && apk add bash
 
 RUN /root/build.sh

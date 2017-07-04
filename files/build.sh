@@ -4,11 +4,12 @@ export GOROOT=/usr/local/go
 export GOPATH=/root/go
 export PATH=/bin:/usr/bin:/usr/local/bin:/sbin:/usr/sbin:/usr/local/sbin:/usr/local/go/bin:$GOPATH/bin
 
-mkdir -p $GOPATH/src/git.corp.adobe.com/TechOps-IAO
-cd $GOPATH/src/git.corp.adobe.com/TechOps-IAO
+BUTLER_GO_PATH=/root/go/src/git.corp.adobe.com/TechOps-IAO/butler
 
-git clone git@git.corp.adobe.com:TechOps-IAO/butler.git
+mkdir -p $BUTLER_GO_PATH
+cd $BUTLER_GO_PATH
+mv /root/butler/* .
 
-cd butler
 go build
 
+cp butler /root/butler

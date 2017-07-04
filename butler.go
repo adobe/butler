@@ -20,7 +20,7 @@ import (
 )
 
 var (
-	version                 = "v0.3.2"
+	version                 = "v0.3.4"
 	JsonFiles               = `{"files": ["prometheus.yml", "alerts/commonalerts.yml", "alerts/tenant.yml"]}`
 	PrometheusRootDirectory = "/opt/prometheus"
 	PrometheusHost          string
@@ -259,7 +259,7 @@ func main() {
 		configUrlFlag         = flag.String("config.url", "", "The base url to grab prometheus configuration files")
 		configClusterIdFlag   = flag.String("config.cluster-id", "", "The ethos cluster identifier.")
 		configFilesJsonFlag   = flag.String("config.files", JsonFiles, "The prometheus configuration files to grab.")
-		configScheduleIntFlag = flag.Int("config.schedule-interval", 5, "The interval, in minutes, to run the schedule.")
+		configSchedulerIntFlag = flag.Int("config.scheduler-interval", 300, "The interval, in seconds, to run the scheduler.")
 		configPrometheusHost  = flag.String("config.prometheus-host", os.Getenv("HOST"), "The prometheus host to reload.")
 	)
 	flag.Parse()
@@ -308,6 +308,6 @@ func main() {
 	PCMSHandler()
 
 	sched := gocron.NewScheduler()
-	sched.Every(uint64(*configScheduleIntFlag)).Minutes().Do(PCMSHandler)
+	sched.Every(uint64(*configSchedulerIntFlag)).Seconds().Do(PCMSHandler)
 	<-sched.Start()
 }

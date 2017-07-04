@@ -153,7 +153,7 @@ func CopyFile(src string, dst string) error {
 
 func RenderPrometheusYaml(f *os.File) {
 	out := mustache.RenderFile(f.Name(), map[string]string{"ethos-cluster-id": ClusterId})
-	f, err := os.OpenFile(f.Name(), os.O_WRONLY, 0644)
+	f, err := os.OpenFile(f.Name(), os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
 		log.Fatal(err.Error())
 	}

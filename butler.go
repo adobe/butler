@@ -112,6 +112,7 @@ func DownloadPCMSFile(u string) *os.File {
 		Timeout: time.Duration(HttpTimeout) * time.Second}
 
 	response, err := httpClient.Get(u)
+
 	if response.StatusCode != 200 {
 		tmpFile.Close()
 		os.Remove(tmpFile.Name())

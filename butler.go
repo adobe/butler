@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -30,6 +32,12 @@ var (
 	ConfigUrl               string
 	Files                   ConfigFiles
 	LastRun                 time.Time
+	HttpTimeout             int
+)
+
+const (
+	butlerHeader = "#butlerstart"
+	butlerFooter = "#butlerend"
 )
 
 type ConfigFiles struct {
@@ -100,7 +108,10 @@ func DownloadPCMSFile(u string) *os.File {
 		log.Fatal(err)
 	}
 
-	response, err := http.Get(u)
+	httpClient := &http.Client{
+		Timeout: time.Duration(HttpTimeout) * time.Second}
+
+	response, err := httpClient.Get(u)
 	if err != nil {
 		tmpFile.Close()
 		os.Remove(tmpFile.Name())
@@ -166,6 +177,52 @@ func RenderPrometheusYaml(f *os.File) {
 	}
 }
 
+func ValidateButlerConfig(f *os.File) error {
+	var (
+		configLine    string
+		isFirstLine   bool
+		isValidHeader bool
+		isValidFooter bool
+	)
+	isFirstLine = true
+	isValidHeader = true
+	isValidFooter = true
+
+	file, err := os.Open(f.Name())
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		configLine = scanner.Text()
+		// Check that the header is valid
+		if isFirstLine {
+			if configLine != butlerHeader {
+				isValidHeader = false
+			}
+			isFirstLine = false
+		}
+	}
+	// Check that the footer is valid
+	if configLine != butlerFooter {
+		if configLine != butlerFooter {
+			isValidFooter = false
+		}
+	}
+
+	if !isValidHeader && !isValidFooter {
+		return errors.New("Invalid butler header and footer")
+	} else if !isValidHeader {
+		return errors.New("Invalid butler header")
+	} else if !isValidFooter {
+		return errors.New("Invalid butler footer")
+	} else {
+		return nil
+	}
+}
+
 func PCMSHandler() {
 	IsModified := false
 	log.Println("Processing PCMS Files.")
@@ -198,6 +255,17 @@ func PCMSHandler() {
 			Files.Files[i] = fmt.Sprintf("prometheus.yml")
 		}
 
+		// Let's ensure that the files starts with #butlerstart and
+		// ends with #butlerend. If they do not, then we will assume
+		// we did not get a correct configuration, or there is an issue
+		// with the upstream
+		err := ValidateButlerConfig(f)
+		if err != nil {
+			log.Printf("%s for %s.\n", err.Error(), GetPrometheusPaths()[i])
+			continue
+		}
+
+		// Let's compare the source and destination files
 		cmp := equalfile.New(nil, equalfile.Options{})
 		equal, err := cmp.CompareFile(f.Name(), GetPrometheusPaths()[i])
 		if !equal {
@@ -221,7 +289,8 @@ func PCMSHandler() {
 		log.Printf("Reloading prometheus.")
 		// curl -v -X POST $HOST:9090/-/reload
 		promUrl := fmt.Sprintf("http://%s:9090/-/reload", PrometheusHost)
-		client := &http.Client{}
+		client := &http.Client{
+			Timeout: time.Duration(HttpTimeout) * time.Second}
 		req, err := http.NewRequest("POST", promUrl, nil)
 		if err != nil {
 			log.Printf(err.Error())
@@ -274,9 +343,12 @@ func main() {
 		os.Exit(0)
 	}
 
+	// Set the HTTP Timeout
+	HttpTimeout = *configHttpTimeout
+
 	// Grab the prometheus host
 	if *configPrometheusHost == "" {
-		log.Fatal("Cannot retrieve HOST environment variable")
+		log.Fatal("You must provide a -config.prometheus-host, or a HOST environment variable.")
 	} else {
 		PrometheusHost = *configPrometheusHost
 	}

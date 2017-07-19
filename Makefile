@@ -9,7 +9,8 @@ pkgs=$(shell $(GO) list ./... | egrep -v "(vendor)")
 
 DOCKERHUB_USER=matthsmi
 DOCKERHUB_REPO=butler
-DOCKERHUB_VERSION=v0.3.7
+DOCKERHUB_VERSION=v0.4.0
+
 
 default: ci
 

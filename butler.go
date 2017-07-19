@@ -61,12 +61,12 @@ func (m *Monitor) Start() {
 
 func (m *Monitor) MonitorHandler(w http.ResponseWriter, r *http.Request) {
 	mOut := MonitorOutput{ClusterID: ClusterId,
-		ConfigURL:      ConfigUrl,
-		PrometheusHost: PrometheusHost,
-		PrometheusConfig:    PrometheusConfig,
-		ConfigFiles:    Files,
-		LastRun:        LastRun,
-		Version:        version}
+		ConfigURL:        ConfigUrl,
+		PrometheusHost:   PrometheusHost,
+		PrometheusConfig: PrometheusConfig,
+		ConfigFiles:      Files,
+		LastRun:          LastRun,
+		Version:          version}
 	resp, err := json.Marshal(mOut)
 	if err != nil {
 		w.Header().Set("Content-Type", "text/html")
@@ -137,10 +137,8 @@ func CopyFile(src string, dst string) error {
 
 	// open destination
 	if _, err = os.Stat(dst); err != nil {
-		//log.Printf("creating file \"%s\"", dst)
 		out, err = os.Create(dst)
 	} else {
-		//log.Printf("opening file \"%s\"", dst)
 		out, err = os.OpenFile(dst, os.O_WRONLY|os.O_TRUNC, 0644)
 	}
 	if err != nil {
@@ -175,12 +173,13 @@ func PCMSHandler() {
 	// Check to see if the files currently exist. If the docker path is properly mounted from the prometheus
 	// container, then we should see those files.  Error out if we cannot see those files.
 	for _, file := range GetPrometheusPaths() {
-		if _, err := os.Stat(file); err != nil {
-			dir := filepath.Dir(file)
+		dir := filepath.Dir(file)
+		if _, err := os.Stat(dir); err != nil {
 			err = os.MkdirAll(dir, 0755)
 			if err != nil {
 				log.Fatalf(err.Error())
 			}
+			log.Printf("Created directory \"%s\"", dir)
 		}
 	}
 
@@ -257,14 +256,14 @@ func NewMonitor() *Monitor {
 
 func main() {
 	var (
-		err                         error
-		versionFlag                 = flag.Bool("version", false, "Print version information.")
-		configUrlFlag               = flag.String("config.url", "", "The base url to grab prometheus configuration files")
-		configClusterIdFlag         = flag.String("config.cluster-id", "", "The ethos cluster identifier.")
-		configPrometheusConfigFlag  = flag.String("config.prometheus-config", PrometheusConfig, "The prometheus configuration file.")
+		err                        error
+		versionFlag                = flag.Bool("version", false, "Print version information.")
+		configUrlFlag              = flag.String("config.url", "", "The base url to grab prometheus configuration files")
+		configClusterIdFlag        = flag.String("config.cluster-id", "", "The ethos cluster identifier.")
+		configPrometheusConfigFlag = flag.String("config.prometheus-config", PrometheusConfig, "The prometheus configuration file.")
 		configAdditionalConfigFlag = flag.String("config.additional-config", AdditionalConfig, "The prometheus configuration files to grab in comma separated format.")
-		configSchedulerIntFlag      = flag.Int("config.scheduler-interval", 300, "The interval, in seconds, to run the scheduler.")
-		configPrometheusHost        = flag.String("config.prometheus-host", os.Getenv("HOST"), "The prometheus host to reload.")
+		configSchedulerIntFlag     = flag.Int("config.scheduler-interval", 300, "The interval, in seconds, to run the scheduler.")
+		configPrometheusHost       = flag.String("config.prometheus-host", os.Getenv("HOST"), "The prometheus host to reload.")
 	)
 	flag.Parse()
 

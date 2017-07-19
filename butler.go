@@ -112,6 +112,14 @@ func DownloadPCMSFile(u string) *os.File {
 		Timeout: time.Duration(HttpTimeout) * time.Second}
 
 	response, err := httpClient.Get(u)
+	if response.StatusCode != 200 {
+		tmpFile.Close()
+		os.Remove(tmpFile.Name())
+		log.Printf("Did not receive 200 response code for %s. code=%d\n", u, response.StatusCode)
+		tmpFile = nil
+		return tmpFile
+	}
+
 	if err != nil {
 		tmpFile.Close()
 		os.Remove(tmpFile.Name())
@@ -259,8 +267,8 @@ func PCMSHandler() {
 		// ends with #butlerend. If they do not, then we will assume
 		// we did not get a correct configuration, or there is an issue
 		// with the upstream
-		err := ValidateButlerConfig(f)
-		if err != nil {
+		//err := ValidateButlerConfig(f)
+		if err := ValidateButlerConfig(f); err != nil {
 			log.Printf("%s for %s.\n", err.Error(), GetPrometheusPaths()[i])
 			continue
 		}
@@ -333,6 +341,7 @@ func main() {
 		configAdditionalConfigFlag = flag.String("config.additional-config", AdditionalConfig, "The prometheus configuration files to grab in comma separated format.")
 		configSchedulerIntFlag     = flag.Int("config.scheduler-interval", 300, "The interval, in seconds, to run the scheduler.")
 		configPrometheusHost       = flag.String("config.prometheus-host", os.Getenv("HOST"), "The prometheus host to reload.")
+		configHttpTimeout          = flag.Int("config.http-timeout-host", 10, "The http timeout, in seconds, for GET requests to gather the configuration files")
 	)
 	flag.Parse()
 

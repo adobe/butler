@@ -21,8 +21,9 @@ import (
 )
 
 var (
-	version                 = "v0.3.5"
-	FileList                = "prometheus.yml,alerts/commonalerts.yml,alerts/tenant.yml"
+	version                 = "v0.4.0"
+	PrometheusConfig        = "prometheus.yml"
+	AdditionalConfig        = "alerts/commonalerts.yml,alerts/tenant.yml"
 	PrometheusRootDirectory = "/opt/prometheus"
 	PrometheusHost          string
 	ClusterId               string
@@ -32,16 +33,17 @@ var (
 )
 
 type ConfigFiles struct {
-	Files []string `json:"files"`
+	Files []string `json:"additional_config"`
 }
 
 type Monitor struct {
 }
 
 type MonitorOutput struct {
-	ClusterID      string `json:"cluster_id"`
-	ConfigURL      string `json:"config_url"`
-	PrometheusHost string `json:"prometheus_host"`
+	ClusterID        string `json:"cluster_id"`
+	ConfigURL        string `json:"config_url"`
+	PrometheusHost   string `json:"prometheus_host"`
+	PrometheusConfig string `json:"prometheus_config"`
 	ConfigFiles
 	LastRun time.Time `json:"last_run"`
 	Version string    `json:"version"`
@@ -61,6 +63,7 @@ func (m *Monitor) MonitorHandler(w http.ResponseWriter, r *http.Request) {
 	mOut := MonitorOutput{ClusterID: ClusterId,
 		ConfigURL:      ConfigUrl,
 		PrometheusHost: PrometheusHost,
+		PrometheusConfig:    PrometheusConfig,
 		ConfigFiles:    Files,
 		LastRun:        LastRun,
 		Version:        version}
@@ -178,7 +181,6 @@ func PCMSHandler() {
 			if err != nil {
 				log.Fatalf(err.Error())
 			}
-			log.Printf("Created directory \"%s\"", dir)
 		}
 	}
 
@@ -190,8 +192,11 @@ func PCMSHandler() {
 
 		// For the prometheus.yml we have to do some mustache
 		// cluster-id replacement on downloaded file
-		if GetPrometheusPaths()[i] == fmt.Sprintf("%s/prometheus.yml", PrometheusRootDirectory) {
+		if GetPrometheusPaths()[i] == fmt.Sprintf("%s/%s", PrometheusRootDirectory, PrometheusConfig) {
 			RenderPrometheusYaml(f)
+			// Going to need to rewrite the destination filename for the file comparison
+			// Probably a better way to do this
+			Files.Files[i] = fmt.Sprintf("prometheus.yml")
 		}
 
 		cmp := equalfile.New(nil, equalfile.Options{})
@@ -206,7 +211,13 @@ func PCMSHandler() {
 			IsModified = true
 		}
 		os.Remove(f.Name())
+
+		if GetPrometheusPaths()[i] == fmt.Sprintf("%s/prometheus.yml", PrometheusRootDirectory) {
+			// Now put things back to how they originally were...
+			Files.Files[i] = PrometheusConfig
+		}
 	}
+
 	if IsModified {
 		log.Printf("Reloading prometheus.")
 		// curl -v -X POST $HOST:9090/-/reload
@@ -229,9 +240,6 @@ func PCMSHandler() {
 }
 
 func ParseConfigFiles(file *ConfigFiles, configFiles string) error {
-	if len(file.Files) > 0 {
-		file.Files = make([]string, 0)
-	}
 	files := strings.Split(configFiles, ",")
 	for _, f := range files {
 		f = strings.TrimSpace(f)
@@ -249,13 +257,14 @@ func NewMonitor() *Monitor {
 
 func main() {
 	var (
-		err                    error
-		versionFlag            = flag.Bool("version", false, "Print version information.")
-		configUrlFlag          = flag.String("config.url", "", "The base url to grab prometheus configuration files")
-		configClusterIdFlag    = flag.String("config.cluster-id", "", "The ethos cluster identifier.")
-		configFilesFlag        = flag.String("config.files", FileList, "The prometheus configuration files to grab in comma separated format.")
-		configSchedulerIntFlag = flag.Int("config.scheduler-interval", 300, "The interval, in seconds, to run the scheduler.")
-		configPrometheusHost   = flag.String("config.prometheus-host", os.Getenv("HOST"), "The prometheus host to reload.")
+		err                         error
+		versionFlag                 = flag.Bool("version", false, "Print version information.")
+		configUrlFlag               = flag.String("config.url", "", "The base url to grab prometheus configuration files")
+		configClusterIdFlag         = flag.String("config.cluster-id", "", "The ethos cluster identifier.")
+		configPrometheusConfigFlag  = flag.String("config.prometheus-config", PrometheusConfig, "The prometheus configuration file.")
+		configAdditionalConfigFlag = flag.String("config.additional-config", AdditionalConfig, "The prometheus configuration files to grab in comma separated format.")
+		configSchedulerIntFlag      = flag.Int("config.scheduler-interval", 300, "The interval, in seconds, to run the scheduler.")
+		configPrometheusHost        = flag.String("config.prometheus-host", os.Getenv("HOST"), "The prometheus host to reload.")
 	)
 	flag.Parse()
 
@@ -285,7 +294,12 @@ func main() {
 		ClusterId = *configClusterIdFlag
 	}
 
-	ParseConfigFiles(&Files, *configFilesFlag)
+	if *configPrometheusConfigFlag != "" {
+		PrometheusConfig = *configPrometheusConfigFlag
+	}
+
+	ParseConfigFiles(&Files, *configPrometheusConfigFlag)
+	ParseConfigFiles(&Files, *configAdditionalConfigFlag)
 
 	if _, err = url.ParseRequestURI(ConfigUrl); err != nil {
 		log.Fatalf("Cannot parse ConfigUrl=%s", ConfigUrl)

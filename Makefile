@@ -64,4 +64,4 @@ help:
 	@printf "make push-$(ARTIFACTORY_REPO)-release\tPushes butler to $(ARTIFACTORY_PROD_HOST).\n"
 
 run:
-	$(GO) run butler.go -config.url http://git1.dev.or1.adobe.net/cgit/adobe-platform/ethos-monitoring/plain/oncluster -config.cluster-id ethos01-dev-or1 -config.scheduler-interval 10 -config.prometheus-host localhost
+	$(GO) run butler.go -config.url http://git1.dev.or1.adobe.net/cgit/adobe-platform/ethos-monitoring/plain/oncluster -config.mustache-subs "ethos-cluster-id=ethos01-dev-or1" -config.scheduler-interval 10 -config.prometheus-host localhost

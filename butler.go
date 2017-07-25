@@ -23,16 +23,17 @@ import (
 )
 
 var (
-	version                 = "v0.4.0"
+	version                 = "v0.5.0"
 	PrometheusConfig        = "prometheus.yml"
 	AdditionalConfig        = "alerts/commonalerts.yml,alerts/tenant.yml"
 	PrometheusRootDirectory = "/opt/prometheus"
 	PrometheusHost          string
-	ClusterId               string
 	ConfigUrl               string
 	Files                   ConfigFiles
 	LastRun                 time.Time
 	HttpTimeout             int
+	Subs                    MustacheSubs
+	RequiredSubKeys         = []string{"ethos-cluster-id"}
 )
 
 const (
@@ -44,6 +45,10 @@ type ConfigFiles struct {
 	Files []string `json:"additional_config"`
 }
 
+type MustacheSubs struct {
+	Subs map[string]string `json:"mustache_subs"`
+}
+
 type Monitor struct {
 }
 
@@ -53,6 +58,7 @@ type MonitorOutput struct {
 	PrometheusHost   string `json:"prometheus_host"`
 	PrometheusConfig string `json:"prometheus_config"`
 	ConfigFiles
+	MustacheSubs
 	LastRun time.Time `json:"last_run"`
 	Version string    `json:"version"`
 }
@@ -68,11 +74,12 @@ func (m *Monitor) Start() {
 }
 
 func (m *Monitor) MonitorHandler(w http.ResponseWriter, r *http.Request) {
-	mOut := MonitorOutput{ClusterID: ClusterId,
+	mOut := MonitorOutput{ClusterID: Subs.Subs["ethos-cluster-id"],
 		ConfigURL:        ConfigUrl,
 		PrometheusHost:   PrometheusHost,
 		PrometheusConfig: PrometheusConfig,
 		ConfigFiles:      Files,
+		MustacheSubs:     Subs,
 		LastRun:          LastRun,
 		Version:          version}
 	resp, err := json.Marshal(mOut)
@@ -174,8 +181,15 @@ func CopyFile(src string, dst string) error {
 }
 
 func RenderPrometheusYaml(f *os.File) {
-	out := mustache.RenderFile(f.Name(), map[string]string{"ethos-cluster-id": ClusterId})
-	f, err := os.OpenFile(f.Name(), os.O_WRONLY|os.O_TRUNC, 0644)
+	tmpl, err := mustache.ParseFile(f.Name())
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
+	out := tmpl.Render(Subs.Subs)
+	//out := mustache.RenderFile(f.Name(), Subs.Subs)
+
+	f, err = os.OpenFile(f.Name(), os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
@@ -255,8 +269,7 @@ func PCMSHandler() {
 			continue
 		}
 
-		// For the prometheus.yml we have to do some mustache
-		// cluster-id replacement on downloaded file
+		// For the prometheus.yml we have to do some mustache replacement on downloaded file
 		if GetPrometheusPaths()[i] == fmt.Sprintf("%s/%s", PrometheusRootDirectory, PrometheusConfig) {
 			RenderPrometheusYaml(f)
 			// Going to need to rewrite the destination filename for the file comparison
@@ -328,6 +341,53 @@ func ParseConfigFiles(file *ConfigFiles, configFiles string) error {
 	return nil
 }
 
+func ParseMustacheSubs(subs *MustacheSubs, configSubs string) error {
+	pairs := strings.Split(configSubs, ",")
+	for _, p := range pairs {
+		p = strings.TrimSpace(p)
+		keyvalpairs := strings.Split(p, "=")
+		if len(keyvalpairs) != 2 {
+			log.Printf("ParseMustacheSubs(): invalid key value pair \"%s\"... ignoring.", keyvalpairs)
+			continue
+		}
+		key := strings.TrimSpace(keyvalpairs[0])
+		val := strings.TrimSpace(keyvalpairs[1])
+		subs.Subs[key] = val
+	}
+	// validate against RequiredSubKeys
+	if !ValidateMustacheSubs(subs) {
+		return errors.New(fmt.Sprintf("could not validate required mustache subs. check your config. required subs=%s.", RequiredSubKeys))
+	}
+	return nil
+}
+
+func ValidateMustacheSubs(subs *MustacheSubs) bool {
+	var (
+		subEntries map[string]bool
+	)
+	subEntries = make(map[string]bool)
+
+	// set the default return value to false
+	for _, vs := range RequiredSubKeys {
+		subEntries[vs] = false
+	}
+
+	// range over the subs and see if the keys match the required list of substitution keys
+	for k, _ := range subs.Subs {
+		if _, ok := subEntries[k]; ok {
+			subEntries[k] = true
+		}
+	}
+
+	// If any of the sub keys are false, then something is missing
+	for _, v := range subEntries {
+		if v == false {
+			return false
+		}
+	}
+	return true
+}
+
 func NewMonitor() *Monitor {
 	return &Monitor{}
 }
@@ -337,12 +397,12 @@ func main() {
 		err                        error
 		versionFlag                = flag.Bool("version", false, "Print version information.")
 		configUrlFlag              = flag.String("config.url", "", "The base url to grab prometheus configuration files")
-		configClusterIdFlag        = flag.String("config.cluster-id", "", "The ethos cluster identifier.")
 		configPrometheusConfigFlag = flag.String("config.prometheus-config", PrometheusConfig, "The prometheus configuration file.")
 		configAdditionalConfigFlag = flag.String("config.additional-config", AdditionalConfig, "The prometheus configuration files to grab in comma separated format.")
 		configSchedulerIntFlag     = flag.Int("config.scheduler-interval", 300, "The interval, in seconds, to run the scheduler.")
 		configPrometheusHost       = flag.String("config.prometheus-host", os.Getenv("HOST"), "The prometheus host to reload.")
 		configHttpTimeout          = flag.Int("config.http-timeout-host", 10, "The http timeout, in seconds, for GET requests to gather the configuration files")
+		configMustacheSubs         = flag.String("config.mustache-subs", "", "prometheus.yml Mustache Substitutions.")
 	)
 	flag.Parse()
 
@@ -369,10 +429,14 @@ func main() {
 		ConfigUrl = *configUrlFlag
 	}
 
-	if *configClusterIdFlag == "" {
-		log.Fatal("You must provide a -config.cluster-id")
+	if *configMustacheSubs == "" {
+		log.Fatal("You must provide a -config.mustache-subs")
 	} else {
-		ClusterId = *configClusterIdFlag
+		Subs.Subs = make(map[string]string)
+		err := ParseMustacheSubs(&Subs, *configMustacheSubs)
+		if err != nil {
+			log.Fatal(err.Error())
+		}
 	}
 
 	if *configPrometheusConfigFlag != "" {

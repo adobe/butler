@@ -9,7 +9,7 @@ pkgs=$(shell $(GO) list ./... | egrep -v "(vendor)")
 
 ARTIFACTORY_USER=$(shell echo "$$ARTIFACTORY_USER")
 ARTIFACTORY_REPO=butler
-ARTIFACTORY_VERSION=0.4.0
+ARTIFACTORY_VERSION=0.5.0
 ARTIFACTORY_PROD_HOST=docker-ethos-core-univ-release.dr-uw2.adobeitc.com
 ARTIFACTORY_DEV_HOST=docker-ethos-core-univ-dev.dr-uw2.adobeitc.com
 
@@ -62,6 +62,7 @@ help:
 	@printf "make build-$(ARTIFACTORY_REPO)\t\tBuilds butler locally, for use in pushing to artifactory.\n"
 	@printf "make push-$(ARTIFACTORY_REPO)-dev\t\tPushes butler to $(ARTIFACTORY_DEV_HOST).\n"
 	@printf "make push-$(ARTIFACTORY_REPO)-release\tPushes butler to $(ARTIFACTORY_PROD_HOST).\n"
+	@printf "make run\t\t\tRun butler on local system.\n"
 
 run:
-	$(GO) run butler.go -config.url http://git1.dev.or1.adobe.net/cgit/adobe-platform/ethos-monitoring/plain/oncluster -config.cluster-id ethos01-dev-or1 -config.scheduler-interval 10 -config.prometheus-host localhost
+	$(GO) run butler.go -config.url http://git1.dev.or1.adobe.net/cgit/adobe-platform/ethos-monitoring/plain/oncluster -config.mustache-subs "ethos-cluster-id=ethos01-dev-or1" -config.scheduler-interval 10 -config.prometheus-host localhost

@@ -40,13 +40,15 @@ var (
 	RequiredSubKeys         = []string{"ethos-cluster-id"}
 
 	// Prometheus metrics
-	ButlerReloadSuccess  prometheus.Gauge
-	ButlerReloadTime     prometheus.Gauge
-	ButlerWriteSuccess   *prometheus.GaugeVec
-	ButlerWriteTime      *prometheus.GaugeVec
+	ButlerConfigValid    *prometheus.GaugeVec
 	ButlerContactSuccess *prometheus.GaugeVec
 	ButlerContactTime    *prometheus.GaugeVec
-	ButlerConfigValid    *prometheus.GaugeVec
+	ButlerReloadSuccess  prometheus.Gauge
+	ButlerReloadTime     prometheus.Gauge
+	ButlerRenderSuccess  prometheus.Gauge
+	ButlerRenderTime     prometheus.Gauge
+	ButlerWriteSuccess   *prometheus.GaugeVec
+	ButlerWriteTime      *prometheus.GaugeVec
 )
 
 // butlerHeader and butlerFooter represent the strings that need to be matched
@@ -263,7 +265,7 @@ func CopyFile(src string, dst string) error {
 }
 
 // RenderPrometheusYaml takes a pointer to an os.File object. It reads the file
-// attempts to parse the mustache 
+// attempts to parse the mustache
 func RenderPrometheusYaml(f *os.File) error {
 	tmpl, err := mustache.ParseFile(f.Name())
 	if err != nil {
@@ -360,6 +362,12 @@ func PCMSHandler() {
 		// For the prometheus.yml we have to do some mustache replacement on downloaded file
 		if GetPrometheusPaths()[i] == fmt.Sprintf("%s/%s", PrometheusRootDirectory, PrometheusConfig) {
 			err := RenderPrometheusYaml(f)
+			if err != nil {
+				ButlerReloadSuccess.Set(FAILURE)
+			} else {
+				ButlerReloadSuccess.Set(SUCCESS)
+				ButlerReloadTime.Set(GetFloatTimeNow())
+			}
 			// Going to need to rewrite the destination filename for the file comparison
 			// Probably a better way to do this
 			Files.Files[i] = fmt.Sprintf("prometheus.yml")
@@ -548,28 +556,10 @@ func main() {
 		log.Fatalf("Cannot connect to \"%s\", err=%s", ConfigUrl, err.Error())
 	}
 
-	// Set initial state of butler prometheus gauge's to success
-	ButlerReloadSuccess = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "butler_localconfig_reload_success",
-		Help: "Did butler successfully reload prometheus",
-	})
-	// Set to successful initially
-	ButlerReloadSuccess.Set(SUCCESS)
-
-	ButlerReloadTime = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "butler_localconfig_reload_time",
-		Help: "Time that butler successfully reload prometheus",
-	})
-	ButlerReloadTime.Set(GetFloatTimeNow())
-
-	ButlerWriteSuccess = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "butler_localconfig_write_success",
-		Help: "Did butler successfully write the configuration",
-	}, []string{"config_file"})
-
-	ButlerWriteTime = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "butler_localconfig_write_time",
-		Help: "Time that butler successfully write the configuration",
+	// Setup the prometheus metric information
+	ButlerConfigValid = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "butler_remoterepo_config_valid",
+		Help: "Is the butler configuration valid",
 	}, []string{"config_file"})
 
 	ButlerContactSuccess = prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -582,18 +572,53 @@ func main() {
 		Help: "Time that butler succesfully contacted the remote repository",
 	}, []string{"config_file"})
 
-	ButlerConfigValid = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "butler_remoterepo_config_valid",
-		Help: "Is the butler configuration valid",
+	ButlerReloadSuccess = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "butler_localconfig_reload_success",
+		Help: "Did butler successfully reload prometheus",
+	})
+	// Set to successful initially
+	ButlerReloadSuccess.Set(SUCCESS)
+
+	ButlerReloadTime = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "butler_localconfig_reload_time",
+		Help: "Time that butler successfully reload prometheus",
+	})
+	// Set the initial time to now
+	ButlerReloadTime.Set(GetFloatTimeNow())
+
+	ButlerRenderSuccess = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "butler_localconfig_render_success",
+		Help: "Did butler successfully render the prometheus.yml",
+	})
+	// Set to successful initially
+	ButlerRenderSuccess.Set(SUCCESS)
+
+	ButlerRenderTime = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "butler_localconfig_render_time",
+		Help: "Time that butler successfully rendered the prometheus.yml",
+	})
+	// Set the initial time to now
+	ButlerRenderTime.Set(GetFloatTimeNow())
+
+	ButlerWriteSuccess = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "butler_localconfig_write_success",
+		Help: "Did butler successfully write the configuration",
 	}, []string{"config_file"})
 
-	prometheus.MustRegister(ButlerReloadSuccess)
-	prometheus.MustRegister(ButlerReloadTime)
-	prometheus.MustRegister(ButlerWriteSuccess)
-	prometheus.MustRegister(ButlerWriteTime)
+	ButlerWriteTime = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "butler_localconfig_write_time",
+		Help: "Time that butler successfully write the configuration",
+	}, []string{"config_file"})
+
+	prometheus.MustRegister(ButlerConfigValid)
 	prometheus.MustRegister(ButlerContactSuccess)
 	prometheus.MustRegister(ButlerContactTime)
-	prometheus.MustRegister(ButlerConfigValid)
+	prometheus.MustRegister(ButlerReloadSuccess)
+	prometheus.MustRegister(ButlerReloadTime)
+	prometheus.MustRegister(ButlerRenderSuccess)
+	prometheus.MustRegister(ButlerRenderTime)
+	prometheus.MustRegister(ButlerWriteSuccess)
+	prometheus.MustRegister(ButlerWriteTime)
 
 	// Start up the monitor web server
 	monitor := NewMonitor()

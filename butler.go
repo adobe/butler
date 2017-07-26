@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -20,10 +21,13 @@ import (
 	"github.com/hoisie/mustache"
 	"github.com/jasonlvhit/gocron"
 	"github.com/udhos/equalfile"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var (
-	version                 = "v0.5.0"
+	version                 = "v0.5.2"
 	PrometheusConfig        = "prometheus.yml"
 	AdditionalConfig        = "alerts/commonalerts.yml,alerts/tenant.yml"
 	PrometheusRootDirectory = "/opt/prometheus"
@@ -34,24 +38,66 @@ var (
 	HttpTimeout             int
 	Subs                    MustacheSubs
 	RequiredSubKeys         = []string{"ethos-cluster-id"}
+
+	// Prometheus metrics
+	ButlerReloadSuccess  prometheus.Gauge
+	ButlerReloadTime     prometheus.Gauge
+	ButlerWriteSuccess   *prometheus.GaugeVec
+	ButlerWriteTime      *prometheus.GaugeVec
+	ButlerContactSuccess *prometheus.GaugeVec
+	ButlerContactTime    *prometheus.GaugeVec
+	ButlerConfigValid    *prometheus.GaugeVec
 )
 
+// butlerHeader and butlerFooter represent the strings that need to be matched
+// against in the configuration files. If these entries do not exist in the
+// downloaded file, then we cannot be assured that these files are legitimate
+// configurations.
 const (
 	butlerHeader = "#butlerstart"
 	butlerFooter = "#butlerend"
 )
 
+// FAILURE and SUCCESS are float64 enumerations which are used to set the
+// success or failure flags for the prometheus check gauges
+//
+// These need to be outside of the previous const due to them being an
+// enumeration, and putting them in the previous const will mess up the
+// ordering.
+const (
+	FAILURE float64 = 0 + iota
+	SUCCESS
+)
+
+// ConfigFiles is the structure for holding the array of configuration
+// files which are passed into butler from the CLI. It is also displayed
+// as output to the monitor health check in json output.
 type ConfigFiles struct {
 	Files []string `json:"additional_config"`
 }
 
+// MustacheSubs is the structure for holding the key=value pairs of mustache
+// substitutions which have to be handled within the prometheus.yml. It is also
+// displayed as output to the monitor health check in json output.
 type MustacheSubs struct {
 	Subs map[string]string `json:"mustache_subs"`
 }
 
+// Monitor is the empty structure to be used for starting up the monitor
+// health check and prometheus metrics http endpoints.
 type Monitor struct {
 }
 
+// NewMonitor returns a Monitor structure which is used to bring up the
+// monitor health check and prometheus metrics http endpoints.
+func NewMonitor() *Monitor {
+	return &Monitor{}
+}
+
+// MonitorOutput is the structure which holds the formatting which is output
+// to the health check monitor. When /health-check is hit, it returns this
+// structure, which is then Marshal'd to json and provided back to the end
+// user
 type MonitorOutput struct {
 	ClusterID        string `json:"cluster_id"`
 	ConfigURL        string `json:"config_url"`
@@ -63,8 +109,10 @@ type MonitorOutput struct {
 	Version string    `json:"version"`
 }
 
+// Start turns up the http server for monitoring butler.
 func (m *Monitor) Start() {
 	http.HandleFunc("/health-check", m.MonitorHandler)
+	http.Handle("/metrics", promhttp.Handler())
 	server := &http.Server{}
 	listener, err := net.Listen("tcp", ":8080")
 	if err != nil {
@@ -73,6 +121,10 @@ func (m *Monitor) Start() {
 	go server.Serve(listener)
 }
 
+// MonitorHandler is the handler function for the /health-check monitor
+// endpoint. It displays the JSON Marshal'd output of all the various
+// configuration options that buter gets started with, and some run time
+// information
 func (m *Monitor) MonitorHandler(w http.ResponseWriter, r *http.Request) {
 	mOut := MonitorOutput{ClusterID: Subs.Subs["ethos-cluster-id"],
 		ConfigURL:        ConfigUrl,
@@ -91,6 +143,9 @@ func (m *Monitor) MonitorHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, string(resp))
 }
 
+// GetPrometheusPaths returns a slice/array of full paths to the prometheus
+// configuration files. For example /opt/prometheus/promethes.yml versus
+// just the filename which is passed by the command line.
 func GetPrometheusPaths() []string {
 	var paths []string
 	for _, file := range Files.Files {
@@ -100,6 +155,27 @@ func GetPrometheusPaths() []string {
 	return paths
 }
 
+// GetPrometheusLabels returns a slice/array of only the filenames. This is for
+// use with the prometheus monitors where we want to identify which files
+// are being worked with for the metrics being exported to prometheus
+func GetPrometheusLabels() []string {
+	var labels []string
+	for _, file := range Files.Files {
+		label := path.Base(file)
+		labels = append(labels, label)
+	}
+	return labels
+}
+
+// GetFloatTimeNow returns a float64 value of Unix time since the Epoch. This is
+// typically in uint32 format; however, prometheus Gauge's require their input
+// to be a float64
+func GetFloatTimeNow() float64 {
+	return float64(time.Now().Unix())
+}
+
+// GetPCMSUrls returns a slice/array of complete URLs to the locations where
+// the butler managed configuration files need to be downloaded from.
 func GetPCMSUrls() []string {
 	var urls []string
 	for _, file := range Files.Files {
@@ -109,6 +185,10 @@ func GetPCMSUrls() []string {
 	return urls
 }
 
+// DownloadPCMSFile returns a pointer to an os.File object which is the result
+// of creating a temporary file, and downloading a prometheus configuration
+// file to it. If there is an error, nil is returned instead of the os.File
+// pointer
 func DownloadPCMSFile(u string) *os.File {
 	tmpFile, err := ioutil.TempFile("/tmp", "pcmsfile")
 	if err != nil {
@@ -148,6 +228,8 @@ func DownloadPCMSFile(u string) *os.File {
 	return tmpFile
 }
 
+// CopyFile copies the src path string to the dst path string. If there is an
+// error, an error is returned, otherwise nil is returned.
 func CopyFile(src string, dst string) error {
 	var (
 		err error
@@ -180,24 +262,26 @@ func CopyFile(src string, dst string) error {
 	return cerr
 }
 
-func RenderPrometheusYaml(f *os.File) {
+// RenderPrometheusYaml takes a pointer to an os.File object. It reads the file
+// attempts to parse the mustache 
+func RenderPrometheusYaml(f *os.File) error {
 	tmpl, err := mustache.ParseFile(f.Name())
 	if err != nil {
-		log.Fatal(err.Error())
+		return err
 	}
 
 	out := tmpl.Render(Subs.Subs)
-	//out := mustache.RenderFile(f.Name(), Subs.Subs)
 
 	f, err = os.OpenFile(f.Name(), os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
-		log.Fatal(err.Error())
+		return err
 	}
 	defer f.Close()
 	_, err = f.Write([]byte(out))
 	if err != nil {
-		log.Fatal(err.Error())
+		return err
 	}
+	return nil
 }
 
 func ValidateButlerConfig(f *os.File) error {
@@ -266,12 +350,16 @@ func PCMSHandler() {
 	for i, u := range GetPCMSUrls() {
 		f := DownloadPCMSFile(u)
 		if f == nil {
+			ButlerContactSuccess.With(prometheus.Labels{"config_file": GetPrometheusLabels()[i]}).Set(FAILURE)
 			continue
+		} else {
+			ButlerContactSuccess.With(prometheus.Labels{"config_file": GetPrometheusLabels()[i]}).Set(SUCCESS)
+			ButlerContactTime.With(prometheus.Labels{"config_file": GetPrometheusLabels()[i]}).Set(GetFloatTimeNow())
 		}
 
 		// For the prometheus.yml we have to do some mustache replacement on downloaded file
 		if GetPrometheusPaths()[i] == fmt.Sprintf("%s/%s", PrometheusRootDirectory, PrometheusConfig) {
-			RenderPrometheusYaml(f)
+			err := RenderPrometheusYaml(f)
 			// Going to need to rewrite the destination filename for the file comparison
 			// Probably a better way to do this
 			Files.Files[i] = fmt.Sprintf("prometheus.yml")
@@ -281,10 +369,12 @@ func PCMSHandler() {
 		// ends with #butlerend. If they do not, then we will assume
 		// we did not get a correct configuration, or there is an issue
 		// with the upstream
-		//err := ValidateButlerConfig(f)
 		if err := ValidateButlerConfig(f); err != nil {
 			log.Printf("%s for %s.\n", err.Error(), GetPrometheusPaths()[i])
+			ButlerConfigValid.With(prometheus.Labels{"config_file": GetPrometheusLabels()[i]}).Set(FAILURE)
 			continue
+		} else {
+			ButlerConfigValid.With(prometheus.Labels{"config_file": GetPrometheusLabels()[i]}).Set(SUCCESS)
 		}
 
 		// Let's compare the source and destination files
@@ -294,8 +384,11 @@ func PCMSHandler() {
 			log.Printf("Found difference in \"%s.\"  Updating.", GetPrometheusPaths()[i])
 			err = CopyFile(f.Name(), GetPrometheusPaths()[i])
 			if err != nil {
-				log.Fatal(err.Error())
+				ButlerWriteSuccess.With(prometheus.Labels{"config_file": GetPrometheusLabels()[i]}).Set(FAILURE)
+				log.Printf(err.Error())
 			}
+			ButlerWriteSuccess.With(prometheus.Labels{"config_file": GetPrometheusLabels()[i]}).Set(SUCCESS)
+			ButlerWriteTime.With(prometheus.Labels{"config_file": GetPrometheusLabels()[i]}).Set(GetFloatTimeNow())
 
 			IsModified = true
 		}
@@ -316,11 +409,15 @@ func PCMSHandler() {
 		req, err := http.NewRequest("POST", promUrl, nil)
 		if err != nil {
 			log.Printf(err.Error())
+			ButlerReloadSuccess.Set(FAILURE)
 		}
 		resp, err := client.Do(req)
 		if err != nil {
 			log.Printf(err.Error())
+			ButlerReloadSuccess.Set(FAILURE)
 		} else {
+			ButlerReloadSuccess.Set(SUCCESS)
+			ButlerReloadTime.Set(GetFloatTimeNow())
 			log.Printf("resp=%#v\n", resp)
 		}
 	} else {
@@ -388,10 +485,6 @@ func ValidateMustacheSubs(subs *MustacheSubs) bool {
 	return true
 }
 
-func NewMonitor() *Monitor {
-	return &Monitor{}
-}
-
 func main() {
 	var (
 		err                        error
@@ -455,6 +548,54 @@ func main() {
 		log.Fatalf("Cannot connect to \"%s\", err=%s", ConfigUrl, err.Error())
 	}
 
+	// Set initial state of butler prometheus gauge's to success
+	ButlerReloadSuccess = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "butler_localconfig_reload_success",
+		Help: "Did butler successfully reload prometheus",
+	})
+	// Set to successful initially
+	ButlerReloadSuccess.Set(SUCCESS)
+
+	ButlerReloadTime = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "butler_localconfig_reload_time",
+		Help: "Time that butler successfully reload prometheus",
+	})
+	ButlerReloadTime.Set(GetFloatTimeNow())
+
+	ButlerWriteSuccess = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "butler_localconfig_write_success",
+		Help: "Did butler successfully write the configuration",
+	}, []string{"config_file"})
+
+	ButlerWriteTime = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "butler_localconfig_write_time",
+		Help: "Time that butler successfully write the configuration",
+	}, []string{"config_file"})
+
+	ButlerContactSuccess = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "butler_remoterepo_contact_success",
+		Help: "Did butler succesfully contact the remote repository",
+	}, []string{"config_file"})
+
+	ButlerContactTime = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "butler_remoterepo_contact_time",
+		Help: "Time that butler succesfully contacted the remote repository",
+	}, []string{"config_file"})
+
+	ButlerConfigValid = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "butler_remoterepo_config_valid",
+		Help: "Is the butler configuration valid",
+	}, []string{"config_file"})
+
+	prometheus.MustRegister(ButlerReloadSuccess)
+	prometheus.MustRegister(ButlerReloadTime)
+	prometheus.MustRegister(ButlerWriteSuccess)
+	prometheus.MustRegister(ButlerWriteTime)
+	prometheus.MustRegister(ButlerContactSuccess)
+	prometheus.MustRegister(ButlerContactTime)
+	prometheus.MustRegister(ButlerConfigValid)
+
+	// Start up the monitor web server
 	monitor := NewMonitor()
 	monitor.Start()
 

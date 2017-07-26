@@ -165,7 +165,7 @@ Date: Wed, 26 Jul 2017 12:02:15 GMT
 [master]
 [13:02]pts/11:14(stegen@woden):[~/git/ethos/butler]% 
 ```
-## Prometheus Monitors
+## Prometheus Metrics
 butler provides native Prometheus of the butler go binary by exposing an http service with a /metrics endpoint. This includes both butler specific metric information (prefixed with `butler_`), and internal go and process related metrics (prefixed with `go_` and `process_`)
 ```
 [13:04]pts/11:15(stegen@woden):[~/git/ethos/butler]% http get localhost:8080/metrics 

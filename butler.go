@@ -202,14 +202,6 @@ func DownloadPCMSFile(u string) *os.File {
 
 	response, err := httpClient.Get(u)
 
-	if response.StatusCode != 200 {
-		tmpFile.Close()
-		os.Remove(tmpFile.Name())
-		log.Printf("Did not receive 200 response code for %s. code=%d\n", u, response.StatusCode)
-		tmpFile = nil
-		return tmpFile
-	}
-
 	if err != nil {
 		tmpFile.Close()
 		os.Remove(tmpFile.Name())
@@ -218,6 +210,14 @@ func DownloadPCMSFile(u string) *os.File {
 		return tmpFile
 	}
 	defer response.Body.Close()
+
+	if response.StatusCode != 200 {
+		tmpFile.Close()
+		os.Remove(tmpFile.Name())
+		log.Printf("Did not receive 200 response code for %s. code=%d\n", u, response.StatusCode)
+		tmpFile = nil
+		return tmpFile
+	}
 
 	_, err = io.Copy(tmpFile, response.Body)
 	if err != nil {

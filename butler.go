@@ -27,7 +27,7 @@ import (
 )
 
 var (
-	version                 = "v0.5.2"
+	version                 = "v0.5.3"
 	PrometheusConfig        = "prometheus.yml"
 	AdditionalConfig        = "alerts/commonalerts.yml,alerts/tenant.yml"
 	PrometheusRootDirectory = "/opt/prometheus"

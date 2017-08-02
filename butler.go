@@ -36,6 +36,7 @@ var (
 	ConfigUrl               string
 	ConfigCache             map[string][]byte
 	TmpConfigCache          map[string][]byte
+	AllConfigFiles		[]string
 	PrometheusConfigFiles   []string
 	AdditionalConfigFiles   []string
 	MustacheSubs            map[string]string
@@ -152,6 +153,17 @@ func GetPrometheusPaths(entries []string) []string {
 		paths = append(paths, path)
 	}
 	return paths
+}
+
+func GetPrometheusPath(file string) string {
+	for {
+		if strings.HasPrefix(file, "/") {
+			file = TrimPrefix(file, "/")
+		} else {
+			break
+		}
+	}
+	return fmt.Sprintf("%s/%s", PrometheusRootDirectory, file)
 }
 
 // GetPrometheusLabels returns a slice/array of only the filenames. This is for
@@ -392,7 +404,7 @@ func ValidateButlerConfig(f *os.File) error {
 // CheckPaths checks takes a slice of full paths to a file, and checks to see
 // if the underlying directory exists. If the path does not exist, it will
 // create a new directory.
-func CheckPaths(Files []string) {
+func CheckPaths(Files []string) bool {
 	// Check to see if the files currently exist. If the docker path is properly mounted from the prometheus
 	// container, then we should see those files.  Error out if we cannot see those files.
 	for _, file := range GetPrometheusPaths(Files) {
@@ -405,6 +417,41 @@ func CheckPaths(Files []string) {
 			log.Printf("Created directory \"%s\"", dir)
 		}
 	}
+	// Check to see if there are any additional files that need to be cleaned up
+	// that aren't part of our current file list.
+	err := filepath.Walk(PrometheusRootDirectory, PathCleanup)
+	// If there is an error, then true signifies that we need to reload the prometheus config
+	// otherwise false means that there have been no changes to the path structure (eg: removal
+	// of unneeded config files)
+	if err != nil {
+		return true
+	} else {
+		return false
+	}
+}
+
+func PathCleanup(path string, f os.FileInfo, err error) error {
+	var (
+		Found bool
+	)
+	Found = false
+
+	// We don't have to do anything with a directory
+	if f.Mode().IsDir() {
+		return nil
+	}
+
+	for _, file := range AllConfigFiles {
+		if path == GetPrometheusPath(file) {
+			Found = true
+		}
+	}
+	if ! Found {
+		message := fmt.Sprintf("Found unknown file \"%s\". deleting...", path)
+		os.Remove(path)
+		return errors.New(message)
+	}
+	return nil
 }
 
 func ProcessAdditionalConfigFiles(Files []string, c chan bool) {
@@ -649,15 +696,14 @@ func PCMSHandler() {
 		TmpConfigCache = make(map[string][]byte)
 	}
 
-	CheckPaths(PrometheusConfigFiles)
-	CheckPaths(AdditionalConfigFiles)
+	checkPathModified := CheckPaths(AllConfigFiles)
 
 	go ProcessPrometheusConfigFiles(PrometheusConfigFiles, c)
 	go ProcessAdditionalConfigFiles(AdditionalConfigFiles, c)
 
 	promModified, additionalModified := <-c, <-c
 
-	if promModified || additionalModified {
+	if checkPathModified || promModified || additionalModified {
 		err := ReloadPrometheusHandler()
 		_ = err
 	} else {
@@ -683,6 +729,7 @@ func ReloadPrometheusHandler() error {
 	if err != nil {
 		log.Printf(err.Error())
 		ButlerReloadSuccess.Set(FAILURE)
+		return err
 	}
 
 	if resp.StatusCode == 200 {
@@ -910,6 +957,12 @@ func main() {
 	monitor := NewMonitor()
 	monitor.Start()
 
+	// Get a complete list of files
+	AllConfigFiles = append(AllConfigFiles, PrometheusConfigStatic)
+
+	for _, v := range AdditionalConfigFiles {
+		AllConfigFiles = append(AllConfigFiles, v)
+	}
 	// Do one run of PCMSHandler() then start off the scheduler
 	PCMSHandler()
 

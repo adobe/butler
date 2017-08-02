@@ -27,16 +27,18 @@ import (
 )
 
 var (
-	version                 = "v0.5.3"
+	version                 = "v0.6.0"
 	PrometheusConfig        = "prometheus.yml"
+	PrometheusConfigStatic  = "prometheus.yml"
 	AdditionalConfig        = "alerts/commonalerts.yml,alerts/tenant.yml"
 	PrometheusRootDirectory = "/opt/prometheus"
 	PrometheusHost          string
 	ConfigUrl               string
-	Files                   ConfigFiles
+	PrometheusConfigFiles   []string
+	AdditionalConfigFiles   []string
+	MustacheSubs            map[string]string
 	LastRun                 time.Time
 	HttpTimeout             int
-	Subs                    MustacheSubs
 	RequiredSubKeys         = []string{"ethos-cluster-id"}
 
 	// Prometheus metrics
@@ -71,20 +73,6 @@ const (
 	SUCCESS
 )
 
-// ConfigFiles is the structure for holding the array of configuration
-// files which are passed into butler from the CLI. It is also displayed
-// as output to the monitor health check in json output.
-type ConfigFiles struct {
-	Files []string `json:"additional_config"`
-}
-
-// MustacheSubs is the structure for holding the key=value pairs of mustache
-// substitutions which have to be handled within the prometheus.yml. It is also
-// displayed as output to the monitor health check in json output.
-type MustacheSubs struct {
-	Subs map[string]string `json:"mustache_subs"`
-}
-
 // Monitor is the empty structure to be used for starting up the monitor
 // health check and prometheus metrics http endpoints.
 type Monitor struct {
@@ -101,14 +89,14 @@ func NewMonitor() *Monitor {
 // structure, which is then Marshal'd to json and provided back to the end
 // user
 type MonitorOutput struct {
-	ClusterID        string `json:"cluster_id"`
-	ConfigURL        string `json:"config_url"`
-	PrometheusHost   string `json:"prometheus_host"`
-	PrometheusConfig string `json:"prometheus_config"`
-	ConfigFiles
-	MustacheSubs
-	LastRun time.Time `json:"last_run"`
-	Version string    `json:"version"`
+	ClusterID             string            `json:"cluster_id"`
+	ConfigURL             string            `json:"config_url"`
+	PrometheusHost        string            `json:"prometheus_host"`
+	PrometheusConfigFiles []string          `json:"prometheus_config_files"`
+	AdditionalConfigFiles []string          `json:"additional_config_files"`
+	MustacheSubs          map[string]string `json:"mustache_subs"`
+	LastRun               time.Time         `json:"last_run"`
+	Version               string            `json:"version"`
 }
 
 // Start turns up the http server for monitoring butler.
@@ -128,14 +116,14 @@ func (m *Monitor) Start() {
 // configuration options that buter gets started with, and some run time
 // information
 func (m *Monitor) MonitorHandler(w http.ResponseWriter, r *http.Request) {
-	mOut := MonitorOutput{ClusterID: Subs.Subs["ethos-cluster-id"],
-		ConfigURL:        ConfigUrl,
-		PrometheusHost:   PrometheusHost,
-		PrometheusConfig: PrometheusConfig,
-		ConfigFiles:      Files,
-		MustacheSubs:     Subs,
-		LastRun:          LastRun,
-		Version:          version}
+	mOut := MonitorOutput{ClusterID: MustacheSubs["ethos-cluster-id"],
+		ConfigURL:             ConfigUrl,
+		PrometheusHost:        PrometheusHost,
+		PrometheusConfigFiles: PrometheusConfigFiles,
+		AdditionalConfigFiles: AdditionalConfigFiles,
+		MustacheSubs:          MustacheSubs,
+		LastRun:               LastRun,
+		Version:               version}
 	resp, err := json.Marshal(mOut)
 	if err != nil {
 		w.Header().Set("Content-Type", "text/html")
@@ -148,9 +136,9 @@ func (m *Monitor) MonitorHandler(w http.ResponseWriter, r *http.Request) {
 // GetPrometheusPaths returns a slice/array of full paths to the prometheus
 // configuration files. For example /opt/prometheus/promethes.yml versus
 // just the filename which is passed by the command line.
-func GetPrometheusPaths() []string {
+func GetPrometheusPaths(entries []string) []string {
 	var paths []string
-	for _, file := range Files.Files {
+	for _, file := range entries {
 		path := fmt.Sprintf("%s/%s", PrometheusRootDirectory, file)
 		paths = append(paths, path)
 	}
@@ -160,13 +148,17 @@ func GetPrometheusPaths() []string {
 // GetPrometheusLabels returns a slice/array of only the filenames. This is for
 // use with the prometheus monitors where we want to identify which files
 // are being worked with for the metrics being exported to prometheus
-func GetPrometheusLabels() []string {
+func GetPrometheusLabels(entries []string) []string {
 	var labels []string
-	for _, file := range Files.Files {
+	for _, file := range entries {
 		label := path.Base(file)
 		labels = append(labels, label)
 	}
 	return labels
+}
+
+func GetPrometheusLabel(entry string) string {
+	return path.Base(entry)
 }
 
 // GetFloatTimeNow returns a float64 value of Unix time since the Epoch. This is
@@ -176,12 +168,48 @@ func GetFloatTimeNow() float64 {
 	return float64(time.Now().Unix())
 }
 
+// TrimSuffix returns a sub string of the string provided, as the first argument,
+// with the suffix, second argument, removed from the beginning, if the string ends
+// with that suffix.
+func TrimSuffix(s string, suffix string) string {
+	if strings.HasSuffix(s, suffix) {
+		s = s[:len(s)-len(suffix)]
+	}
+	return s
+}
+
+// TrimPrefix returns a sub string of the string provided, as the first argument,
+// with the prefix, second argument, removed from the beginning, if the string begins
+// with that prefix.
+func TrimPrefix(s string, prefix string) string {
+	if strings.HasPrefix(s, prefix) {
+		s = s[len(prefix):]
+	}
+	return s
+}
+
 // GetPCMSUrls returns a slice/array of complete URLs to the locations where
 // the butler managed configuration files need to be downloaded from.
-func GetPCMSUrls() []string {
+func GetPCMSUrls(entries []string) []string {
 	var urls []string
-	for _, file := range Files.Files {
-		u := fmt.Sprintf("%s/%s", ConfigUrl, file)
+	for _, File := range entries {
+		// Let's santize the input a little bit and strip off trailing and prefixed
+		// slashes "/" from the ConfigUrl and the File
+		for {
+			if strings.HasSuffix(ConfigUrl, "/") {
+				ConfigUrl = TrimSuffix(ConfigUrl, "/")
+			} else {
+				break
+			}
+		}
+		for {
+			if strings.HasPrefix(File, "/") {
+				File = TrimPrefix(File, "/")
+			} else {
+				break
+			}
+		}
+		u := fmt.Sprintf("%s/%s", ConfigUrl, File)
 		urls = append(urls, u)
 	}
 	return urls
@@ -272,7 +300,7 @@ func RenderPrometheusYaml(f *os.File) error {
 		return err
 	}
 
-	out := tmpl.Render(Subs.Subs)
+	out := tmpl.Render(MustacheSubs)
 
 	f, err = os.OpenFile(f.Name(), os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
@@ -286,6 +314,10 @@ func RenderPrometheusYaml(f *os.File) error {
 	return nil
 }
 
+// ValidateButlerConfig takes a pointer to an os.File object. It scans over the
+// file and ensures that it begins with the proper header, and ends with the
+// proper footer. If it does not begin or end with the proper header/footer,
+// then an error is returned. If the file passes the checks, a nil is returned.
 func ValidateButlerConfig(f *os.File) error {
 	var (
 		configLine    string
@@ -332,13 +364,13 @@ func ValidateButlerConfig(f *os.File) error {
 	}
 }
 
-func PCMSHandler() {
-	IsModified := false
-	log.Println("Processing PCMS Files.")
-
+// CheckPaths checks takes a slice of full paths to a file, and checks to see
+// if the underlying directory exists. If the path does not exist, it will
+// create a new directory.
+func CheckPaths(Files []string) {
 	// Check to see if the files currently exist. If the docker path is properly mounted from the prometheus
 	// container, then we should see those files.  Error out if we cannot see those files.
-	for _, file := range GetPrometheusPaths() {
+	for _, file := range GetPrometheusPaths(Files) {
 		dir := filepath.Dir(file)
 		if _, err := os.Stat(dir); err != nil {
 			err = os.MkdirAll(dir, 0755)
@@ -348,19 +380,30 @@ func PCMSHandler() {
 			log.Printf("Created directory \"%s\"", dir)
 		}
 	}
+}
 
-	for i, u := range GetPCMSUrls() {
+func ProcessAdditionalConfigFiles(Files []string, c chan bool) {
+	var (
+		ModifiedFileMap map[string]bool
+	)
+
+	IsModified := false
+	ModifiedFileMap = make(map[string]bool)
+
+	// Process the prometheus.yml configuration files
+	for i, u := range GetPCMSUrls(Files) {
+		// Grab the remote file into a local temp file
 		f := DownloadPCMSFile(u)
 		if f == nil {
-			ButlerContactSuccess.With(prometheus.Labels{"config_file": GetPrometheusLabels()[i]}).Set(FAILURE)
+			ButlerContactSuccess.With(prometheus.Labels{"config_file": GetPrometheusLabels(Files)[i]}).Set(FAILURE)
 			continue
 		} else {
-			ButlerContactSuccess.With(prometheus.Labels{"config_file": GetPrometheusLabels()[i]}).Set(SUCCESS)
-			ButlerContactTime.With(prometheus.Labels{"config_file": GetPrometheusLabels()[i]}).Set(GetFloatTimeNow())
+			ButlerContactSuccess.With(prometheus.Labels{"config_file": GetPrometheusLabels(Files)[i]}).Set(SUCCESS)
+			ButlerContactTime.With(prometheus.Labels{"config_file": GetPrometheusLabels(Files)[i]}).Set(GetFloatTimeNow())
 		}
 
 		// For the prometheus.yml we have to do some mustache replacement on downloaded file
-		if GetPrometheusPaths()[i] == fmt.Sprintf("%s/%s", PrometheusRootDirectory, PrometheusConfig) {
+		if GetPrometheusPaths(Files)[i] == fmt.Sprintf("%s/%s", PrometheusRootDirectory, Files) {
 			err := RenderPrometheusYaml(f)
 			if err != nil {
 				ButlerReloadSuccess.Set(FAILURE)
@@ -370,7 +413,7 @@ func PCMSHandler() {
 			}
 			// Going to need to rewrite the destination filename for the file comparison
 			// Probably a better way to do this
-			Files.Files[i] = fmt.Sprintf("prometheus.yml")
+			//Files.Files[i] = fmt.Sprintf("prometheus.yml")
 		}
 
 		// Let's ensure that the files starts with #butlerstart and
@@ -378,75 +421,263 @@ func PCMSHandler() {
 		// we did not get a correct configuration, or there is an issue
 		// with the upstream
 		if err := ValidateButlerConfig(f); err != nil {
-			log.Printf("%s for %s.\n", err.Error(), GetPrometheusPaths()[i])
-			ButlerConfigValid.With(prometheus.Labels{"config_file": GetPrometheusLabels()[i]}).Set(FAILURE)
+			log.Printf("%s for %s.\n", err.Error(), GetPrometheusPaths(Files)[i])
+			ButlerConfigValid.With(prometheus.Labels{"config_file": GetPrometheusLabels(Files)[i]}).Set(FAILURE)
 			continue
 		} else {
-			ButlerConfigValid.With(prometheus.Labels{"config_file": GetPrometheusLabels()[i]}).Set(SUCCESS)
+			ButlerConfigValid.With(prometheus.Labels{"config_file": GetPrometheusLabels(Files)[i]}).Set(SUCCESS)
 		}
 
-		// Let's compare the source and destination files
-		cmp := equalfile.New(nil, equalfile.Options{})
-		equal, err := cmp.CompareFile(f.Name(), GetPrometheusPaths()[i])
-		if !equal {
-			log.Printf("Found difference in \"%s.\"  Updating.", GetPrometheusPaths()[i])
-			err = CopyFile(f.Name(), GetPrometheusPaths()[i])
-			if err != nil {
-				ButlerWriteSuccess.With(prometheus.Labels{"config_file": GetPrometheusLabels()[i]}).Set(FAILURE)
-				log.Printf(err.Error())
-			}
-			ButlerWriteSuccess.With(prometheus.Labels{"config_file": GetPrometheusLabels()[i]}).Set(SUCCESS)
-			ButlerWriteTime.With(prometheus.Labels{"config_file": GetPrometheusLabels()[i]}).Set(GetFloatTimeNow())
+		ModifiedFileMap[f.Name()] = CompareAndCopy(f.Name(), GetPrometheusPaths(Files)[i])
 
-			IsModified = true
-		}
+		// Clean up the temp file
 		os.Remove(f.Name())
 
-		if GetPrometheusPaths()[i] == fmt.Sprintf("%s/prometheus.yml", PrometheusRootDirectory) {
+		if GetPrometheusPaths(Files)[i] == fmt.Sprintf("%s/prometheus.yml", PrometheusRootDirectory) {
 			// Now put things back to how they originally were...
-			Files.Files[i] = PrometheusConfig
+			//Files.Files[i] = PrometheusConfig
 		}
 	}
 
-	if IsModified {
-		log.Printf("Reloading prometheus.")
-		// curl -v -X POST $HOST:9090/-/reload
-		promUrl := fmt.Sprintf("http://%s:9090/-/reload", PrometheusHost)
-		client := &http.Client{
-			Timeout: time.Duration(HttpTimeout) * time.Second}
-		req, err := http.NewRequest("POST", promUrl, nil)
-		if err != nil {
-			log.Printf(err.Error())
-			ButlerReloadSuccess.Set(FAILURE)
+	// Check for file modification differences
+	for _, v := range ModifiedFileMap {
+		if v {
+			IsModified = true
 		}
-		resp, err := client.Do(req)
-		if err != nil {
-			log.Printf(err.Error())
-			ButlerReloadSuccess.Set(FAILURE)
+	}
+
+	// Update the channel
+	c <- IsModified
+}
+
+type PrometheusFileMap struct {
+	TmpFile string
+	Success bool
+}
+
+// ProcessPrometheusConfigFiles
+func ProcessPrometheusConfigFiles(Files []string, c chan bool) {
+	var (
+		TmpFiles     []string
+		LegitFileMap map[string]PrometheusFileMap
+		IsModified   bool
+		RenderFile   bool
+	)
+
+	IsModified = false
+	RenderFile = true
+	LegitFileMap = make(map[string]PrometheusFileMap)
+
+	// Create a temporary file for the merged prometheus configurations
+	TmpMergedFile, err := ioutil.TempFile("/tmp", "pcmsfile")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Process the prometheus.yml configuration files
+	for i, u := range GetPCMSUrls(Files) {
+		FileMap := PrometheusFileMap{}
+
+		// Grab the remote file into a local temp file
+		f := DownloadPCMSFile(u)
+		if f == nil {
+			ButlerContactSuccess.With(prometheus.Labels{"config_file": GetPrometheusLabels(Files)[i]}).Set(FAILURE)
+			FileMap.Success = false
+			continue
 		} else {
-			ButlerReloadSuccess.Set(SUCCESS)
-			ButlerReloadTime.Set(GetFloatTimeNow())
-			log.Printf("resp=%#v\n", resp)
+			ButlerContactSuccess.With(prometheus.Labels{"config_file": GetPrometheusLabels(Files)[i]}).Set(SUCCESS)
+			ButlerContactTime.With(prometheus.Labels{"config_file": GetPrometheusLabels(Files)[i]}).Set(GetFloatTimeNow())
+			FileMap.Success = true
 		}
+
+		FileMap.TmpFile = f.Name()
+
+		// For the prometheus.yml we have to do some mustache replacement on downloaded file
+		if GetPrometheusPaths(Files)[i] == fmt.Sprintf("%s/%s", PrometheusRootDirectory, Files) {
+			err := RenderPrometheusYaml(f)
+			if err != nil {
+				ButlerReloadSuccess.Set(FAILURE)
+				FileMap.Success = false
+			} else {
+				ButlerReloadSuccess.Set(SUCCESS)
+				ButlerReloadTime.Set(GetFloatTimeNow())
+				FileMap.Success = true
+			}
+		}
+
+		// Let's ensure that the files starts with #butlerstart and
+		// ends with #butlerend. If they do not, then we will assume
+		// we did not get a correct configuration, or there is an issue
+		// with the upstream
+		if err := ValidateButlerConfig(f); err != nil {
+			log.Printf("%s for %s.\n", err.Error(), GetPrometheusPaths(Files)[i])
+			ButlerConfigValid.With(prometheus.Labels{"config_file": GetPrometheusLabels(Files)[i]}).Set(FAILURE)
+			FileMap.Success = false
+			continue
+		} else {
+			ButlerConfigValid.With(prometheus.Labels{"config_file": GetPrometheusLabels(Files)[i]}).Set(SUCCESS)
+			FileMap.Success = true
+		}
+
+		// going to want to keep tabs on TmpFiles, and remove all of them at the end.
+		// remember that we want to merge all the downloaded files, so why remove them right now
+		TmpFiles = append(TmpFiles, f.Name())
+		LegitFileMap[GetPrometheusLabels(Files)[i]] = FileMap
+	}
+
+	// Now need to process the various prometheus configuration files
+	//IsModified = CompareAndCopy(f.Name(), GetPrometheusPaths(Files)[i])
+
+	// Need to verify whether or not we got all the prometheus configuration
+	// files. If not, then we should not try to process them.
+	for _, v := range LegitFileMap {
+		if !v.Success {
+			RenderFile = false
+		}
+	}
+
+	// Let's process and merge the prometheus files
+	if RenderFile {
+		out, err := os.OpenFile(TmpMergedFile.Name(), os.O_WRONLY|os.O_TRUNC, 0644)
+		if err != nil {
+			log.Printf("Could not process and merge new %s err=%s.", PrometheusConfigStatic, err.Error())
+			ButlerConfigValid.With(prometheus.Labels{"config_file": PrometheusConfigStatic}).Set(FAILURE)
+			// just giving up at this point
+			// Clean up the temporary files
+			for _, file := range TmpFiles {
+				os.Remove(file)
+			}
+			// Clean up Prometheus temp file
+			os.Remove(TmpMergedFile.Name())
+			c <- false
+			return
+		} else {
+			for i, _ := range GetPCMSUrls(Files) {
+				file := GetPrometheusLabels(Files)[i]
+				in, err := os.Open(LegitFileMap[file].TmpFile)
+				if err != nil {
+					log.Printf("Could not process and merge new %s err=%s.", PrometheusConfigStatic, err.Error())
+					ButlerConfigValid.With(prometheus.Labels{"config_file": PrometheusConfigStatic}).Set(FAILURE)
+					// just giving up at this point, as well...
+					// Clean up the temporary files
+					for _, file := range TmpFiles {
+						os.Remove(file)
+					}
+					// Clean up Prometheus temp file
+					os.Remove(TmpMergedFile.Name())
+					c <- false
+					return
+				}
+				_, err = io.Copy(out, in)
+				if err != nil {
+					log.Printf("Could not process and merge new %s err=%s.", PrometheusConfigStatic, err.Error())
+					ButlerConfigValid.With(prometheus.Labels{"config_file": PrometheusConfigStatic}).Set(FAILURE)
+					// just giving up at this point, again...
+					// Clean up the temporary files
+					for _, file := range TmpFiles {
+						os.Remove(file)
+					}
+					// Clean up Prometheus temp file
+					os.Remove(TmpMergedFile.Name())
+					c <- false
+					return
+				}
+				in.Close()
+			}
+		}
+		out.Close()
+		promFile := fmt.Sprintf("%s/%s", PrometheusRootDirectory, PrometheusConfigStatic)
+		IsModified = CompareAndCopy(TmpMergedFile.Name(), promFile)
+	} else {
+		IsModified = false
+	}
+
+	// Clean up the temporary files
+	for _, file := range TmpFiles {
+		os.Remove(file)
+	}
+
+	// Clean up Prometheus temp file
+	os.Remove(TmpMergedFile.Name())
+
+	// Update the channel
+	c <- IsModified
+}
+
+func CompareAndCopy(source string, dest string) bool {
+	// Let's compare the source and destination files
+	cmp := equalfile.New(nil, equalfile.Options{})
+	equal, err := cmp.CompareFile(source, dest)
+	if !equal {
+		log.Printf("Found difference in \"%s.\"  Updating.", dest)
+		err = CopyFile(source, dest)
+		if err != nil {
+			ButlerWriteSuccess.With(prometheus.Labels{"config_file": GetPrometheusLabel(dest)}).Set(FAILURE)
+			log.Printf(err.Error())
+		}
+		ButlerWriteSuccess.With(prometheus.Labels{"config_file": GetPrometheusLabel(dest)}).Set(SUCCESS)
+		ButlerWriteTime.With(prometheus.Labels{"config_file": GetPrometheusLabel(dest)}).Set(GetFloatTimeNow())
+		return true
+	} else {
+		return false
+	}
+}
+
+func PCMSHandler() {
+	c := make(chan bool)
+	log.Println("Processing PCMS Files.")
+
+	CheckPaths(PrometheusConfigFiles)
+	CheckPaths(AdditionalConfigFiles)
+	go ProcessPrometheusConfigFiles(PrometheusConfigFiles, c)
+	go ProcessAdditionalConfigFiles(AdditionalConfigFiles, c)
+
+	promModified, additionalModified := <-c, <-c
+
+	if promModified || additionalModified {
+		go ReloadPrometheusHandler()
 	} else {
 		log.Printf("Found no differences in PCMS files.")
 	}
 	LastRun = time.Now()
 }
 
-func ParseConfigFiles(file *ConfigFiles, configFiles string) error {
+func ReloadPrometheusHandler() {
+	log.Printf("Reloading prometheus.")
+	// curl -v -X POST $HOST:9090/-/reload
+	promUrl := fmt.Sprintf("http://%s:9090/-/reload", PrometheusHost)
+	client := &http.Client{
+		Timeout: time.Duration(HttpTimeout) * time.Second}
+	req, err := http.NewRequest("POST", promUrl, nil)
+	if err != nil {
+		log.Printf(err.Error())
+		ButlerReloadSuccess.Set(FAILURE)
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Printf(err.Error())
+		ButlerReloadSuccess.Set(FAILURE)
+	} else {
+		ButlerReloadSuccess.Set(SUCCESS)
+		ButlerReloadTime.Set(GetFloatTimeNow())
+		log.Printf("resp=%#v\n", resp)
+	}
+}
+
+func ParseConfigFiles(configFiles string) []string {
+	var FileList []string
 	files := strings.Split(configFiles, ",")
 	for _, f := range files {
 		f = strings.TrimSpace(f)
 		if f == "" {
 			continue
 		}
-		file.Files = append(file.Files, f)
+		FileList = append(FileList, f)
 	}
-	return nil
+	return FileList
 }
 
-func ParseMustacheSubs(subs *MustacheSubs, configSubs string) error {
+func ParseMustacheSubs(Subs map[string]string, configSubs string) error {
 	pairs := strings.Split(configSubs, ",")
 	for _, p := range pairs {
 		p = strings.TrimSpace(p)
@@ -457,16 +688,16 @@ func ParseMustacheSubs(subs *MustacheSubs, configSubs string) error {
 		}
 		key := strings.TrimSpace(keyvalpairs[0])
 		val := strings.TrimSpace(keyvalpairs[1])
-		subs.Subs[key] = val
+		Subs[key] = val
 	}
 	// validate against RequiredSubKeys
-	if !ValidateMustacheSubs(subs) {
+	if !ValidateMustacheSubs(Subs) {
 		return errors.New(fmt.Sprintf("could not validate required mustache subs. check your config. required subs=%s.", RequiredSubKeys))
 	}
 	return nil
 }
 
-func ValidateMustacheSubs(subs *MustacheSubs) bool {
+func ValidateMustacheSubs(Subs map[string]string) bool {
 	var (
 		subEntries map[string]bool
 	)
@@ -478,7 +709,7 @@ func ValidateMustacheSubs(subs *MustacheSubs) bool {
 	}
 
 	// range over the subs and see if the keys match the required list of substitution keys
-	for k, _ := range subs.Subs {
+	for k, _ := range Subs {
 		if _, ok := subEntries[k]; ok {
 			subEntries[k] = true
 		}
@@ -533,8 +764,8 @@ func main() {
 	if *configMustacheSubs == "" {
 		log.Fatal("You must provide a -config.mustache-subs")
 	} else {
-		Subs.Subs = make(map[string]string)
-		err := ParseMustacheSubs(&Subs, *configMustacheSubs)
+		MustacheSubs = make(map[string]string)
+		err := ParseMustacheSubs(MustacheSubs, *configMustacheSubs)
 		if err != nil {
 			log.Fatal(err.Error())
 		}
@@ -544,8 +775,8 @@ func main() {
 		PrometheusConfig = *configPrometheusConfigFlag
 	}
 
-	ParseConfigFiles(&Files, *configPrometheusConfigFlag)
-	ParseConfigFiles(&Files, *configAdditionalConfigFlag)
+	PrometheusConfigFiles = ParseConfigFiles(*configPrometheusConfigFlag)
+	AdditionalConfigFiles = ParseConfigFiles(*configAdditionalConfigFlag)
 
 	if _, err = url.ParseRequestURI(ConfigUrl); err != nil {
 		log.Fatalf("Cannot parse ConfigUrl=%s", ConfigUrl)

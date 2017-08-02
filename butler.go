@@ -35,8 +35,7 @@ var (
 	PrometheusHost          string
 	ConfigUrl               string
 	ConfigCache             map[string][]byte
-	TmpConfigCache          map[string][]byte
-	AllConfigFiles		[]string
+	AllConfigFiles          []string
 	PrometheusConfigFiles   []string
 	AdditionalConfigFiles   []string
 	MustacheSubs            map[string]string
@@ -263,7 +262,7 @@ func DownloadPCMSFile(u string) *os.File {
 	if response.StatusCode != 200 {
 		tmpFile.Close()
 		os.Remove(tmpFile.Name())
-		log.Printf("Did not receive 200 response code for %s. code=%d\n", u, response.StatusCode)
+		log.Printf("Did not receive 200 response code for %s. code=%s\n", u, response.StatusCode)
 		tmpFile = nil
 		return tmpFile
 	}
@@ -281,18 +280,20 @@ func DownloadPCMSFile(u string) *os.File {
 
 func CacheConfigs() {
 	ConfigCache = make(map[string][]byte)
-	log.Printf("ConfigCache=%#v\n", ConfigCache)
-	for k, v := range TmpConfigCache {
-		ConfigCache[k] = v
+	for _, file := range AllConfigFiles {
+		out, err := ioutil.ReadFile(GetPrometheusPath(file))
+		if err == nil {
+			ConfigCache[GetPrometheusPath(file)] = out
+		}
 	}
 
-	for k, _ := range ConfigCache {
-		log.Printf("CacheConfigs(): k=%s\n", k)
+	for k, v := range ConfigCache {
+		log.Printf("CacheConfigs(): k=%s v=%s\n", k, v)
 	}
-	//log.Printf("TmpConfigCache=%#v\n", TmpConfigCache)
 }
 
 func RestoreCachedConfigs() {
+	log.Printf("Putting old prometheus configs in place!\n")
 }
 
 // CopyFile copies the src path string to the dst path string. If there is an
@@ -446,7 +447,7 @@ func PathCleanup(path string, f os.FileInfo, err error) error {
 			Found = true
 		}
 	}
-	if ! Found {
+	if !Found {
 		message := fmt.Sprintf("Found unknown file \"%s\". deleting...", path)
 		os.Remove(path)
 		return errors.New(message)
@@ -487,14 +488,6 @@ func ProcessAdditionalConfigFiles(Files []string, c chan bool) {
 		}
 
 		ModifiedFileMap[f.Name()] = CompareAndCopy(f.Name(), GetPrometheusPaths(Files)[i])
-
-		// Let's get a copy of the configuration file for our cache
-		if ModifiedFileMap[f.Name()] {
-			fout, err := ioutil.ReadFile(GetPrometheusPaths(Files)[i])
-			if err == nil {
-				TmpConfigCache[GetPrometheusPaths(Files)[i]] = fout
-			}
-		}
 
 		// Clean up the temp file
 		os.Remove(f.Name())
@@ -645,14 +638,6 @@ func ProcessPrometheusConfigFiles(Files []string, c chan bool) {
 		out.Close()
 		promFile := fmt.Sprintf("%s/%s", PrometheusRootDirectory, PrometheusConfigStatic)
 		IsModified = CompareAndCopy(TmpMergedFile.Name(), promFile)
-
-		// Let's get a copy of the configuration file for our cache
-		if IsModified {
-			fout, err := ioutil.ReadFile(promFile)
-			if err == nil {
-				TmpConfigCache[promFile] = fout
-			}
-		}
 	} else {
 		IsModified = false
 	}
@@ -691,10 +676,6 @@ func CompareAndCopy(source string, dest string) bool {
 func PCMSHandler() {
 	c := make(chan bool)
 	log.Println("Processing PCMS Files.")
-
-	if TmpConfigCache == nil {
-		TmpConfigCache = make(map[string][]byte)
-	}
 
 	checkPathModified := CheckPaths(AllConfigFiles)
 

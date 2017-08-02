@@ -27,13 +27,15 @@ import (
 )
 
 var (
-	version                 = "v0.6.1"
+	version                 = "v0.6.2"
 	PrometheusConfig        = "prometheus.yml"
 	PrometheusConfigStatic  = "prometheus.yml"
 	AdditionalConfig        = "alerts/commonalerts.yml,alerts/tenant.yml"
 	PrometheusRootDirectory = "/opt/prometheus"
 	PrometheusHost          string
 	ConfigUrl               string
+	ConfigCache             map[string][]byte
+	TmpConfigCache          map[string][]byte
 	PrometheusConfigFiles   []string
 	AdditionalConfigFiles   []string
 	MustacheSubs            map[string]string
@@ -42,15 +44,17 @@ var (
 	RequiredSubKeys         = []string{"ethos-cluster-id"}
 
 	// Prometheus metrics
-	ButlerConfigValid    *prometheus.GaugeVec
-	ButlerContactSuccess *prometheus.GaugeVec
-	ButlerContactTime    *prometheus.GaugeVec
-	ButlerReloadSuccess  prometheus.Gauge
-	ButlerReloadTime     prometheus.Gauge
-	ButlerRenderSuccess  prometheus.Gauge
-	ButlerRenderTime     prometheus.Gauge
-	ButlerWriteSuccess   *prometheus.GaugeVec
-	ButlerWriteTime      *prometheus.GaugeVec
+	ButlerConfigValid       *prometheus.GaugeVec
+	ButlerContactSuccess    *prometheus.GaugeVec
+	ButlerContactTime       *prometheus.GaugeVec
+	ButlerKnownGoodCached   prometheus.Gauge
+	ButlerKnownGoodRestored prometheus.Gauge
+	ButlerReloadSuccess     prometheus.Gauge
+	ButlerReloadTime        prometheus.Gauge
+	ButlerRenderSuccess     prometheus.Gauge
+	ButlerRenderTime        prometheus.Gauge
+	ButlerWriteSuccess      *prometheus.GaugeVec
+	ButlerWriteTime         *prometheus.GaugeVec
 )
 
 // butlerHeader and butlerFooter represent the strings that need to be matched
@@ -263,6 +267,22 @@ func DownloadPCMSFile(u string) *os.File {
 	return tmpFile
 }
 
+func CacheConfigs() {
+	ConfigCache = make(map[string][]byte)
+	log.Printf("ConfigCache=%#v\n", ConfigCache)
+	for k, v := range TmpConfigCache {
+		ConfigCache[k] = v
+	}
+
+	for k, _ := range ConfigCache {
+		log.Printf("CacheConfigs(): k=%s\n", k)
+	}
+	//log.Printf("TmpConfigCache=%#v\n", TmpConfigCache)
+}
+
+func RestoreCachedConfigs() {
+}
+
 // CopyFile copies the src path string to the dst path string. If there is an
 // error, an error is returned, otherwise nil is returned.
 func CopyFile(src string, dst string) error {
@@ -421,6 +441,14 @@ func ProcessAdditionalConfigFiles(Files []string, c chan bool) {
 
 		ModifiedFileMap[f.Name()] = CompareAndCopy(f.Name(), GetPrometheusPaths(Files)[i])
 
+		// Let's get a copy of the configuration file for our cache
+		if ModifiedFileMap[f.Name()] {
+			fout, err := ioutil.ReadFile(GetPrometheusPaths(Files)[i])
+			if err == nil {
+				TmpConfigCache[GetPrometheusPaths(Files)[i]] = fout
+			}
+		}
+
 		// Clean up the temp file
 		os.Remove(f.Name())
 	}
@@ -570,6 +598,14 @@ func ProcessPrometheusConfigFiles(Files []string, c chan bool) {
 		out.Close()
 		promFile := fmt.Sprintf("%s/%s", PrometheusRootDirectory, PrometheusConfigStatic)
 		IsModified = CompareAndCopy(TmpMergedFile.Name(), promFile)
+
+		// Let's get a copy of the configuration file for our cache
+		if IsModified {
+			fout, err := ioutil.ReadFile(promFile)
+			if err == nil {
+				TmpConfigCache[promFile] = fout
+			}
+		}
 	} else {
 		IsModified = false
 	}
@@ -609,22 +645,29 @@ func PCMSHandler() {
 	c := make(chan bool)
 	log.Println("Processing PCMS Files.")
 
+	if TmpConfigCache == nil {
+		TmpConfigCache = make(map[string][]byte)
+	}
+
 	CheckPaths(PrometheusConfigFiles)
 	CheckPaths(AdditionalConfigFiles)
+
 	go ProcessPrometheusConfigFiles(PrometheusConfigFiles, c)
 	go ProcessAdditionalConfigFiles(AdditionalConfigFiles, c)
 
 	promModified, additionalModified := <-c, <-c
 
 	if promModified || additionalModified {
-		go ReloadPrometheusHandler()
+		err := ReloadPrometheusHandler()
+		_ = err
 	} else {
 		log.Printf("Found no differences in PCMS files.")
 	}
 	LastRun = time.Now()
 }
 
-func ReloadPrometheusHandler() {
+func ReloadPrometheusHandler() error {
+	var err error
 	log.Printf("Reloading prometheus.")
 	// curl -v -X POST $HOST:9090/-/reload
 	promUrl := fmt.Sprintf("http://%s:9090/-/reload", PrometheusHost)
@@ -635,15 +678,29 @@ func ReloadPrometheusHandler() {
 		log.Printf(err.Error())
 		ButlerReloadSuccess.Set(FAILURE)
 	}
+
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Printf(err.Error())
 		ButlerReloadSuccess.Set(FAILURE)
-	} else {
+	}
+
+	if resp.StatusCode == 200 {
+		ButlerKnownGoodCached.Set(SUCCESS)
+		ButlerKnownGoodRestored.Set(FAILURE)
 		ButlerReloadSuccess.Set(SUCCESS)
 		ButlerReloadTime.Set(GetFloatTimeNow())
+		CacheConfigs()
 		log.Printf("resp=%#v\n", resp)
+	} else {
+		log.Printf("received bad response from prometheus server. reverting to last known good config. code=%s\n", resp.StatusCode)
+		ButlerKnownGoodCached.Set(FAILURE)
+		ButlerKnownGoodRestored.Set(SUCCESS)
+		ButlerReloadSuccess.Set(FAILURE)
+		RestoreCachedConfigs()
 	}
+
+	return nil
 }
 
 func ParseConfigFiles(configFiles string) []string {
@@ -785,12 +842,26 @@ func main() {
 		Help: "Time that butler succesfully contacted the remote repository",
 	}, []string{"config_file"})
 
+	ButlerKnownGoodCached = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "butler_lastknowngood_cached",
+		Help: "Did butler cache the known good configuration",
+	})
+	// Set to successful initially
+	ButlerKnownGoodCached.Set(FAILURE)
+
+	ButlerKnownGoodRestored = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "butler_lastknowngood_restored",
+		Help: "Did butler restore the known good configuration",
+	})
+	// Set to successful initially
+	ButlerKnownGoodRestored.Set(FAILURE)
+
 	ButlerReloadSuccess = prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "butler_localconfig_reload_success",
 		Help: "Did butler successfully reload prometheus",
 	})
 	// Set to successful initially
-	ButlerReloadSuccess.Set(SUCCESS)
+	ButlerReloadSuccess.Set(FAILURE)
 
 	ButlerReloadTime = prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "butler_localconfig_reload_time",
@@ -826,6 +897,8 @@ func main() {
 	prometheus.MustRegister(ButlerConfigValid)
 	prometheus.MustRegister(ButlerContactSuccess)
 	prometheus.MustRegister(ButlerContactTime)
+	prometheus.MustRegister(ButlerKnownGoodCached)
+	prometheus.MustRegister(ButlerKnownGoodRestored)
 	prometheus.MustRegister(ButlerReloadSuccess)
 	prometheus.MustRegister(ButlerReloadTime)
 	prometheus.MustRegister(ButlerRenderSuccess)

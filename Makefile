@@ -52,8 +52,8 @@ push-$(ARTIFACTORY_REPO)-dev: build-$(ARTIFACTORY_REPO)
 	docker tag $(DOCKER_IMAGE_ID) $(ARTIFACTORY_DEV_HOST)/ethos/$(ARTIFACTORY_REPO):$(ARTIFACTORY_VERSION)
 	docker push $(ARTIFACTORY_DEV_HOST)/ethos/$(ARTIFACTORY_REPO):$(ARTIFACTORY_VERSION)
 
-push-dockerhub: DOCKER_IMAGE_ID = $(shell docker images -q $(ARTIFACTORY_REPO):$(ARTIFACTORY_VERSION))
-push-dockerhub: build-$(ARTIFACTORY_REPO)
+push-butler-dockerhub: DOCKER_IMAGE_ID = $(shell docker images -q $(ARTIFACTORY_REPO):$(ARTIFACTORY_VERSION))
+push-butler-dockerhub: build-$(ARTIFACTORY_REPO)
 	@printf "Enter DockerHub "
 	@docker login -u $(ARTIFACTORY_USER)
 	docker tag $(DOCKER_IMAGE_ID) $(ARTIFACTORY_USER)/$(ARTIFACTORY_REPO):$(ARTIFACTORY_VERSION)

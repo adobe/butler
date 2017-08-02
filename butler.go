@@ -741,12 +741,12 @@ func main() {
 	)
 	flag.Parse()
 
-	log.Printf("Starting butler version %s\n", version)
-
 	if *versionFlag {
-		fmt.Fprintln(os.Stdout, version)
+		fmt.Fprintf(os.Stdout, "butler %s\n", version)
 		os.Exit(0)
 	}
+
+	log.Printf("Starting butler version %s\n", version)
 
 	// Set the HTTP Timeout
 	HttpTimeout = *configHttpTimeout

@@ -39,18 +39,25 @@ build-$(ARTIFACTORY_REPO):
 	@docker build -t $(ARTIFACTORY_REPO):$(ARTIFACTORY_VERSION) .
 
 push-$(ARTIFACTORY_REPO)-release: DOCKER_IMAGE_ID = $(shell docker images -q $(ARTIFACTORY_REPO):$(ARTIFACTORY_VERSION))
-push-$(ARTIFACTORY_REPO)-release:
+push-$(ARTIFACTORY_REPO)-release: build-$(ARTIFACTORY_REPO)
 	@printf "Enter DockerHub "
 	@docker login -u $(ARTIFACTORY_USER) $(ARTIFACTORY_PROD_HOST)
 	docker tag $(DOCKER_IMAGE_ID) $(ARTIFACTORY_PROD_HOST)/ethos/$(ARTIFACTORY_REPO):$(ARTIFACTORY_VERSION)
 	docker push $(ARTIFACTORY_PROD_HOST)/ethos/$(ARTIFACTORY_REPO):$(ARTIFACTORY_VERSION)
 
 push-$(ARTIFACTORY_REPO)-dev: DOCKER_IMAGE_ID = $(shell docker images -q $(ARTIFACTORY_REPO):$(ARTIFACTORY_VERSION))
-push-$(ARTIFACTORY_REPO)-dev:
+push-$(ARTIFACTORY_REPO)-dev: build-$(ARTIFACTORY_REPO)
 	@printf "Enter DockerHub "
 	@docker login -u $(ARTIFACTORY_USER) $(ARTIFACTORY_DEV_HOST)
 	docker tag $(DOCKER_IMAGE_ID) $(ARTIFACTORY_DEV_HOST)/ethos/$(ARTIFACTORY_REPO):$(ARTIFACTORY_VERSION)
 	docker push $(ARTIFACTORY_DEV_HOST)/ethos/$(ARTIFACTORY_REPO):$(ARTIFACTORY_VERSION)
+
+push-dockerhub: DOCKER_IMAGE_ID = $(shell docker images -q $(ARTIFACTORY_REPO):$(ARTIFACTORY_VERSION))
+push-dockerhub: build-$(ARTIFACTORY_REPO)
+	@printf "Enter DockerHub "
+	@docker login -u $(ARTIFACTORY_USER)
+	docker tag $(DOCKER_IMAGE_ID) $(ARTIFACTORY_USER)/$(ARTIFACTORY_REPO):$(ARTIFACTORY_VERSION)
+	docker push $(ARTIFACTORY_USER)/$(ARTIFACTORY_REPO):$(ARTIFACTORY_VERSION)
 
 help:
 	@printf "Usage:\n\n"
@@ -58,6 +65,7 @@ help:
 	@printf "make build-$(ARTIFACTORY_REPO)\t\tBuilds butler locally, for use in pushing to artifactory.\n"
 	@printf "make push-$(ARTIFACTORY_REPO)-dev\t\tPushes butler to $(ARTIFACTORY_DEV_HOST).\n"
 	@printf "make push-$(ARTIFACTORY_REPO)-release\tPushes butler to $(ARTIFACTORY_PROD_HOST).\n"
+	@printf "make push-dockerhub\tPushes butler to DockerHub (If necessary).\n"
 	@printf "make run\t\t\tRun butler on local system.\n"
 
 run:

@@ -27,7 +27,7 @@ import (
 )
 
 var (
-	version                 = "v0.6.0"
+	version                 = "v0.6.1"
 	PrometheusConfig        = "prometheus.yml"
 	PrometheusConfigStatic  = "prometheus.yml"
 	AdditionalConfig        = "alerts/commonalerts.yml,alerts/tenant.yml"
@@ -97,6 +97,11 @@ type MonitorOutput struct {
 	MustacheSubs          map[string]string `json:"mustache_subs"`
 	LastRun               time.Time         `json:"last_run"`
 	Version               string            `json:"version"`
+}
+
+type PrometheusFileMap struct {
+	TmpFile string
+	Success bool
 }
 
 // Start turns up the http server for monitoring butler.
@@ -402,20 +407,6 @@ func ProcessAdditionalConfigFiles(Files []string, c chan bool) {
 			ButlerContactTime.With(prometheus.Labels{"config_file": GetPrometheusLabels(Files)[i]}).Set(GetFloatTimeNow())
 		}
 
-		// For the prometheus.yml we have to do some mustache replacement on downloaded file
-		if GetPrometheusPaths(Files)[i] == fmt.Sprintf("%s/%s", PrometheusRootDirectory, Files) {
-			err := RenderPrometheusYaml(f)
-			if err != nil {
-				ButlerReloadSuccess.Set(FAILURE)
-			} else {
-				ButlerReloadSuccess.Set(SUCCESS)
-				ButlerReloadTime.Set(GetFloatTimeNow())
-			}
-			// Going to need to rewrite the destination filename for the file comparison
-			// Probably a better way to do this
-			//Files.Files[i] = fmt.Sprintf("prometheus.yml")
-		}
-
 		// Let's ensure that the files starts with #butlerstart and
 		// ends with #butlerend. If they do not, then we will assume
 		// we did not get a correct configuration, or there is an issue
@@ -432,11 +423,6 @@ func ProcessAdditionalConfigFiles(Files []string, c chan bool) {
 
 		// Clean up the temp file
 		os.Remove(f.Name())
-
-		if GetPrometheusPaths(Files)[i] == fmt.Sprintf("%s/prometheus.yml", PrometheusRootDirectory) {
-			// Now put things back to how they originally were...
-			//Files.Files[i] = PrometheusConfig
-		}
 	}
 
 	// Check for file modification differences
@@ -448,11 +434,6 @@ func ProcessAdditionalConfigFiles(Files []string, c chan bool) {
 
 	// Update the channel
 	c <- IsModified
-}
-
-type PrometheusFileMap struct {
-	TmpFile string
-	Success bool
 }
 
 // ProcessPrometheusConfigFiles
@@ -494,17 +475,15 @@ func ProcessPrometheusConfigFiles(Files []string, c chan bool) {
 		FileMap.TmpFile = f.Name()
 
 		// For the prometheus.yml we have to do some mustache replacement on downloaded file
-		if GetPrometheusPaths(Files)[i] == fmt.Sprintf("%s/%s", PrometheusRootDirectory, Files) {
-			err := RenderPrometheusYaml(f)
-			if err != nil {
-				ButlerReloadSuccess.Set(FAILURE)
-				RenderFile = false
-				FileMap.Success = false
-			} else {
-				ButlerReloadSuccess.Set(SUCCESS)
-				ButlerReloadTime.Set(GetFloatTimeNow())
-				FileMap.Success = true
-			}
+		err := RenderPrometheusYaml(f)
+		if err != nil {
+			ButlerReloadSuccess.Set(FAILURE)
+			RenderFile = false
+			FileMap.Success = false
+		} else {
+			ButlerReloadSuccess.Set(SUCCESS)
+			ButlerReloadTime.Set(GetFloatTimeNow())
+			FileMap.Success = true
 		}
 
 		// Let's ensure that the files starts with #butlerstart and

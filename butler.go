@@ -483,6 +483,7 @@ func ProcessPrometheusConfigFiles(Files []string, c chan bool) {
 		if f == nil {
 			ButlerContactSuccess.With(prometheus.Labels{"config_file": GetPrometheusLabels(Files)[i]}).Set(FAILURE)
 			FileMap.Success = false
+			RenderFile = false
 			continue
 		} else {
 			ButlerContactSuccess.With(prometheus.Labels{"config_file": GetPrometheusLabels(Files)[i]}).Set(SUCCESS)
@@ -497,6 +498,7 @@ func ProcessPrometheusConfigFiles(Files []string, c chan bool) {
 			err := RenderPrometheusYaml(f)
 			if err != nil {
 				ButlerReloadSuccess.Set(FAILURE)
+				RenderFile = false
 				FileMap.Success = false
 			} else {
 				ButlerReloadSuccess.Set(SUCCESS)
@@ -512,6 +514,7 @@ func ProcessPrometheusConfigFiles(Files []string, c chan bool) {
 		if err := ValidateButlerConfig(f); err != nil {
 			log.Printf("%s for %s.\n", err.Error(), GetPrometheusPaths(Files)[i])
 			ButlerConfigValid.With(prometheus.Labels{"config_file": GetPrometheusLabels(Files)[i]}).Set(FAILURE)
+			RenderFile = false
 			FileMap.Success = false
 			continue
 		} else {

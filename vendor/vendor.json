@@ -15,6 +15,18 @@
 			"revisionTime": "2016-11-17T03:31:26Z"
 		},
 		{
+			"checksumSHA1": "b8F628srIitj5p7Y130xc9k0QWs=",
+			"path": "github.com/hashicorp/go-cleanhttp",
+			"revision": "3573b8b52aa7b37b9358d966a898feb387f62437",
+			"revisionTime": "2017-02-11T01:34:15Z"
+		},
+		{
+			"checksumSHA1": "ErJHGU6AVPZM9yoY/xV11TwSjQs=",
+			"path": "github.com/hashicorp/go-retryablehttp",
+			"revision": "2d5f5dbd904dbad432492c3ca2c12c72c9e3045a",
+			"revisionTime": "2017-04-21T23:29:22Z"
+		},
+		{
 			"checksumSHA1": "OjjL/hCz0GDh/c0U0w+c8glE7OE=",
 			"path": "github.com/hoisie/mustache",
 			"revision": "6375acf62c69d9d3ad20fd0599d82ca94ea12284",

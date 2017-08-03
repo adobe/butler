@@ -186,13 +186,6 @@ func GetPrometheusLabel(entry string) string {
 	return path.Base(entry)
 }
 
-// GetFloatTimeNow returns a float64 value of Unix time since the Epoch. This is
-// typically in uint32 format; however, prometheus Gauge's require their input
-// to be a float64
-func GetFloatTimeNow() float64 {
-	return float64(time.Now().Unix())
-}
-
 // TrimSuffix returns a sub string of the string provided, as the first argument,
 // with the suffix, second argument, removed from the beginning, if the string ends
 // with that suffix.
@@ -517,7 +510,7 @@ func ProcessAdditionalConfigFiles(Files []string, c chan bool) {
 			continue
 		} else {
 			ButlerContactSuccess.With(prometheus.Labels{"config_file": GetPrometheusLabels(Files)[i]}).Set(SUCCESS)
-			ButlerContactTime.With(prometheus.Labels{"config_file": GetPrometheusLabels(Files)[i]}).Set(GetFloatTimeNow())
+			ButlerContactTime.With(prometheus.Labels{"config_file": GetPrometheusLabels(Files)[i]}).SetToCurrentTime()
 		}
 
 		// Let's ensure that the files starts with #butlerstart and
@@ -581,7 +574,7 @@ func ProcessPrometheusConfigFiles(Files []string, c chan bool) {
 			continue
 		} else {
 			ButlerContactSuccess.With(prometheus.Labels{"config_file": GetPrometheusLabels(Files)[i]}).Set(SUCCESS)
-			ButlerContactTime.With(prometheus.Labels{"config_file": GetPrometheusLabels(Files)[i]}).Set(GetFloatTimeNow())
+			ButlerContactTime.With(prometheus.Labels{"config_file": GetPrometheusLabels(Files)[i]}).SetToCurrentTime()
 			FileMap.Success = true
 		}
 
@@ -613,7 +606,7 @@ func ProcessPrometheusConfigFiles(Files []string, c chan bool) {
 			continue
 		} else {
 			ButlerRenderSuccess.Set(SUCCESS)
-			ButlerRenderTime.Set(GetFloatTimeNow())
+			ButlerRenderTime.SetToCurrentTime()
 			ButlerConfigValid.With(prometheus.Labels{"config_file": GetPrometheusLabels(Files)[i]}).Set(SUCCESS)
 			FileMap.Success = true
 		}
@@ -712,7 +705,7 @@ func CompareAndCopy(source string, dest string) bool {
 			log.Printf(err.Error())
 		}
 		ButlerWriteSuccess.With(prometheus.Labels{"config_file": GetPrometheusLabel(dest)}).Set(SUCCESS)
-		ButlerWriteTime.With(prometheus.Labels{"config_file": GetPrometheusLabel(dest)}).Set(GetFloatTimeNow())
+		ButlerWriteTime.With(prometheus.Labels{"config_file": GetPrometheusLabel(dest)}).SetToCurrentTime()
 		return true
 	} else {
 		return false
@@ -767,7 +760,7 @@ func ReloadPrometheusHandler() error {
 		ButlerKnownGoodCached.Set(SUCCESS)
 		ButlerKnownGoodRestored.Set(FAILURE)
 		ButlerReloadSuccess.Set(SUCCESS)
-		ButlerReloadTime.Set(GetFloatTimeNow())
+		ButlerReloadTime.SetToCurrentTime()
 		CacheConfigs()
 	} else {
 		log.Printf("Received bad response from prometheus server. reverting to last known good config. http_code=%d.\n", int(resp.StatusCode))
@@ -941,6 +934,7 @@ func main() {
 	// Set to successful initially
 	//ButlerKnownGoodRestored.Set(FAILURE)
 
+	fmt.Printf("ButlerReloadSuccess=%#v\n", ButlerReloadSuccess)
 	ButlerReloadSuccess = prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "butler_localconfig_reload_success",
 		Help: "Did butler successfully reload prometheus",
@@ -957,7 +951,7 @@ func main() {
 	// Set the initial time to now
 	// Removing this as a metric should be unset if not really handled.
 	// that's the prometheus way
-	//ButlerReloadTime.Set(GetFloatTimeNow())
+	//ButlerReloadTime.SetToCurrentTime()
 
 	ButlerRenderSuccess = prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "butler_localconfig_render_success",
@@ -975,7 +969,7 @@ func main() {
 	// Set the initial time to now
 	// Removing this as a metric should be unset if not really handled.
 	// that's the prometheus way
-	//ButlerRenderTime.Set(GetFloatTimeNow())
+	//ButlerRenderTime.SetToCurrentTime()
 
 	ButlerWriteSuccess = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "butler_localconfig_write_success",

@@ -19,6 +19,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/go-retryablehttp"
 	"github.com/hoisie/mustache"
 	"github.com/jasonlvhit/gocron"
 	"github.com/udhos/equalfile"
@@ -28,7 +29,7 @@ import (
 )
 
 var (
-	version                 = "v0.6.2"
+	version                 = "v0.6.3"
 	PrometheusConfig        = "prometheus.yml"
 	PrometheusConfigStatic  = "prometheus.yml"
 	AdditionalConfig        = "alerts/commonalerts.yml,alerts/tenant.yml"
@@ -42,6 +43,9 @@ var (
 	MustacheSubs            map[string]string
 	LastRun                 time.Time
 	HttpTimeout             int
+	HttpRetries             int
+	HttpRetryWaitMin        = 50
+	HttpRetryWaitMax        = 75
 	RequiredSubKeys         = []string{"ethos-cluster-id"}
 
 	// Prometheus metrics
@@ -246,8 +250,15 @@ func DownloadPCMSFile(u string) *os.File {
 		log.Fatal(err)
 	}
 
-	httpClient := &http.Client{
-		Timeout: time.Duration(HttpTimeout) * time.Second}
+	httpClient := retryablehttp.NewClient()
+	httpClient.HTTPClient.Timeout = time.Duration(HttpTimeout) * time.Second
+	httpClient.RetryMax = HttpRetries
+	httpClient.RetryWaitMin = time.Duration(HttpRetryWaitMin) * time.Millisecond
+	httpClient.RetryWaitMax = time.Duration(HttpRetryWaitMax) * time.Millisecond
+	// I really don't care about any of the debug output that comes
+	// from retryablehttp output
+	httpClient.Logger.SetFlags(0)
+	httpClient.Logger.SetOutput(ioutil.Discard)
 
 	response, err := httpClient.Get(u)
 
@@ -733,15 +744,18 @@ func ReloadPrometheusHandler() error {
 	log.Printf("Reloading prometheus.")
 	// curl -v -X POST $HOST:9090/-/reload
 	promUrl := fmt.Sprintf("http://%s:9090/-/reload", PrometheusHost)
-	client := &http.Client{
-		Timeout: time.Duration(HttpTimeout) * time.Second}
-	req, err := http.NewRequest("POST", promUrl, nil)
-	if err != nil {
-		log.Printf(err.Error())
-		ButlerReloadSuccess.Set(FAILURE)
-	}
 
-	resp, err := client.Do(req)
+	client := retryablehttp.NewClient()
+	client.HTTPClient.Timeout = time.Duration(HttpTimeout) * time.Second
+	client.RetryMax = HttpRetries
+	client.RetryWaitMin = time.Duration(HttpRetryWaitMin) * time.Millisecond
+	client.RetryWaitMax = time.Duration(HttpRetryWaitMax) * time.Millisecond
+	// I really don't care about any of the debug output that comes
+	// from retryablehttp output
+	client.Logger.SetFlags(0)
+	client.Logger.SetOutput(ioutil.Discard)
+
+	resp, err := client.Post(promUrl, "application/json", strings.NewReader(`{}`))
 	if err != nil {
 		log.Printf(err.Error())
 		ButlerReloadSuccess.Set(FAILURE)
@@ -836,6 +850,7 @@ func main() {
 		configSchedulerIntFlag     = flag.Int("config.scheduler-interval", 300, "The interval, in seconds, to run the scheduler.")
 		configPrometheusHost       = flag.String("config.prometheus-host", os.Getenv("HOST"), "The prometheus host to reload.")
 		configHttpTimeout          = flag.Int("config.http-timeout-host", 10, "The http timeout, in seconds, for GET requests to gather the configuration files")
+		configHttpRetries          = flag.Int("config.http-retries-host", 4, "The number of http retries for GET requests to gather the configuration files")
 		configMustacheSubs         = flag.String("config.mustache-subs", "", "prometheus.yml Mustache Substitutions.")
 	)
 	flag.Parse()
@@ -849,6 +864,9 @@ func main() {
 
 	// Set the HTTP Timeout
 	HttpTimeout = *configHttpTimeout
+
+	// Set the HTTP Retries Counter
+	HttpRetries = *configHttpRetries
 
 	// Grab the prometheus host
 	if *configPrometheusHost == "" {
@@ -910,42 +928,54 @@ func main() {
 		Help: "Did butler cache the known good configuration",
 	})
 	// Set to successful initially
-	ButlerKnownGoodCached.Set(FAILURE)
+	// Removing this as a metric should be unset if not really handled.
+	// that's the prometheus way
+	//ButlerKnownGoodCached.Set(FAILURE)
 
 	ButlerKnownGoodRestored = prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "butler_lastknowngood_restored",
 		Help: "Did butler restore the known good configuration",
 	})
+	// Removing this as a metric should be unset if not really handled.
+	// that's the prometheus way
 	// Set to successful initially
-	ButlerKnownGoodRestored.Set(FAILURE)
+	//ButlerKnownGoodRestored.Set(FAILURE)
 
 	ButlerReloadSuccess = prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "butler_localconfig_reload_success",
 		Help: "Did butler successfully reload prometheus",
 	})
 	// Set to successful initially
-	ButlerReloadSuccess.Set(FAILURE)
+	// Removing this as a metric should be unset if not really handled.
+	// that's the prometheus way
+	//ButlerReloadSuccess.Set(FAILURE)
 
 	ButlerReloadTime = prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "butler_localconfig_reload_time",
 		Help: "Time that butler successfully reload prometheus",
 	})
 	// Set the initial time to now
-	ButlerReloadTime.Set(GetFloatTimeNow())
+	// Removing this as a metric should be unset if not really handled.
+	// that's the prometheus way
+	//ButlerReloadTime.Set(GetFloatTimeNow())
 
 	ButlerRenderSuccess = prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "butler_localconfig_render_success",
 		Help: "Did butler successfully render the prometheus.yml",
 	})
 	// Set to successful initially
-	ButlerRenderSuccess.Set(SUCCESS)
+	// Removing this as a metric should be unset if not really handled.
+	// that's the prometheus way
+	//ButlerRenderSuccess.Set(SUCCESS)
 
 	ButlerRenderTime = prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "butler_localconfig_render_time",
 		Help: "Time that butler successfully rendered the prometheus.yml",
 	})
 	// Set the initial time to now
-	ButlerRenderTime.Set(GetFloatTimeNow())
+	// Removing this as a metric should be unset if not really handled.
+	// that's the prometheus way
+	//ButlerRenderTime.Set(GetFloatTimeNow())
 
 	ButlerWriteSuccess = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "butler_localconfig_write_success",

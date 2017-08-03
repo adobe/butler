@@ -11,6 +11,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	_ "net/http/pprof"
 	"net/url"
 	"os"
 	"path"
@@ -27,13 +28,15 @@ import (
 )
 
 var (
-	version                 = "v0.6.1"
+	version                 = "v0.6.2"
 	PrometheusConfig        = "prometheus.yml"
 	PrometheusConfigStatic  = "prometheus.yml"
 	AdditionalConfig        = "alerts/commonalerts.yml,alerts/tenant.yml"
 	PrometheusRootDirectory = "/opt/prometheus"
 	PrometheusHost          string
 	ConfigUrl               string
+	ConfigCache             map[string][]byte
+	AllConfigFiles          []string
 	PrometheusConfigFiles   []string
 	AdditionalConfigFiles   []string
 	MustacheSubs            map[string]string
@@ -42,15 +45,17 @@ var (
 	RequiredSubKeys         = []string{"ethos-cluster-id"}
 
 	// Prometheus metrics
-	ButlerConfigValid    *prometheus.GaugeVec
-	ButlerContactSuccess *prometheus.GaugeVec
-	ButlerContactTime    *prometheus.GaugeVec
-	ButlerReloadSuccess  prometheus.Gauge
-	ButlerReloadTime     prometheus.Gauge
-	ButlerRenderSuccess  prometheus.Gauge
-	ButlerRenderTime     prometheus.Gauge
-	ButlerWriteSuccess   *prometheus.GaugeVec
-	ButlerWriteTime      *prometheus.GaugeVec
+	ButlerConfigValid       *prometheus.GaugeVec
+	ButlerContactSuccess    *prometheus.GaugeVec
+	ButlerContactTime       *prometheus.GaugeVec
+	ButlerKnownGoodCached   prometheus.Gauge
+	ButlerKnownGoodRestored prometheus.Gauge
+	ButlerReloadSuccess     prometheus.Gauge
+	ButlerReloadTime        prometheus.Gauge
+	ButlerRenderSuccess     prometheus.Gauge
+	ButlerRenderTime        prometheus.Gauge
+	ButlerWriteSuccess      *prometheus.GaugeVec
+	ButlerWriteTime         *prometheus.GaugeVec
 )
 
 // butlerHeader and butlerFooter represent the strings that need to be matched
@@ -150,6 +155,17 @@ func GetPrometheusPaths(entries []string) []string {
 	return paths
 }
 
+func GetPrometheusPath(file string) string {
+	for {
+		if strings.HasPrefix(file, "/") {
+			file = TrimPrefix(file, "/")
+		} else {
+			break
+		}
+	}
+	return fmt.Sprintf("%s/%s", PrometheusRootDirectory, file)
+}
+
 // GetPrometheusLabels returns a slice/array of only the filenames. This is for
 // use with the prometheus monitors where we want to identify which files
 // are being worked with for the metrics being exported to prometheus
@@ -247,7 +263,7 @@ func DownloadPCMSFile(u string) *os.File {
 	if response.StatusCode != 200 {
 		tmpFile.Close()
 		os.Remove(tmpFile.Name())
-		log.Printf("Did not receive 200 response code for %s. code=%d\n", u, response.StatusCode)
+		log.Printf("Did not receive 200 response code for %s. code=%s\n", u, response.StatusCode)
 		tmpFile = nil
 		return tmpFile
 	}
@@ -261,6 +277,57 @@ func DownloadPCMSFile(u string) *os.File {
 		return tmpFile
 	}
 	return tmpFile
+}
+
+func CacheConfigs() {
+	log.Printf("Storing known good Prometheus configurations to cache.\n")
+	ConfigCache = make(map[string][]byte)
+	for _, file := range AllConfigFiles {
+		out, err := ioutil.ReadFile(GetPrometheusPath(file))
+		if err != nil {
+			log.Printf("Could not store %s to cache. err=%s.\n", GetPrometheusPath(file), err.Error())
+		} else {
+			ConfigCache[GetPrometheusPath(file)] = out
+		}
+	}
+	log.Printf("Done storing known good Prometheus configurations to cache.\n")
+}
+
+func RestoreCachedConfigs() {
+	// If we do not have a good configuration cache, then there's nothing for us to do.
+	if ConfigCache == nil {
+		log.Printf("No current known good Prometheus configurations in cache. Cleaning configuration...\n")
+		for _, file := range AllConfigFiles {
+			fileName := GetPrometheusPath(file)
+			log.Printf("Removing bad Prometheus configuration file %s.", fileName)
+			os.Remove(fileName)
+		}
+		log.Printf("Done cleaning broken configuration. Returning...")
+		ButlerKnownGoodRestored.Set(FAILURE)
+		return
+	}
+
+	log.Printf("Restoring known good Prometheus configurations from cache.\n")
+	for _, file := range AllConfigFiles {
+		fileName := GetPrometheusPath(file)
+		fileData := ConfigCache[fileName]
+
+		f, err := os.OpenFile(fileName, os.O_WRONLY|os.O_TRUNC, 0644)
+		if err != nil {
+			log.Printf("Could not open %s for writing! err=%s.\n", fileName, err.Error())
+			continue
+		} else {
+			count, err := f.Write(fileData)
+			if err != nil {
+				log.Printf("Could write to %s! err=%s.\n", fileName, err.Error())
+				continue
+			} else {
+				f.Close()
+				log.Printf("Wrote %d bytes for %s.\n", count, fileName)
+			}
+		}
+	}
+	log.Printf("Done restoring known good Prometheus configurations from cache.\n")
 }
 
 // CopyFile copies the src path string to the dst path string. If there is an
@@ -372,7 +439,7 @@ func ValidateButlerConfig(f *os.File) error {
 // CheckPaths checks takes a slice of full paths to a file, and checks to see
 // if the underlying directory exists. If the path does not exist, it will
 // create a new directory.
-func CheckPaths(Files []string) {
+func CheckPaths(Files []string) bool {
 	// Check to see if the files currently exist. If the docker path is properly mounted from the prometheus
 	// container, then we should see those files.  Error out if we cannot see those files.
 	for _, file := range GetPrometheusPaths(Files) {
@@ -385,6 +452,41 @@ func CheckPaths(Files []string) {
 			log.Printf("Created directory \"%s\"", dir)
 		}
 	}
+	// Check to see if there are any additional files that need to be cleaned up
+	// that aren't part of our current file list.
+	err := filepath.Walk(PrometheusRootDirectory, PathCleanup)
+	// If there is an error, then true signifies that we need to reload the prometheus config
+	// otherwise false means that there have been no changes to the path structure (eg: removal
+	// of unneeded config files)
+	if err != nil {
+		return true
+	} else {
+		return false
+	}
+}
+
+func PathCleanup(path string, f os.FileInfo, err error) error {
+	var (
+		Found bool
+	)
+	Found = false
+
+	// We don't have to do anything with a directory
+	if f.Mode().IsDir() {
+		return nil
+	}
+
+	for _, file := range AllConfigFiles {
+		if path == GetPrometheusPath(file) {
+			Found = true
+		}
+	}
+	if !Found {
+		message := fmt.Sprintf("Found unknown file \"%s\". deleting...", path)
+		os.Remove(path)
+		return errors.New(message)
+	}
+	return nil
 }
 
 func ProcessAdditionalConfigFiles(Files []string, c chan bool) {
@@ -474,18 +576,6 @@ func ProcessPrometheusConfigFiles(Files []string, c chan bool) {
 
 		FileMap.TmpFile = f.Name()
 
-		// For the prometheus.yml we have to do some mustache replacement on downloaded file
-		err := RenderPrometheusYaml(f)
-		if err != nil {
-			ButlerReloadSuccess.Set(FAILURE)
-			RenderFile = false
-			FileMap.Success = false
-		} else {
-			ButlerReloadSuccess.Set(SUCCESS)
-			ButlerReloadTime.Set(GetFloatTimeNow())
-			FileMap.Success = true
-		}
-
 		// Let's ensure that the files starts with #butlerstart and
 		// ends with #butlerend. If they do not, then we will assume
 		// we did not get a correct configuration, or there is an issue
@@ -501,14 +591,27 @@ func ProcessPrometheusConfigFiles(Files []string, c chan bool) {
 			FileMap.Success = true
 		}
 
+		// For the prometheus.yml we have to do some mustache replacement on downloaded file
+		err := RenderPrometheusYaml(f)
+		if err != nil {
+			log.Printf("%s for %s.\n", err.Error(), GetPrometheusPaths(Files)[i])
+			ButlerRenderSuccess.Set(FAILURE)
+			ButlerConfigValid.With(prometheus.Labels{"config_file": GetPrometheusLabels(Files)[i]}).Set(FAILURE)
+			RenderFile = false
+			FileMap.Success = false
+			continue
+		} else {
+			ButlerRenderSuccess.Set(SUCCESS)
+			ButlerRenderTime.Set(GetFloatTimeNow())
+			ButlerConfigValid.With(prometheus.Labels{"config_file": GetPrometheusLabels(Files)[i]}).Set(SUCCESS)
+			FileMap.Success = true
+		}
+
 		// going to want to keep tabs on TmpFiles, and remove all of them at the end.
 		// remember that we want to merge all the downloaded files, so why remove them right now
 		TmpFiles = append(TmpFiles, f.Name())
 		LegitFileMap[GetPrometheusLabels(Files)[i]] = FileMap
 	}
-
-	// Now need to process the various prometheus configuration files
-	//IsModified = CompareAndCopy(f.Name(), GetPrometheusPaths(Files)[i])
 
 	// Need to verify whether or not we got all the prometheus configuration
 	// files. If not, then we should not try to process them.
@@ -609,22 +712,24 @@ func PCMSHandler() {
 	c := make(chan bool)
 	log.Println("Processing PCMS Files.")
 
-	CheckPaths(PrometheusConfigFiles)
-	CheckPaths(AdditionalConfigFiles)
+	checkPathModified := CheckPaths(AllConfigFiles)
+
 	go ProcessPrometheusConfigFiles(PrometheusConfigFiles, c)
 	go ProcessAdditionalConfigFiles(AdditionalConfigFiles, c)
 
 	promModified, additionalModified := <-c, <-c
 
-	if promModified || additionalModified {
-		go ReloadPrometheusHandler()
+	if checkPathModified || promModified || additionalModified {
+		err := ReloadPrometheusHandler()
+		_ = err
 	} else {
 		log.Printf("Found no differences in PCMS files.")
 	}
 	LastRun = time.Now()
 }
 
-func ReloadPrometheusHandler() {
+func ReloadPrometheusHandler() error {
+	var err error
 	log.Printf("Reloading prometheus.")
 	// curl -v -X POST $HOST:9090/-/reload
 	promUrl := fmt.Sprintf("http://%s:9090/-/reload", PrometheusHost)
@@ -635,15 +740,30 @@ func ReloadPrometheusHandler() {
 		log.Printf(err.Error())
 		ButlerReloadSuccess.Set(FAILURE)
 	}
+
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Printf(err.Error())
 		ButlerReloadSuccess.Set(FAILURE)
-	} else {
+		return err
+	}
+
+	if resp.StatusCode == 200 {
+		log.Printf("Successfully reloaded prometheus config. http_code=%d.\n", int(resp.StatusCode))
+		ButlerKnownGoodCached.Set(SUCCESS)
+		ButlerKnownGoodRestored.Set(FAILURE)
 		ButlerReloadSuccess.Set(SUCCESS)
 		ButlerReloadTime.Set(GetFloatTimeNow())
-		log.Printf("resp=%#v\n", resp)
+		CacheConfigs()
+	} else {
+		log.Printf("Received bad response from prometheus server. reverting to last known good config. http_code=%d.\n", int(resp.StatusCode))
+		ButlerKnownGoodCached.Set(FAILURE)
+		ButlerKnownGoodRestored.Set(SUCCESS)
+		ButlerReloadSuccess.Set(FAILURE)
+		RestoreCachedConfigs()
 	}
+
+	return nil
 }
 
 func ParseConfigFiles(configFiles string) []string {
@@ -785,12 +905,26 @@ func main() {
 		Help: "Time that butler succesfully contacted the remote repository",
 	}, []string{"config_file"})
 
+	ButlerKnownGoodCached = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "butler_lastknowngood_cached",
+		Help: "Did butler cache the known good configuration",
+	})
+	// Set to successful initially
+	ButlerKnownGoodCached.Set(FAILURE)
+
+	ButlerKnownGoodRestored = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "butler_lastknowngood_restored",
+		Help: "Did butler restore the known good configuration",
+	})
+	// Set to successful initially
+	ButlerKnownGoodRestored.Set(FAILURE)
+
 	ButlerReloadSuccess = prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "butler_localconfig_reload_success",
 		Help: "Did butler successfully reload prometheus",
 	})
 	// Set to successful initially
-	ButlerReloadSuccess.Set(SUCCESS)
+	ButlerReloadSuccess.Set(FAILURE)
 
 	ButlerReloadTime = prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "butler_localconfig_reload_time",
@@ -826,6 +960,8 @@ func main() {
 	prometheus.MustRegister(ButlerConfigValid)
 	prometheus.MustRegister(ButlerContactSuccess)
 	prometheus.MustRegister(ButlerContactTime)
+	prometheus.MustRegister(ButlerKnownGoodCached)
+	prometheus.MustRegister(ButlerKnownGoodRestored)
 	prometheus.MustRegister(ButlerReloadSuccess)
 	prometheus.MustRegister(ButlerReloadTime)
 	prometheus.MustRegister(ButlerRenderSuccess)
@@ -837,6 +973,12 @@ func main() {
 	monitor := NewMonitor()
 	monitor.Start()
 
+	// Get a complete list of files
+	AllConfigFiles = append(AllConfigFiles, PrometheusConfigStatic)
+
+	for _, v := range AdditionalConfigFiles {
+		AllConfigFiles = append(AllConfigFiles, v)
+	}
 	// Do one run of PCMSHandler() then start off the scheduler
 	PCMSHandler()
 

@@ -9,7 +9,7 @@ pkgs=$(shell $(GO) list ./... | egrep -v "(vendor)")
 
 ARTIFACTORY_USER=$(shell echo "$$ARTIFACTORY_USER")
 ARTIFACTORY_REPO=butler
-ARTIFACTORY_VERSION=0.6.1
+ARTIFACTORY_VERSION=0.6.2
 ARTIFACTORY_PROD_HOST=docker-ethos-core-univ-release.dr-uw2.adobeitc.com
 ARTIFACTORY_DEV_HOST=docker-ethos-core-univ-dev.dr-uw2.adobeitc.com
 
@@ -65,8 +65,20 @@ help:
 	@printf "make build-$(ARTIFACTORY_REPO)\t\tBuilds butler locally, for use in pushing to artifactory.\n"
 	@printf "make push-$(ARTIFACTORY_REPO)-dev\t\tPushes butler to $(ARTIFACTORY_DEV_HOST).\n"
 	@printf "make push-$(ARTIFACTORY_REPO)-release\tPushes butler to $(ARTIFACTORY_PROD_HOST).\n"
-	@printf "make push-dockerhub\tPushes butler to DockerHub (If necessary).\n"
+	@printf "make push-dockerhub\t\tPushes butler to DockerHub (If necessary).\n"
 	@printf "make run\t\t\tRun butler on local system.\n"
+	@printf "make run-prometheus\t\tRun a local prometheus instance for testing.\n"
+	@printf "make stop-prometheus\t\tStop the local test prometheus instance.\n"
+	@printf "make prometheus-logs\t\tTail the logs of the test prometheus instance.\n"
 
 run:
 	$(GO) run butler.go -config.url http://git1.dev.or1.adobe.net/cgit/adobe-platform/ethos-monitoring/plain/oncluster -config.mustache-subs "ethos-cluster-id=ethos01-dev-or1" -config.scheduler-interval 10 -config.prometheus-host localhost
+
+run-prometheus:
+	@docker run --rm -it --name=prometheus -d -p 9090:9090 -v /opt/prometheus:/etc/prometheus prom/prometheus -config.file=/etc/prometheus/prometheus.yml -storage.local.path=/prometheus -storage.local.memory-chunks=104857
+
+stop-prometheus:
+	@docker stop prometheus
+
+prometheus-logs:
+	@docker logs -f prometheus

@@ -65,8 +65,11 @@ help:
 	@printf "make build-$(ARTIFACTORY_REPO)\t\tBuilds butler locally, for use in pushing to artifactory.\n"
 	@printf "make push-$(ARTIFACTORY_REPO)-dev\t\tPushes butler to $(ARTIFACTORY_DEV_HOST).\n"
 	@printf "make push-$(ARTIFACTORY_REPO)-release\tPushes butler to $(ARTIFACTORY_PROD_HOST).\n"
-	@printf "make push-dockerhub\tPushes butler to DockerHub (If necessary).\n"
+	@printf "make push-dockerhub\t\tPushes butler to DockerHub (If necessary).\n"
 	@printf "make run\t\t\tRun butler on local system.\n"
+	@printf "make run-prometheus\t\tRun a local prometheus instance for testing.\n"
+	@printf "make stop-prometheus\t\tStop the local test prometheus instance.\n"
+	@printf "make prometheus-logs\t\tTail the logs of the test prometheus instance.\n"
 
 run:
 	$(GO) run butler.go -config.url http://git1.dev.or1.adobe.net/cgit/adobe-platform/ethos-monitoring/plain/oncluster -config.mustache-subs "ethos-cluster-id=ethos01-dev-or1" -config.scheduler-interval 10 -config.prometheus-host localhost

@@ -934,7 +934,6 @@ func main() {
 	// Set to successful initially
 	//ButlerKnownGoodRestored.Set(FAILURE)
 
-	fmt.Printf("ButlerReloadSuccess=%#v\n", ButlerReloadSuccess)
 	ButlerReloadSuccess = prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "butler_localconfig_reload_success",
 		Help: "Did butler successfully reload prometheus",

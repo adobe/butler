@@ -5,6 +5,7 @@ RUN mkdir /root/butler
 COPY ./files/doit.sh /doit.sh
 COPY ./files/build_test.sh /root/build.sh
 COPY butler.go /root/butler/butler.go
+COPY promfuncs.go /root/butler/promfuncs.go
 COPY butler_test.go /root/butler/butler_test.go
 COPY ./vendor /root/butler/vendor
 

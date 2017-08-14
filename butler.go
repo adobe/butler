@@ -24,12 +24,11 @@ import (
 	"github.com/jasonlvhit/gocron"
 	"github.com/udhos/equalfile"
 
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var (
-	version                 = "v0.6.3"
+	version                 = "v0.6.4"
 	PrometheusConfig        = "prometheus.yml"
 	PrometheusConfigStatic  = "prometheus.yml"
 	AdditionalConfig        = "alerts/commonalerts.yml,alerts/tenant.yml"
@@ -47,19 +46,6 @@ var (
 	HttpRetryWaitMin        = 50
 	HttpRetryWaitMax        = 75
 	RequiredSubKeys         = []string{"ethos-cluster-id"}
-
-	// Prometheus metrics
-	ButlerConfigValid       *prometheus.GaugeVec
-	ButlerContactSuccess    *prometheus.GaugeVec
-	ButlerContactTime       *prometheus.GaugeVec
-	ButlerKnownGoodCached   prometheus.Gauge
-	ButlerKnownGoodRestored prometheus.Gauge
-	ButlerReloadSuccess     prometheus.Gauge
-	ButlerReloadTime        prometheus.Gauge
-	ButlerRenderSuccess     prometheus.Gauge
-	ButlerRenderTime        prometheus.Gauge
-	ButlerWriteSuccess      *prometheus.GaugeVec
-	ButlerWriteTime         *prometheus.GaugeVec
 )
 
 // butlerHeader and butlerFooter represent the strings that need to be matched
@@ -307,7 +293,7 @@ func RestoreCachedConfigs() {
 			os.Remove(fileName)
 		}
 		log.Printf("Done cleaning broken configuration. Returning...")
-		ButlerKnownGoodRestored.Set(FAILURE)
+		SetButlerKnownGoodRestoredVal(FAILURE)
 		return
 	}
 
@@ -506,11 +492,10 @@ func ProcessAdditionalConfigFiles(Files []string, c chan bool) {
 		// Grab the remote file into a local temp file
 		f := DownloadPCMSFile(u)
 		if f == nil {
-			ButlerContactSuccess.With(prometheus.Labels{"config_file": GetPrometheusLabels(Files)[i]}).Set(FAILURE)
+			SetButlerContactVal(FAILURE, GetPrometheusLabels(Files)[i])
 			continue
 		} else {
-			ButlerContactSuccess.With(prometheus.Labels{"config_file": GetPrometheusLabels(Files)[i]}).Set(SUCCESS)
-			ButlerContactTime.With(prometheus.Labels{"config_file": GetPrometheusLabels(Files)[i]}).SetToCurrentTime()
+			SetButlerContactVal(SUCCESS, GetPrometheusLabels(Files)[i])
 		}
 
 		// Let's ensure that the files starts with #butlerstart and
@@ -519,10 +504,10 @@ func ProcessAdditionalConfigFiles(Files []string, c chan bool) {
 		// with the upstream
 		if err := ValidateButlerConfig(f); err != nil {
 			log.Printf("%s for %s.\n", err.Error(), GetPrometheusPaths(Files)[i])
-			ButlerConfigValid.With(prometheus.Labels{"config_file": GetPrometheusLabels(Files)[i]}).Set(FAILURE)
+			SetButlerConfigVal(FAILURE, GetPrometheusLabels(Files)[i])
 			continue
 		} else {
-			ButlerConfigValid.With(prometheus.Labels{"config_file": GetPrometheusLabels(Files)[i]}).Set(SUCCESS)
+			SetButlerConfigVal(SUCCESS, GetPrometheusLabels(Files)[i])
 		}
 
 		ModifiedFileMap[f.Name()] = CompareAndCopy(f.Name(), GetPrometheusPaths(Files)[i])
@@ -568,13 +553,12 @@ func ProcessPrometheusConfigFiles(Files []string, c chan bool) {
 		// Grab the remote file into a local temp file
 		f := DownloadPCMSFile(u)
 		if f == nil {
-			ButlerContactSuccess.With(prometheus.Labels{"config_file": GetPrometheusLabels(Files)[i]}).Set(FAILURE)
+			SetButlerContactVal(FAILURE, GetPrometheusLabels(Files)[i])
 			FileMap.Success = false
 			RenderFile = false
 			continue
 		} else {
-			ButlerContactSuccess.With(prometheus.Labels{"config_file": GetPrometheusLabels(Files)[i]}).Set(SUCCESS)
-			ButlerContactTime.With(prometheus.Labels{"config_file": GetPrometheusLabels(Files)[i]}).SetToCurrentTime()
+			SetButlerContactVal(SUCCESS, GetPrometheusLabels(Files)[i])
 			FileMap.Success = true
 		}
 
@@ -586,12 +570,12 @@ func ProcessPrometheusConfigFiles(Files []string, c chan bool) {
 		// with the upstream
 		if err := ValidateButlerConfig(f); err != nil {
 			log.Printf("%s for %s.\n", err.Error(), GetPrometheusPaths(Files)[i])
-			ButlerConfigValid.With(prometheus.Labels{"config_file": GetPrometheusLabels(Files)[i]}).Set(FAILURE)
+			SetButlerConfigVal(FAILURE, GetPrometheusLabels(Files)[i])
 			RenderFile = false
 			FileMap.Success = false
 			continue
 		} else {
-			ButlerConfigValid.With(prometheus.Labels{"config_file": GetPrometheusLabels(Files)[i]}).Set(SUCCESS)
+			SetButlerConfigVal(SUCCESS, GetPrometheusLabels(Files)[i])
 			FileMap.Success = true
 		}
 
@@ -599,15 +583,14 @@ func ProcessPrometheusConfigFiles(Files []string, c chan bool) {
 		err := RenderPrometheusYaml(f)
 		if err != nil {
 			log.Printf("%s for %s.\n", err.Error(), GetPrometheusPaths(Files)[i])
-			ButlerRenderSuccess.Set(FAILURE)
-			ButlerConfigValid.With(prometheus.Labels{"config_file": GetPrometheusLabels(Files)[i]}).Set(FAILURE)
+			SetButlerRenderVal(FAILURE)
+			SetButlerConfigVal(FAILURE, GetPrometheusLabels(Files)[i])
 			RenderFile = false
 			FileMap.Success = false
 			continue
 		} else {
-			ButlerRenderSuccess.Set(SUCCESS)
-			ButlerRenderTime.SetToCurrentTime()
-			ButlerConfigValid.With(prometheus.Labels{"config_file": GetPrometheusLabels(Files)[i]}).Set(SUCCESS)
+			SetButlerRenderVal(SUCCESS)
+			SetButlerConfigVal(SUCCESS, GetPrometheusLabels(Files)[i])
 			FileMap.Success = true
 		}
 
@@ -630,7 +613,7 @@ func ProcessPrometheusConfigFiles(Files []string, c chan bool) {
 		out, err := os.OpenFile(TmpMergedFile.Name(), os.O_WRONLY|os.O_TRUNC, 0644)
 		if err != nil {
 			log.Printf("Could not process and merge new %s err=%s.", PrometheusConfigStatic, err.Error())
-			ButlerConfigValid.With(prometheus.Labels{"config_file": PrometheusConfigStatic}).Set(FAILURE)
+			SetButlerConfigVal(FAILURE, PrometheusConfigStatic)
 			// just giving up at this point
 			// Clean up the temporary files
 			for _, file := range TmpFiles {
@@ -646,7 +629,7 @@ func ProcessPrometheusConfigFiles(Files []string, c chan bool) {
 				in, err := os.Open(LegitFileMap[file].TmpFile)
 				if err != nil {
 					log.Printf("Could not process and merge new %s err=%s.", PrometheusConfigStatic, err.Error())
-					ButlerConfigValid.With(prometheus.Labels{"config_file": PrometheusConfigStatic}).Set(FAILURE)
+					SetButlerConfigVal(FAILURE, GetPrometheusLabels(Files)[i])
 					// just giving up at this point, as well...
 					// Clean up the temporary files
 					for _, file := range TmpFiles {
@@ -660,7 +643,7 @@ func ProcessPrometheusConfigFiles(Files []string, c chan bool) {
 				_, err = io.Copy(out, in)
 				if err != nil {
 					log.Printf("Could not process and merge new %s err=%s.", PrometheusConfigStatic, err.Error())
-					ButlerConfigValid.With(prometheus.Labels{"config_file": PrometheusConfigStatic}).Set(FAILURE)
+					SetButlerConfigVal(FAILURE, GetPrometheusLabels(Files)[i])
 					// just giving up at this point, again...
 					// Clean up the temporary files
 					for _, file := range TmpFiles {
@@ -701,11 +684,10 @@ func CompareAndCopy(source string, dest string) bool {
 		log.Printf("Found difference in \"%s.\"  Updating.", dest)
 		err = CopyFile(source, dest)
 		if err != nil {
-			ButlerWriteSuccess.With(prometheus.Labels{"config_file": GetPrometheusLabel(dest)}).Set(FAILURE)
+			SetButlerWriteVal(FAILURE, GetPrometheusLabel(dest))
 			log.Printf(err.Error())
 		}
-		ButlerWriteSuccess.With(prometheus.Labels{"config_file": GetPrometheusLabel(dest)}).Set(SUCCESS)
-		ButlerWriteTime.With(prometheus.Labels{"config_file": GetPrometheusLabel(dest)}).SetToCurrentTime()
+		SetButlerWriteVal(SUCCESS, GetPrometheusLabel(dest))
 		return true
 	} else {
 		return false
@@ -757,16 +739,18 @@ func ReloadPrometheusHandler() error {
 
 	if resp.StatusCode == 200 {
 		log.Printf("Successfully reloaded prometheus config. http_code=%d.\n", int(resp.StatusCode))
-		ButlerKnownGoodCached.Set(SUCCESS)
-		ButlerKnownGoodRestored.Set(FAILURE)
-		ButlerReloadSuccess.Set(SUCCESS)
-		ButlerReloadTime.SetToCurrentTime()
+		SetButlerKnownGoodCachedVal(SUCCESS)
+		SetButlerKnownGoodRestoredVal(FAILURE)
+		SetButlerReloadVal(SUCCESS)
+		//ButlerReloadSuccess.Set(SUCCESS)
+		//ButlerReloadTime.SetToCurrentTime()
 		CacheConfigs()
 	} else {
 		log.Printf("Received bad response from prometheus server. reverting to last known good config. http_code=%d.\n", int(resp.StatusCode))
-		ButlerKnownGoodCached.Set(FAILURE)
-		ButlerKnownGoodRestored.Set(SUCCESS)
-		ButlerReloadSuccess.Set(FAILURE)
+		SetButlerKnownGoodCachedVal(FAILURE)
+		SetButlerKnownGoodRestoredVal(FAILURE)
+		SetButlerReloadVal(FAILURE)
+		//ButlerReloadSuccess.Set(FAILURE)
 		RestoreCachedConfigs()
 	}
 
@@ -899,98 +883,6 @@ func main() {
 	if _, err = http.Get(ConfigUrl); err != nil {
 		log.Fatalf("Cannot connect to \"%s\", err=%s", ConfigUrl, err.Error())
 	}
-
-	// Setup the prometheus metric information
-	ButlerConfigValid = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "butler_remoterepo_config_valid",
-		Help: "Is the butler configuration valid",
-	}, []string{"config_file"})
-
-	ButlerContactSuccess = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "butler_remoterepo_contact_success",
-		Help: "Did butler succesfully contact the remote repository",
-	}, []string{"config_file"})
-
-	ButlerContactTime = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "butler_remoterepo_contact_time",
-		Help: "Time that butler succesfully contacted the remote repository",
-	}, []string{"config_file"})
-
-	ButlerKnownGoodCached = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "butler_lastknowngood_cached",
-		Help: "Did butler cache the known good configuration",
-	})
-	// Set to successful initially
-	// Removing this as a metric should be unset if not really handled.
-	// that's the prometheus way
-	//ButlerKnownGoodCached.Set(FAILURE)
-
-	ButlerKnownGoodRestored = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "butler_lastknowngood_restored",
-		Help: "Did butler restore the known good configuration",
-	})
-	// Removing this as a metric should be unset if not really handled.
-	// that's the prometheus way
-	// Set to successful initially
-	//ButlerKnownGoodRestored.Set(FAILURE)
-
-	ButlerReloadSuccess = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "butler_localconfig_reload_success",
-		Help: "Did butler successfully reload prometheus",
-	})
-	// Set to successful initially
-	// Removing this as a metric should be unset if not really handled.
-	// that's the prometheus way
-	//ButlerReloadSuccess.Set(FAILURE)
-
-	ButlerReloadTime = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "butler_localconfig_reload_time",
-		Help: "Time that butler successfully reload prometheus",
-	})
-	// Set the initial time to now
-	// Removing this as a metric should be unset if not really handled.
-	// that's the prometheus way
-	//ButlerReloadTime.SetToCurrentTime()
-
-	ButlerRenderSuccess = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "butler_localconfig_render_success",
-		Help: "Did butler successfully render the prometheus.yml",
-	})
-	// Set to successful initially
-	// Removing this as a metric should be unset if not really handled.
-	// that's the prometheus way
-	//ButlerRenderSuccess.Set(SUCCESS)
-
-	ButlerRenderTime = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "butler_localconfig_render_time",
-		Help: "Time that butler successfully rendered the prometheus.yml",
-	})
-	// Set the initial time to now
-	// Removing this as a metric should be unset if not really handled.
-	// that's the prometheus way
-	//ButlerRenderTime.SetToCurrentTime()
-
-	ButlerWriteSuccess = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "butler_localconfig_write_success",
-		Help: "Did butler successfully write the configuration",
-	}, []string{"config_file"})
-
-	ButlerWriteTime = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "butler_localconfig_write_time",
-		Help: "Time that butler successfully write the configuration",
-	}, []string{"config_file"})
-
-	prometheus.MustRegister(ButlerConfigValid)
-	prometheus.MustRegister(ButlerContactSuccess)
-	prometheus.MustRegister(ButlerContactTime)
-	prometheus.MustRegister(ButlerKnownGoodCached)
-	prometheus.MustRegister(ButlerKnownGoodRestored)
-	prometheus.MustRegister(ButlerReloadSuccess)
-	prometheus.MustRegister(ButlerReloadTime)
-	prometheus.MustRegister(ButlerRenderSuccess)
-	prometheus.MustRegister(ButlerRenderTime)
-	prometheus.MustRegister(ButlerWriteSuccess)
-	prometheus.MustRegister(ButlerWriteTime)
 
 	// Start up the monitor web server
 	monitor := NewMonitor()

@@ -65,7 +65,7 @@ help:
 	@printf "make build-$(ARTIFACTORY_REPO)\t\tBuilds butler locally, for use in pushing to artifactory.\n"
 	@printf "make push-$(ARTIFACTORY_REPO)-dev\t\tPushes butler to $(ARTIFACTORY_DEV_HOST).\n"
 	@printf "make push-$(ARTIFACTORY_REPO)-release\tPushes butler to $(ARTIFACTORY_PROD_HOST).\n"
-	@printf "make push-dockerhub\t\tPushes butler to DockerHub (If necessary).\n"
+	@printf "make push-butler-dockerhub\tPushes butler to DockerHub (If necessary).\n"
 	@printf "make run\t\t\tRun butler on local system.\n"
 	@printf "make run-prometheus\t\tRun a local prometheus instance for testing.\n"
 	@printf "make stop-prometheus\t\tStop the local test prometheus instance.\n"

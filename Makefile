@@ -9,7 +9,7 @@ pkgs=$(shell $(GO) list ./... | egrep -v "(vendor)")
 
 ARTIFACTORY_USER=$(shell echo "$$ARTIFACTORY_USER")
 ARTIFACTORY_REPO=butler
-ARTIFACTORY_VERSION=0.6.4
+ARTIFACTORY_VERSION=0.6.5
 ARTIFACTORY_PROD_HOST=docker-ethos-core-univ-release.dr-uw2.adobeitc.com
 ARTIFACTORY_DEV_HOST=docker-ethos-core-univ-dev.dr-uw2.adobeitc.com
 

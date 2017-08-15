@@ -28,7 +28,7 @@ import (
 )
 
 var (
-	version                 = "v0.6.4"
+	version                 = "v0.6.5"
 	PrometheusConfig        = "prometheus.yml"
 	PrometheusConfigStatic  = "prometheus.yml"
 	AdditionalConfig        = "alerts/commonalerts.yml,alerts/tenant.yml"
@@ -733,7 +733,7 @@ func ReloadPrometheusHandler() error {
 	resp, err := client.Post(promUrl, "application/json", strings.NewReader(`{}`))
 	if err != nil {
 		log.Printf(err.Error())
-		ButlerReloadSuccess.Set(FAILURE)
+		SetButlerReloadVal(FAILURE)
 		return err
 	}
 
@@ -742,15 +742,12 @@ func ReloadPrometheusHandler() error {
 		SetButlerKnownGoodCachedVal(SUCCESS)
 		SetButlerKnownGoodRestoredVal(FAILURE)
 		SetButlerReloadVal(SUCCESS)
-		//ButlerReloadSuccess.Set(SUCCESS)
-		//ButlerReloadTime.SetToCurrentTime()
 		CacheConfigs()
 	} else {
 		log.Printf("Received bad response from prometheus server. reverting to last known good config. http_code=%d.\n", int(resp.StatusCode))
 		SetButlerKnownGoodCachedVal(FAILURE)
 		SetButlerKnownGoodRestoredVal(FAILURE)
 		SetButlerReloadVal(FAILURE)
-		//ButlerReloadSuccess.Set(FAILURE)
 		RestoreCachedConfigs()
 	}
 

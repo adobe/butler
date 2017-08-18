@@ -28,7 +28,7 @@ import (
 )
 
 var (
-	version                 = "v0.6.5"
+	version                 = "v0.6.6"
 	PrometheusConfig        = "prometheus.yml"
 	PrometheusConfigStatic  = "prometheus.yml"
 	AdditionalConfig        = "alerts/commonalerts.yml,alerts/tenant.yml"

@@ -134,7 +134,7 @@ func (m *Monitor) MonitorHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetPrometheusPaths returns a slice/array of full paths to the prometheus
-// configuration files. For example /opt/prometheus/promethes.yml versus
+// configuration files. For example /opt/prometheus/prometheus.yml versus
 // just the filename which is passed by the command line.
 func GetPrometheusPaths(entries []string) []string {
 	var paths []string
@@ -145,6 +145,9 @@ func GetPrometheusPaths(entries []string) []string {
 	return paths
 }
 
+// GetPrometheusPath returns a string containing the full path to the prometheus
+// configuration file. For example if file is passed in from the command line
+// is prometheus.yml, the response could be /opt/prometheus/prometheus.yml
 func GetPrometheusPath(file string) string {
 	for {
 		if strings.HasPrefix(file, "/") {
@@ -168,6 +171,10 @@ func GetPrometheusLabels(entries []string) []string {
 	return labels
 }
 
+// GetPrometheusLabel returns a string containing only the filename, without
+// path information. This is for use with prometheus monitors where we want to
+// identify which files are being worked with for mthe metrics being exported
+// to prometheus
 func GetPrometheusLabel(entry string) string {
 	return path.Base(entry)
 }
@@ -269,6 +276,8 @@ func DownloadPCMSFile(u string) *os.File {
 	return tmpFile
 }
 
+// CacheConfigs stores the currently known good prometheus configurations
+// into memory
 func CacheConfigs() {
 	log.Printf("Storing known good Prometheus configurations to cache.\n")
 	ConfigCache = make(map[string][]byte)
@@ -283,6 +292,8 @@ func CacheConfigs() {
 	log.Printf("Done storing known good Prometheus configurations to cache.\n")
 }
 
+// RestoreCachedConfigs restores the currently cached prometheus configurations
+// back to disk
 func RestoreCachedConfigs() {
 	// If we do not have a good configuration cache, then there's nothing for us to do.
 	if ConfigCache == nil {
@@ -455,6 +466,7 @@ func CheckPaths(Files []string) bool {
 	}
 }
 
+// PathCleanup
 func PathCleanup(path string, f os.FileInfo, err error) error {
 	var (
 		Found bool
@@ -471,6 +483,7 @@ func PathCleanup(path string, f os.FileInfo, err error) error {
 			Found = true
 		}
 	}
+
 	if !Found {
 		message := fmt.Sprintf("Found unknown file \"%s\". deleting...", path)
 		os.Remove(path)
@@ -714,6 +727,23 @@ func PCMSHandler() {
 	LastRun = time.Now()
 }
 
+// PrometheusReloadRetryPolicy overrides go-retryablehttp's DefaultRetryPolicy
+// for how it handles retrying http connections. By default if it receives a
+// 50X response from the server, it'll retry. We do not want to do that with
+// prometheus.
+func PrometheusReloadRetryPolicy(resp *http.Response, err error) (bool, error) {
+	if err != nil {
+		return true, err
+	}
+
+	// Here is our policy override. By default it looks for
+	// resp.StatusCode >= 500 ...
+	if resp.StatusCode == 0 || resp.StatusCode >= 600 {
+		return true, nil
+	}
+	return false, nil
+}
+
 func ReloadPrometheusHandler() error {
 	var err error
 	log.Printf("Reloading prometheus.")
@@ -721,6 +751,7 @@ func ReloadPrometheusHandler() error {
 	promUrl := fmt.Sprintf("http://%s:9090/-/reload", PrometheusHost)
 
 	client := retryablehttp.NewClient()
+	client.CheckRetry = PrometheusReloadRetryPolicy
 	client.HTTPClient.Timeout = time.Duration(HttpTimeout) * time.Second
 	client.RetryMax = HttpRetries
 	client.RetryWaitMin = time.Duration(HttpRetryWaitMin) * time.Millisecond

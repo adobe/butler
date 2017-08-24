@@ -8,6 +8,7 @@ title = "Butler Configuration"
   ## Scheduler Interval is how often we try to grab configurations from repo
   scheduler-interval = 300
 
+## This is the definition for the prometheus configuration handler
 [prometheus]
   urls = ["repo1.adobe.net", "repo2.adobe.net"]
 
@@ -80,6 +81,7 @@ title = "Butler Configuration"
       retry_wait_max = 10
       timeout = 10
 
+## This is the definition for the alertmanager configuration handler
 [alertmanager]
   urls = ["repo3.adobe.net", "repo4.adobe.net"]
 

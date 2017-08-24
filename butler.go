@@ -857,6 +857,11 @@ func main() {
 		configHttpTimeout          = flag.Int("config.http-timeout-host", 10, "The http timeout, in seconds, for GET requests to gather the configuration files")
 		configHttpRetries          = flag.Int("config.http-retries-host", 4, "The number of http retries for GET requests to gather the configuration files")
 		configMustacheSubs         = flag.String("config.mustache-subs", "", "prometheus.yml Mustache Substitutions.")
+		// New configuration options for downloading butler configuration
+		configPath                 = flag.String("config.path", "", "Path to butler configuration file")
+		configScheme               = flag.String("config.scheme", "http", "Scheme to download the butler configuration file.")
+		configInterval             = flag.Int("config.retrieve-interval", 300, "The interval, in seconds, to retrieve new butler configuration files.")
+		configName                 = flag.String("config.name", "butler.toml", "The name of the remote butler configuration file.")
 	)
 	flag.Parse()
 

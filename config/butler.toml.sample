@@ -1,0 +1,80 @@
+title = "Butler Configuration"
+
+[globals]
+  ## The Config handlers are where we define which sections we want to support
+  ## for butler configuration management
+  config-handlers = ["prometheus", "mesos-exporter"]
+
+  ## Scheduler Interval is how often we try to grab configurations from repo
+  scheduler-interval = 300
+
+[prometheus]
+  urls = ["repo1.adobe.net", "repo2.adobe.net"]
+
+  ## These are the mustache substitutions that we'll attempt to make on the merged prometheus.yml
+  mustache-subs = ["ethos-cluster-id=ethos01-dev-or1", "endpoint=external"]
+
+  ## These are the definitions for the first repo which is defined for prometheus
+  [prometheus.repo1.adobe.net]
+    ## Method can be http or https. In the future it may support Amazon s3 or Azure blob
+    method = "http"
+
+    ## Path is the URI / Path to the file on the repo
+    uri-path = "/butler/configs"
+
+    ## Destination path
+    dest-path = "/opt/prometheus"
+
+    ## primary prometheus.yml
+    primary-config = ["prometheus.yml"]
+
+    ## any paths in the additional-config will be appanded to the previous path
+    additional-config = ["alerts/butler.yml", "rules/commonrules.yml"]
+
+    [prometheus.repo1.adobe.net.http]
+      retries = 5
+      retry_wait_min = 5
+      retry_wait_max = 10
+      timeout = 10
+
+  ## This will be processed second (and appended / replaced depending)
+  [prometheus.repo2.adobe.net]
+    ## Method can be http or https. In the future it may support Amazon s3 or Azure blob
+    method = "http"
+
+    ## Path is the URI / Path to the file on the repo
+    uri-path = "/butler/configs"
+
+    ## Destination path
+    dest-path = "/opt/prometheus"
+
+    ## appended prometheus.yml
+    primary-config = ["ethos01-dev-or1.prometheus.yml"]
+
+    ## rules/mode1.yml will be added, rules/commonrules.yml will replace the first one
+    additional-config = ["rules/mode1.yml", "rules/commonrules.yml"]
+
+    [prometheus.repo1.adobe.net.http]
+      retries = 5
+      retry_wait_min = 5
+      retry_wait_max = 10
+      timeout = 10
+
+  ## These are the options for reloading the prometheus system
+  [prometheus.reloader]
+    method = http
+
+    [prometheus.reloader.http]
+      host = "localhost"
+      port = 9999
+      uri = "/-/reload"
+      method = "post"
+      payload = ""
+      # retry info and timeouts
+      retries = 5
+      retry_wait_min = 5
+      retry_wait_max = 10
+      timeout = 10
+
+[mesos-exporter]
+  urls = ["repo3.adobe.net", "repo4.adobe.net"]

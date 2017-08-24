@@ -20,9 +20,14 @@ ci: build
 	@echo "Success"
 
 build:
+	@$(GO) fmt $(pkgs)
 	@docker build -t $(BUILDER_TAG) -f Dockerfile-build .
 	@docker run -v m2:/root/.m2 -v `pwd`:/build $(BUILDER_TAG) cp /root/butler/butler /build
 	@docker build -t $(IMAGE_TAG) .
+
+build-local:
+	@$(GO) fmt $(pkgs)
+	@$(GO) build butler.go promfuncs.go
 
 pre-deploy-build:
 	@docker build -t $(TESTER_TAG) -f Dockerfile-test .
@@ -62,6 +67,7 @@ push-butler-dockerhub: build-$(ARTIFACTORY_REPO)
 help:
 	@printf "Usage:\n\n"
 	@printf "make\t\t\t\tBuilds butler, for use in CI.\n"
+	@printf "make build-local\t\tBuilds a local binary of butler.\n"
 	@printf "make build-$(ARTIFACTORY_REPO)\t\tBuilds butler locally, for use in pushing to artifactory.\n"
 	@printf "make push-$(ARTIFACTORY_REPO)-dev\t\tPushes butler to $(ARTIFACTORY_DEV_HOST).\n"
 	@printf "make push-$(ARTIFACTORY_REPO)-release\tPushes butler to $(ARTIFACTORY_PROD_HOST).\n"

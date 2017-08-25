@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
+	//"log"
 	"net"
 	"net/http"
 	_ "net/http/pprof"
@@ -23,12 +23,13 @@ import (
 	"github.com/hoisie/mustache"
 	"github.com/jasonlvhit/gocron"
 	"github.com/udhos/equalfile"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var (
-	version                 = "v0.6.6"
+	version                 = "v0.6.7"
 	PrometheusConfig        = "prometheus.yml"
 	PrometheusConfigStatic  = "prometheus.yml"
 	AdditionalConfig        = "alerts/commonalerts.yml,alerts/tenant.yml"
@@ -718,9 +719,14 @@ func PCMSHandler() {
 
 	promModified, additionalModified := <-c, <-c
 
+	log.Debugf("PCMSHandler(): checkPathModified=%#v", checkPathModified)
+	log.Debugf("PCMSHandler(): promModified=%#v", promModified)
+	log.Debugf("PCMSHandler(): additionalModified=%#v", additionalModified)
+
 	if checkPathModified || promModified || additionalModified {
+		log.Debugf("PCMSHandler(): going to reload prometheus")
 		err := ReloadPrometheusHandler()
-		_ = err
+		log.Debugf("PCMSHandler(): reloaded prometheus. err=%#v", err)
 	} else {
 		log.Printf("Found no differences in PCMS files.")
 	}
@@ -845,6 +851,26 @@ func ValidateMustacheSubs(Subs map[string]string) bool {
 	return true
 }
 
+func SetLogLevel(l string) log.Level {
+	switch strings.ToLower(l) {
+		case "debug":
+			return log.DebugLevel
+		case "info":
+			return log.InfoLevel
+		case "warn":
+			return log.WarnLevel
+		case "error":
+			return log.ErrorLevel
+		case "fatal":
+			return log.FatalLevel
+		case "panic":
+			return log.PanicLevel
+		default:
+			log.Warn(fmt.Sprintf("Unknown log level \"%s\". Defaulting to %s", l, log.InfoLevel))
+			return log.InfoLevel
+	}
+}
+
 func main() {
 	var (
 		err                        error
@@ -857,32 +883,39 @@ func main() {
 		configHttpTimeout          = flag.Int("config.http-timeout-host", 10, "The http timeout, in seconds, for GET requests to gather the configuration files")
 		configHttpRetries          = flag.Int("config.http-retries-host", 4, "The number of http retries for GET requests to gather the configuration files")
 		configMustacheSubs         = flag.String("config.mustache-subs", "", "prometheus.yml Mustache Substitutions.")
+		configLogLevel		= flag.String("log.level", "info", "The butler log level. Log levels are: debug, info, warn, error, fatal, panic.")
 	)
 	flag.Parse()
+	log.SetLevel(SetLogLevel(*configLogLevel))
+	log.SetFormatter(&log.TextFormatter{FullTimestamp: true})
 
 	if *versionFlag {
 		fmt.Fprintf(os.Stdout, "butler %s\n", version)
 		os.Exit(0)
 	}
 
-	log.Printf("Starting butler version %s\n", version)
+	log.Infof("Starting butler version %s", version)
 
 	// Set the HTTP Timeout
+	log.Debugf("main(): setting HttpTimeout to %d", *configHttpTimeout)
 	HttpTimeout = *configHttpTimeout
 
 	// Set the HTTP Retries Counter
+	log.Debugf("main(): setting HttpRetries to %d", *configHttpRetries)
 	HttpRetries = *configHttpRetries
 
 	// Grab the prometheus host
 	if *configPrometheusHost == "" {
 		log.Fatal("You must provide a -config.prometheus-host, or a HOST environment variable.")
 	} else {
+		log.Debugf("main(): setting PrometheusHost to %s", *configPrometheusHost)
 		PrometheusHost = *configPrometheusHost
 	}
 
 	if *configUrlFlag == "" {
 		log.Fatal("You must provide a -config.url")
 	} else {
+		log.Debugf("main(): setting ConfigUrl to %s", *configUrlFlag)
 		ConfigUrl = *configUrlFlag
 	}
 
@@ -926,6 +959,7 @@ func main() {
 	PCMSHandler()
 
 	sched := gocron.NewScheduler()
+	log.Debugf("main(): starting scheduler for PCMSHandler for every %d seconds", *configSchedulerIntFlag)
 	sched.Every(uint64(*configSchedulerIntFlag)).Seconds().Do(PCMSHandler)
 	<-sched.Start()
 }

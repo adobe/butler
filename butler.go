@@ -36,6 +36,7 @@ var (
 	PrometheusRootDirectory = "/opt/prometheus"
 	PrometheusHost          string
 	ButlerRawConfig         []byte
+	ButlerConfig            ButlerConfigSettings
 	ButlerConfigInterval    int
 	ButlerConfigPath        string
 	ButlerConfigScheme      string

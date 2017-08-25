@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	//"log"
 	"net/http"
 	"time"
 
@@ -12,9 +13,26 @@ import (
 	"github.com/spf13/viper"
 )
 
+var (
+	ConfigSchedulerInterval = 300
+)
+
 type ButlerConfigClient struct {
 	Scheme     string
 	HttpClient *retryablehttp.Client
+}
+
+type ButlerConfigSettings struct {
+	Handlers map[string]ButlerHandler
+	Globals ButlerConfigGlobals
+}
+
+type ButlerConfigGlobals struct {
+	Handlers          []string
+	SchedulerInterval int
+}
+
+type ButlerHandler struct {
 }
 
 func NewButlerConfigClient(scheme string) (ButlerConfigClient, error) {
@@ -76,11 +94,38 @@ func (c *ButlerConfigClient) Get(val string) (*http.Response, error) {
 }
 
 func ParseButlerConfig(config []byte) error {
+	var (
+		handlers []string
+	)
+	// The Butler configuration is in TOML format
 	viper.SetConfigType("toml")
+
+	// We grab the config from a remote repo so it's in []byte format. let's see
+	// if we can process it.
 	err := viper.ReadConfig(bytes.NewBuffer(config))
 	if err != nil {
 		return err
 	}
+
+	// Let's grab some of the global settings
+	if viper.IsSet("globals.scheduler-interval") {
+		ConfigSchedulerInterval = viper.GetInt("globals.scheduler-interval")
+	}
+
+	// We need these handlers. If there are no handlers, then we've really got nothing
+	// to do.
+	if !viper.IsSet("globals.config-handlers") {
+		return errors.New("No globals.config-handlers in butler configuration. Nothing to do.")
+	} else {
+		handlers = viper.GetStringSlice("globals.config-handlers")
+	}
+
+	ButlerConfig = ButlerConfigSettings{}
+	ButlerConfig.Globals.Handlers = handlers
+	ButlerConfig.Globals.SchedulerInterval = ConfigSchedulerInterval
+
+	// Now let's start processing the handlers. This is going
+
 	return nil
 }
 

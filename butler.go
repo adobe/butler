@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -28,13 +29,17 @@ import (
 )
 
 var (
-	version                 = "v0.6.6"
+	version                 = "v1.0.0"
 	PrometheusConfig        = "prometheus.yml"
 	PrometheusConfigStatic  = "prometheus.yml"
 	AdditionalConfig        = "alerts/commonalerts.yml,alerts/tenant.yml"
 	PrometheusRootDirectory = "/opt/prometheus"
 	PrometheusHost          string
-	ConfigUrl               string
+	ButlerRawConfig         []byte
+	ButlerConfigInterval    int
+	ButlerConfigPath        string
+	ButlerConfigScheme      string
+	ButlerConfigUrl         string
 	ConfigCache             map[string][]byte
 	AllConfigFiles          []string
 	PrometheusConfigFiles   []string
@@ -43,8 +48,8 @@ var (
 	LastRun                 time.Time
 	HttpTimeout             int
 	HttpRetries             int
-	HttpRetryWaitMin        = 50
-	HttpRetryWaitMax        = 75
+	HttpRetryWaitMin        int
+	HttpRetryWaitMax        int
 	RequiredSubKeys         = []string{"ethos-cluster-id"}
 )
 
@@ -85,7 +90,7 @@ func NewMonitor() *Monitor {
 // user
 type MonitorOutput struct {
 	ClusterID             string            `json:"cluster_id"`
-	ConfigURL             string            `json:"config_url"`
+	ButlerConfigURL       string            `json:"butler_config_url"`
 	PrometheusHost        string            `json:"prometheus_host"`
 	PrometheusConfigFiles []string          `json:"prometheus_config_files"`
 	AdditionalConfigFiles []string          `json:"additional_config_files"`
@@ -117,7 +122,7 @@ func (m *Monitor) Start() {
 // information
 func (m *Monitor) MonitorHandler(w http.ResponseWriter, r *http.Request) {
 	mOut := MonitorOutput{ClusterID: MustacheSubs["ethos-cluster-id"],
-		ConfigURL:             ConfigUrl,
+		ButlerConfigURL:       ButlerConfigUrl,
 		PrometheusHost:        PrometheusHost,
 		PrometheusConfigFiles: PrometheusConfigFiles,
 		AdditionalConfigFiles: AdditionalConfigFiles,
@@ -205,10 +210,10 @@ func GetPCMSUrls(entries []string) []string {
 	var urls []string
 	for _, File := range entries {
 		// Let's santize the input a little bit and strip off trailing and prefixed
-		// slashes "/" from the ConfigUrl and the File
+		// slashes "/" from the ButlerConfigUrl and the File
 		for {
-			if strings.HasSuffix(ConfigUrl, "/") {
-				ConfigUrl = TrimSuffix(ConfigUrl, "/")
+			if strings.HasSuffix(ButlerConfigUrl, "/") {
+				ButlerConfigUrl = TrimSuffix(ButlerConfigUrl, "/")
 			} else {
 				break
 			}
@@ -220,7 +225,7 @@ func GetPCMSUrls(entries []string) []string {
 				break
 			}
 		}
-		u := fmt.Sprintf("%s/%s", ConfigUrl, File)
+		u := fmt.Sprintf("%s/%s", ButlerConfigUrl, File)
 		urls = append(urls, u)
 	}
 	return urls
@@ -239,8 +244,8 @@ func DownloadPCMSFile(u string) *os.File {
 	httpClient := retryablehttp.NewClient()
 	httpClient.HTTPClient.Timeout = time.Duration(HttpTimeout) * time.Second
 	httpClient.RetryMax = HttpRetries
-	httpClient.RetryWaitMin = time.Duration(HttpRetryWaitMin) * time.Millisecond
-	httpClient.RetryWaitMax = time.Duration(HttpRetryWaitMax) * time.Millisecond
+	httpClient.RetryWaitMin = time.Duration(HttpRetryWaitMin) * time.Second
+	httpClient.RetryWaitMax = time.Duration(HttpRetryWaitMax) * time.Second
 	// I really don't care about any of the debug output that comes
 	// from retryablehttp output
 	httpClient.Logger.SetFlags(0)
@@ -391,24 +396,45 @@ func RenderPrometheusYaml(f *os.File) error {
 // file and ensures that it begins with the proper header, and ends with the
 // proper footer. If it does not begin or end with the proper header/footer,
 // then an error is returned. If the file passes the checks, a nil is returned.
-func ValidateButlerConfig(f *os.File) error {
+//func ValidateButlerConfig(f *os.File) error {
+func ValidateButlerConfig(f interface{}) error {
 	var (
 		configLine    string
 		isFirstLine   bool
 		isValidHeader bool
 		isValidFooter bool
+		scanner       *bufio.Scanner
 	)
 	isFirstLine = true
 	isValidHeader = true
 	isValidFooter = true
 
-	file, err := os.Open(f.Name())
-	if err != nil {
-		return err
+	switch t := f.(type) {
+	case *os.File:
+		newf := f.(*os.File)
+		file, err := os.Open(newf.Name())
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+		scanner = bufio.NewScanner(file)
+	case []byte:
+		newf := f.([]byte)
+		file := bytes.NewReader(newf)
+		scanner = bufio.NewScanner(file)
+	default:
+		return errors.New(fmt.Sprintf("ValidateButlerConfig(): unknown file type %s for %s", t, f))
 	}
-	defer file.Close()
 
-	scanner := bufio.NewScanner(file)
+	/*
+		file, err := os.Open(f.Name())
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+	*/
+
+	//scanner = bufio.NewScanner(file)
 	for scanner.Scan() {
 		configLine = scanner.Text()
 		// Check that the header is valid
@@ -754,8 +780,8 @@ func ReloadPrometheusHandler() error {
 	client.CheckRetry = PrometheusReloadRetryPolicy
 	client.HTTPClient.Timeout = time.Duration(HttpTimeout) * time.Second
 	client.RetryMax = HttpRetries
-	client.RetryWaitMin = time.Duration(HttpRetryWaitMin) * time.Millisecond
-	client.RetryWaitMax = time.Duration(HttpRetryWaitMax) * time.Millisecond
+	client.RetryWaitMin = time.Duration(HttpRetryWaitMin) * time.Second
+	client.RetryWaitMax = time.Duration(HttpRetryWaitMax) * time.Second
 	// I really don't care about any of the debug output that comes
 	// from retryablehttp output
 	client.Logger.SetFlags(0)
@@ -847,27 +873,44 @@ func ValidateMustacheSubs(Subs map[string]string) bool {
 
 func main() {
 	var (
-		err                        error
-		versionFlag                = flag.Bool("version", false, "Print version information.")
-		configUrlFlag              = flag.String("config.url", "", "The base url to grab prometheus configuration files")
-		configPrometheusConfigFlag = flag.String("config.prometheus-config", PrometheusConfig, "The prometheus configuration file.")
-		configAdditionalConfigFlag = flag.String("config.additional-config", AdditionalConfig, "The prometheus configuration files to grab in comma separated format.")
-		configSchedulerIntFlag     = flag.Int("config.scheduler-interval", 300, "The interval, in seconds, to run the scheduler.")
-		configPrometheusHost       = flag.String("config.prometheus-host", os.Getenv("HOST"), "The prometheus host to reload.")
-		configHttpTimeout          = flag.Int("config.http-timeout-host", 10, "The http timeout, in seconds, for GET requests to gather the configuration files")
-		configHttpRetries          = flag.Int("config.http-retries-host", 4, "The number of http retries for GET requests to gather the configuration files")
-		configMustacheSubs         = flag.String("config.mustache-subs", "", "prometheus.yml Mustache Substitutions.")
+		err         error
+		versionFlag = flag.Bool("version", false, "Print version information.")
+		/*
+			configUrlFlag              = flag.String("config.url", "", "The base url to grab prometheus configuration files")
+			configPrometheusConfigFlag = flag.String("config.prometheus-config", PrometheusConfig, "The prometheus configuration file.")
+			configAdditionalConfigFlag = flag.String("config.additional-config", AdditionalConfig, "The prometheus configuration files to grab in comma separated format.")
+			configSchedulerIntFlag     = flag.Int("config.scheduler-interval", 300, "The interval, in seconds, to run the scheduler.")
+			configPrometheusHost       = flag.String("config.prometheus-host", os.Getenv("HOST"), "The prometheus host to reload.")
+			configMustacheSubs         = flag.String("config.mustache-subs", "", "prometheus.yml Mustache Substitutions.")
+		*/
+		// Temporary changes to cleanup --help
+		//configUrlFlag              = ""
+		//configPrometheusConfigFlag = PrometheusConfig
+		//configAdditionalConfigFlag = AdditionalConfig
+		configSchedulerIntFlag = 300
+		//configPrometheusHost       = os.Getenv("HOST")
+		//configMustacheSubs         = ""
+		//
 		// New configuration options for downloading butler configuration
-		configPath     = flag.String("config.path", "", "Path to butler configuration file")
-		configScheme   = flag.String("config.scheme", "http", "Scheme to download the butler configuration file.")
-		configInterval = flag.Int("config.retrieve-interval", 300, "The interval, in seconds, to retrieve new butler configuration files.")
-		configName     = flag.String("config.name", "butler.toml", "The name of the remote butler configuration file.")
+		configPath             = flag.String("config.path", "", "Full remote path to butler configuration file (eg: URI without scheme://).")
+		configScheme           = flag.String("config.scheme", "http", "Scheme used to download the butler configuration file. Currently supported schemes: http, https.")
+		configInterval         = flag.Int("config.retrieve-interval", 300, "The interval, in seconds, to retrieve new butler configuration files.")
+		configHttpTimeout      = flag.Int("http.timeout", 10, "The http timeout, in seconds, for GET requests to obtain the butler configuration file.")
+		configHttpRetries      = flag.Int("http.retries", 4, "The number of http retries for GET requests to obtain the butler configuration files")
+		configHttpRetryWaitMin = flag.Int("http.retry_wait_min", 5, "The minimum amount of time to wait before attemping to retry the http config get operation.")
+		configHttpRetryWaitMax = flag.Int("http.retry_wait_max", 10, "The maximum amount of time to wait before attemping to retry the http config get operation.")
 	)
 	flag.Parse()
 
 	if *versionFlag {
 		fmt.Fprintf(os.Stdout, "butler %s\n", version)
 		os.Exit(0)
+	}
+
+	if *configPath == "" {
+		log.Fatal("You must provide a -config.path for a path to the butler configuration.")
+	} else {
+		ButlerConfigPath = *configPath
 	}
 
 	log.Printf("Starting butler version %s\n", version)
@@ -878,59 +921,91 @@ func main() {
 	// Set the HTTP Retries Counter
 	HttpRetries = *configHttpRetries
 
-	// Grab the prometheus host
-	if *configPrometheusHost == "" {
-		log.Fatal("You must provide a -config.prometheus-host, or a HOST environment variable.")
-	} else {
-		PrometheusHost = *configPrometheusHost
-	}
+	// Set the HTTP Holdoff Values
+	HttpRetryWaitMin = *configHttpRetryWaitMin
+	HttpRetryWaitMax = *configHttpRetryWaitMax
 
-	if *configUrlFlag == "" {
-		log.Fatal("You must provide a -config.url")
-	} else {
-		ConfigUrl = *configUrlFlag
-	}
+	// Set the butler configuration retrieval interval
+	ButlerConfigInterval = *configInterval
 
-	if *configMustacheSubs == "" {
-		log.Fatal("You must provide a -config.mustache-subs")
-	} else {
-		MustacheSubs = make(map[string]string)
-		err := ParseMustacheSubs(MustacheSubs, *configMustacheSubs)
-		if err != nil {
-			log.Fatal(err.Error())
+	// Set the butler configuration retrieval scheme
+	ButlerConfigScheme = strings.ToLower(*configScheme)
+
+	/*
+		if *configPrometheusHost == "" {
+			log.Fatal("You must provide a -config.prometheus-host, or a HOST environment variable.")
+		} else {
+			PrometheusHost = *configPrometheusHost
 		}
-	}
+	*/
 
-	if *configPrometheusConfigFlag != "" {
-		PrometheusConfig = *configPrometheusConfigFlag
-	}
+	/*
+		if *configUrlFlag == "" {
+			log.Fatal("You must provide a -config.url")
+		} else {
+			ConfigUrl = configUrlFlag
+		}
+	*/
 
-	PrometheusConfigFiles = ParseConfigFiles(*configPrometheusConfigFlag)
-	AdditionalConfigFiles = ParseConfigFiles(*configAdditionalConfigFlag)
+	/*
+		if *configMustacheSubs == "" {
+			log.Fatal("You must provide a -config.mustache-subs")
+		} else {
+			MustacheSubs = make(map[string]string)
+			err := ParseMustacheSubs(MustacheSubs, *configMustacheSubs)
+			if err != nil {
+				log.Fatal(err.Error())
+			}
+		}
+	*/
 
-	if _, err = url.ParseRequestURI(ConfigUrl); err != nil {
-		log.Fatalf("Cannot parse ConfigUrl=%s", ConfigUrl)
-	}
+	/*
+		if *configPrometheusConfigFlag != "" {
+			PrometheusConfig = *configPrometheusConfigFlag
+		}
+	*/
 
-	// Check that we can connect to the url
-	if _, err = http.Get(ConfigUrl); err != nil {
-		log.Fatalf("Cannot connect to \"%s\", err=%s", ConfigUrl, err.Error())
+	//PrometheusConfigFiles = ParseConfigFiles(*configPrometheusConfigFlag)
+	//AdditionalConfigFiles = ParseConfigFiles(*configAdditionalConfigFlag)
+
+	ButlerConfigUrl = fmt.Sprintf("%s://%s", ButlerConfigScheme, ButlerConfigPath)
+
+	if _, err = url.ParseRequestURI(ButlerConfigUrl); err != nil {
+		log.Fatalf("Cannot parse ButlerConfigUrl=%s", ButlerConfigUrl)
 	}
 
 	// Start up the monitor web server
 	monitor := NewMonitor()
 	monitor.Start()
 
-	// Get a complete list of files
-	AllConfigFiles = append(AllConfigFiles, PrometheusConfigStatic)
-
-	for _, v := range AdditionalConfigFiles {
-		AllConfigFiles = append(AllConfigFiles, v)
+	// Do initial grab of butler configuration file.
+	// Going to do this in an endless loop until we initially
+	// grab a configuration file.
+	for {
+		err = ButlerConfigHandler()
+		if err != nil {
+			log.Printf("Cannot retrieve butler configuration. err=%s", err.Error())
+			log.Printf("Sleeping 5 seconds.")
+			time.Sleep(5 * time.Second)
+		} else {
+			break
+		}
 	}
-	// Do one run of PCMSHandler() then start off the scheduler
-	PCMSHandler()
+
+	/*
+		// Get a complete list of files
+		AllConfigFiles = append(AllConfigFiles, PrometheusConfigStatic)
+
+		for _, v := range AdditionalConfigFiles {
+			AllConfigFiles = append(AllConfigFiles, v)
+		}
+		// Do one run of PCMSHandler() then start off the scheduler
+		PCMSHandler()
+	*/
 
 	sched := gocron.NewScheduler()
-	sched.Every(uint64(*configSchedulerIntFlag)).Seconds().Do(PCMSHandler)
+	sched.Every(uint64(configSchedulerIntFlag)).Seconds().Do(ButlerConfigHandler)
+	//sched.Every(uint64(configSchedulerIntFlag)).Seconds().Do(PCMSHandler)
+
 	<-sched.Start()
 }

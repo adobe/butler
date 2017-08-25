@@ -22,8 +22,8 @@ import (
 	"github.com/hashicorp/go-retryablehttp"
 	"github.com/hoisie/mustache"
 	"github.com/jasonlvhit/gocron"
-	"github.com/udhos/equalfile"
 	log "github.com/sirupsen/logrus"
+	"github.com/udhos/equalfile"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -469,6 +469,7 @@ func CheckPaths(Files []string) bool {
 
 // PathCleanup
 func PathCleanup(path string, f os.FileInfo, err error) error {
+	log.Debugf("PathCleanup(): entering")
 	var (
 		Found bool
 	)
@@ -476,6 +477,7 @@ func PathCleanup(path string, f os.FileInfo, err error) error {
 
 	// We don't have to do anything with a directory
 	if f.Mode().IsDir() {
+		log.Debugf("PathCleanup(): %s is a directory... returning nil", f.Name())
 		return nil
 	}
 
@@ -487,6 +489,7 @@ func PathCleanup(path string, f os.FileInfo, err error) error {
 
 	if !Found {
 		message := fmt.Sprintf("Found unknown file \"%s\". deleting...", path)
+		log.Debugf("PathCleanup(): Found unknown file \"%s\". deleting...", path)
 		os.Remove(path)
 		return errors.New(message)
 	}
@@ -853,21 +856,21 @@ func ValidateMustacheSubs(Subs map[string]string) bool {
 
 func SetLogLevel(l string) log.Level {
 	switch strings.ToLower(l) {
-		case "debug":
-			return log.DebugLevel
-		case "info":
-			return log.InfoLevel
-		case "warn":
-			return log.WarnLevel
-		case "error":
-			return log.ErrorLevel
-		case "fatal":
-			return log.FatalLevel
-		case "panic":
-			return log.PanicLevel
-		default:
-			log.Warn(fmt.Sprintf("Unknown log level \"%s\". Defaulting to %s", l, log.InfoLevel))
-			return log.InfoLevel
+	case "debug":
+		return log.DebugLevel
+	case "info":
+		return log.InfoLevel
+	case "warn":
+		return log.WarnLevel
+	case "error":
+		return log.ErrorLevel
+	case "fatal":
+		return log.FatalLevel
+	case "panic":
+		return log.PanicLevel
+	default:
+		log.Warn(fmt.Sprintf("Unknown log level \"%s\". Defaulting to %s", l, log.InfoLevel))
+		return log.InfoLevel
 	}
 }
 
@@ -883,7 +886,7 @@ func main() {
 		configHttpTimeout          = flag.Int("config.http-timeout-host", 10, "The http timeout, in seconds, for GET requests to gather the configuration files")
 		configHttpRetries          = flag.Int("config.http-retries-host", 4, "The number of http retries for GET requests to gather the configuration files")
 		configMustacheSubs         = flag.String("config.mustache-subs", "", "prometheus.yml Mustache Substitutions.")
-		configLogLevel		= flag.String("log.level", "info", "The butler log level. Log levels are: debug, info, warn, error, fatal, panic.")
+		configLogLevel             = flag.String("log.level", "info", "The butler log level. Log levels are: debug, info, warn, error, fatal, panic.")
 	)
 	flag.Parse()
 	log.SetLevel(SetLogLevel(*configLogLevel))

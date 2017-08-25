@@ -1,3 +1,4 @@
+#butlerstart
 title = "Butler Configuration"
 
 [globals]
@@ -59,7 +60,7 @@ title = "Butler Configuration"
     additional-config = ["rules/mode1.yml", "rules/commonrules.yml"]
 
     ## These are repo specific http get options
-    [prometheus.repo1.adobe.net.http]
+    [prometheus.repo2.adobe.net.http]
       retries = 5
       retry_wait_min = 5
       retry_wait_max = 10
@@ -67,7 +68,7 @@ title = "Butler Configuration"
 
   ## These are the options for reloading the prometheus config-handler
   [prometheus.reloader]
-    method = http
+    method = "http"
 
     [prometheus.reloader.http]
       host = "localhost"
@@ -137,7 +138,7 @@ title = "Butler Configuration"
 
   ## These are the options for reloading the alertmanager config-handler
   [alertmanager.reloader]
-    method = http
+    method = "http"
 
     [alertmanager.reloader.http]
       host = "localhost"
@@ -150,3 +151,4 @@ title = "Butler Configuration"
       retry_wait_min = 5
       retry_wait_max = 10
       timeout = 10
+#butlerend

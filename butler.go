@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
+	//"log"
 	"net"
 	"net/http"
 	_ "net/http/pprof"
@@ -23,6 +23,7 @@ import (
 	"github.com/hashicorp/go-retryablehttp"
 	"github.com/hoisie/mustache"
 	"github.com/jasonlvhit/gocron"
+	log "github.com/sirupsen/logrus"
 	"github.com/udhos/equalfile"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -495,6 +496,7 @@ func CheckPaths(Files []string) bool {
 
 // PathCleanup
 func PathCleanup(path string, f os.FileInfo, err error) error {
+	log.Debugf("PathCleanup(): entering")
 	var (
 		Found bool
 	)
@@ -502,6 +504,7 @@ func PathCleanup(path string, f os.FileInfo, err error) error {
 
 	// We don't have to do anything with a directory
 	if f.Mode().IsDir() {
+		log.Debugf("PathCleanup(): %s is a directory... returning nil", f.Name())
 		return nil
 	}
 
@@ -513,6 +516,7 @@ func PathCleanup(path string, f os.FileInfo, err error) error {
 
 	if !Found {
 		message := fmt.Sprintf("Found unknown file \"%s\". deleting...", path)
+		log.Debugf("PathCleanup(): Found unknown file \"%s\". deleting...", path)
 		os.Remove(path)
 		return errors.New(message)
 	}
@@ -745,9 +749,14 @@ func PCMSHandler() {
 
 	promModified, additionalModified := <-c, <-c
 
+	log.Debugf("PCMSHandler(): checkPathModified=%#v", checkPathModified)
+	log.Debugf("PCMSHandler(): promModified=%#v", promModified)
+	log.Debugf("PCMSHandler(): additionalModified=%#v", additionalModified)
+
 	if checkPathModified || promModified || additionalModified {
+		log.Debugf("PCMSHandler(): going to reload prometheus")
 		err := ReloadPrometheusHandler()
-		_ = err
+		log.Debugf("PCMSHandler(): reloaded prometheus. err=%#v", err)
 	} else {
 		log.Printf("Found no differences in PCMS files.")
 	}
@@ -872,6 +881,26 @@ func ValidateMustacheSubs(Subs map[string]string) bool {
 	return true
 }
 
+func SetLogLevel(l string) log.Level {
+	switch strings.ToLower(l) {
+	case "debug":
+		return log.DebugLevel
+	case "info":
+		return log.InfoLevel
+	case "warn":
+		return log.WarnLevel
+	case "error":
+		return log.ErrorLevel
+	case "fatal":
+		return log.FatalLevel
+	case "panic":
+		return log.PanicLevel
+	default:
+		log.Warn(fmt.Sprintf("Unknown log level \"%s\". Defaulting to %s", l, log.InfoLevel))
+		return log.InfoLevel
+	}
+}
+
 func main() {
 	var (
 		err         error
@@ -901,6 +930,8 @@ func main() {
 		configHttpRetryWaitMax = flag.Int("http.retry_wait_max", 10, "The maximum amount of time to wait before attemping to retry the http config get operation.")
 	)
 	flag.Parse()
+	log.SetLevel(SetLogLevel(*configLogLevel))
+	log.SetFormatter(&log.TextFormatter{FullTimestamp: true})
 
 	if *versionFlag {
 		fmt.Fprintf(os.Stdout, "butler %s\n", version)
@@ -916,9 +947,11 @@ func main() {
 	log.Printf("Starting butler version %s\n", version)
 
 	// Set the HTTP Timeout
+	log.Debugf("main(): setting HttpTimeout to %d", *configHttpTimeout)
 	HttpTimeout = *configHttpTimeout
 
 	// Set the HTTP Retries Counter
+	log.Debugf("main(): setting HttpRetries to %d", *configHttpRetries)
 	HttpRetries = *configHttpRetries
 
 	// Set the HTTP Holdoff Values

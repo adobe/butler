@@ -13,7 +13,6 @@ ARTIFACTORY_VERSION=1.0.0
 ARTIFACTORY_PROD_HOST=docker-ethos-core-univ-release.dr-uw2.adobeitc.com
 ARTIFACTORY_DEV_HOST=docker-ethos-core-univ-dev.dr-uw2.adobeitc.com
 
-
 default: ci
 
 ci: build

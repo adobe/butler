@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	//"log"
+	"log"
 	"net/http"
 	"time"
 
@@ -24,12 +24,14 @@ type ButlerConfigClient struct {
 
 type ButlerConfigSettings struct {
 	Handlers map[string]ButlerHandler
-	Globals ButlerConfigGlobals
+	Globals  ButlerConfigGlobals
 }
 
 type ButlerConfigGlobals struct {
 	Handlers          []string
 	SchedulerInterval int
+	ExitOnFailure     bool
+	CleanFiles        bool
 }
 
 type ButlerHandler struct {
@@ -95,7 +97,8 @@ func (c *ButlerConfigClient) Get(val string) (*http.Response, error) {
 
 func ParseButlerConfig(config []byte) error {
 	var (
-		handlers []string
+		//handlers []string
+		ButlerConfig ButlerConfigSettings
 	)
 	// The Butler configuration is in TOML format
 	viper.SetConfigType("toml")
@@ -107,9 +110,22 @@ func ParseButlerConfig(config []byte) error {
 		return err
 	}
 
+	ButlerConfig = ButlerConfigSettings{}
+
+	// Let's grab the exit on failure val
+	if viper.IsSet("globals.exit-on-config-failure") {
+		log.Printf("ParseButlerConfig(): setting ButlerConfig.Globals.ExitOnFailure to \"%s\"", viper.GetBool("globals.exit-on-config-failure"))
+		ButlerConfig.Globals.ExitOnFailure = viper.GetBool("globals.exit-on-config-failure")
+	} else {
+		ButlerConfig.Globals.ExitOnFailure = false
+		log.Printf("ParseButlerConfig(): setting ButlerConfig.Globals.ExitOnFailure to \"%s\"", false)
+	}
+
 	// Let's grab some of the global settings
 	if viper.IsSet("globals.scheduler-interval") {
-		ConfigSchedulerInterval = viper.GetInt("globals.scheduler-interval")
+		ButlerConfig.Globals.SchedulerInterval = viper.GetInt("globals.scheduler-interval")
+	} else {
+		ButlerConfig.Globals.SchedulerInterval = ConfigSchedulerInterval
 	}
 
 	// We need these handlers. If there are no handlers, then we've really got nothing
@@ -117,12 +133,14 @@ func ParseButlerConfig(config []byte) error {
 	if !viper.IsSet("globals.config-handlers") {
 		return errors.New("No globals.config-handlers in butler configuration. Nothing to do.")
 	} else {
-		handlers = viper.GetStringSlice("globals.config-handlers")
+		ButlerConfig.Globals.Handlers = viper.GetStringSlice("globals.config-handlers")
 	}
 
-	ButlerConfig = ButlerConfigSettings{}
-	ButlerConfig.Globals.Handlers = handlers
-	ButlerConfig.Globals.SchedulerInterval = ConfigSchedulerInterval
+	if viper.IsSet("globals.clean-files") {
+		ButlerConfig.Globals.CleanFiles = viper.GetBool("globals.config-handlers")
+	} else {
+		ButlerConfig.Globals.CleanFiles = false
+	}
 
 	// Now let's start processing the handlers. This is going
 
@@ -130,6 +148,7 @@ func ParseButlerConfig(config []byte) error {
 }
 
 func ButlerConfigHandler() error {
+	log.Printf("ButlerConfigHandler(): running")
 	c, err := NewButlerConfigClient(ButlerConfigScheme)
 	if err != nil {
 		return err
@@ -163,7 +182,11 @@ func ButlerConfigHandler() error {
 	if ButlerRawConfig == nil {
 		err = ParseButlerConfig(body)
 		if err != nil {
-			return err
+			if ButlerConfig.Globals.ExitOnFailure {
+				log.Fatal(err)
+			} else {
+				return err
+			}
 		} else {
 			ButlerRawConfig = body
 		}

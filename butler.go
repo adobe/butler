@@ -880,7 +880,6 @@ func main() {
 			configUrlFlag              = flag.String("config.url", "", "The base url to grab prometheus configuration files")
 			configPrometheusConfigFlag = flag.String("config.prometheus-config", PrometheusConfig, "The prometheus configuration file.")
 			configAdditionalConfigFlag = flag.String("config.additional-config", AdditionalConfig, "The prometheus configuration files to grab in comma separated format.")
-			configSchedulerIntFlag     = flag.Int("config.scheduler-interval", 300, "The interval, in seconds, to run the scheduler.")
 			configPrometheusHost       = flag.String("config.prometheus-host", os.Getenv("HOST"), "The prometheus host to reload.")
 			configMustacheSubs         = flag.String("config.mustache-subs", "", "prometheus.yml Mustache Substitutions.")
 		*/
@@ -888,7 +887,7 @@ func main() {
 		//configUrlFlag              = ""
 		//configPrometheusConfigFlag = PrometheusConfig
 		//configAdditionalConfigFlag = AdditionalConfig
-		configSchedulerIntFlag = 300
+		//configSchedulerIntFlag = 300
 		//configPrometheusHost       = os.Getenv("HOST")
 		//configMustacheSubs         = ""
 		//
@@ -1005,7 +1004,9 @@ func main() {
 	*/
 
 	sched := gocron.NewScheduler()
-	sched.Every(uint64(configSchedulerIntFlag)).Seconds().Do(ButlerConfigHandler)
+	log.Printf("starting scheduler...")
+	log.Printf("Running butler configuration scheduler every %d seconds", *configInterval)
+	sched.Every(uint64(*configInterval)).Seconds().Do(ButlerConfigHandler)
 	//sched.Every(uint64(configSchedulerIntFlag)).Seconds().Do(PCMSHandler)
 
 	<-sched.Start()

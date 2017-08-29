@@ -27,7 +27,7 @@ build:
 
 build-local:
 	@$(GO) fmt $(pkgs)
-	@$(GO) build butler.go promfuncs.go
+	@$(GO) build butler.go config.go promfuncs.go
 
 pre-deploy-build:
 	@docker build -t $(TESTER_TAG) -f Dockerfile-test .
@@ -78,7 +78,7 @@ help:
 	@printf "make prometheus-logs\t\tTail the logs of the test prometheus instance.\n"
 
 run:
-	$(GO) run butler.go promfuncs.go -config.url http://git1.dev.or1.adobe.net/cgit/adobe-platform/ethos-monitoring/plain/oncluster -config.mustache-subs "ethos-cluster-id=ethos01-dev-or1" -config.scheduler-interval 10 -config.prometheus-host localhost
+	$(GO) run butler.go config.go promfuncs.go -config.path woden.corp.adobe.com/butler/config/butler.toml -config.scheme http -config.retrieve-interval 10
 
 start-prometheus:
 	@docker run --rm -it --name=prometheus -d -p 9090:9090 -v /opt/prometheus:/etc/prometheus prom/prometheus -config.file=/etc/prometheus/prometheus.yml -storage.local.path=/prometheus -storage.local.memory-chunks=104857

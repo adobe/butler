@@ -5,11 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"time"
 
 	"github.com/hashicorp/go-retryablehttp"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -114,11 +114,11 @@ func ParseButlerConfig(config []byte) error {
 
 	// Let's grab the exit on failure val
 	if viper.IsSet("globals.exit-on-config-failure") {
-		log.Printf("ParseButlerConfig(): setting ButlerConfig.Globals.ExitOnFailure to \"%s\"", viper.GetBool("globals.exit-on-config-failure"))
+		log.Debugf("ParseButlerConfig(): setting ButlerConfig.Globals.ExitOnFailure to \"%v\"", viper.GetBool("globals.exit-on-config-failure"))
 		ButlerConfig.Globals.ExitOnFailure = viper.GetBool("globals.exit-on-config-failure")
 	} else {
 		ButlerConfig.Globals.ExitOnFailure = false
-		log.Printf("ParseButlerConfig(): setting ButlerConfig.Globals.ExitOnFailure to \"%s\"", false)
+		log.Debugf("ParseButlerConfig(): setting ButlerConfig.Globals.ExitOnFailure to \"%v\"", false)
 	}
 
 	// Let's grab some of the global settings
@@ -128,27 +128,62 @@ func ParseButlerConfig(config []byte) error {
 		ButlerConfig.Globals.SchedulerInterval = ConfigSchedulerInterval
 	}
 
-	// We need these handlers. If there are no handlers, then we've really got nothing
-	// to do.
-	if !viper.IsSet("globals.config-handlers") {
-		return errors.New("No globals.config-handlers in butler configuration. Nothing to do.")
-	} else {
-		ButlerConfig.Globals.Handlers = viper.GetStringSlice("globals.config-handlers")
-	}
-
 	if viper.IsSet("globals.clean-files") {
 		ButlerConfig.Globals.CleanFiles = viper.GetBool("globals.config-handlers")
 	} else {
 		ButlerConfig.Globals.CleanFiles = false
 	}
 
+	// We need these handlers. If there are no handlers, then we've really got nothing
+	// to do.
+	if !viper.IsSet("globals.config-handlers") {
+		if ButlerConfig.Globals.ExitOnFailure {
+			log.Fatalf("ParseButlerConfig(): globals.config-handlers unset! exiting...")
+		} else {
+			log.Debugf("ParseButlerConfig(): globals.config-handlers unset!")
+			return errors.New("No globals.config-handlers in butler configuration. Nothing to do.")
+		}
+	} else {
+		ButlerConfig.Globals.Handlers = viper.GetStringSlice("globals.config-handlers")
+	}
+	log.Debugf("ParseButlerConfig(): globals.config-handlers=%#v", ButlerConfig.Globals.Handlers)
+	log.Debugf("ParseButlerConfig(): len(globals.config-handlers)=%v", len(ButlerConfig.Globals.Handlers))
+
+	// If no handlers are set. eg: config-handlers = []
+	if ButlerConfig.Globals.Handlers == nil {
+		if ButlerConfig.Globals.ExitOnFailure {
+			log.Fatalf("ParseButlerConfig(): globals.config-handlers = []! exiting...")
+		} else {
+			log.Debugf("ParseButlerConfig(): globals.config-handlers unset!")
+			return errors.New("globals.config-handlers = []. Nothing to do")
+		}
+	}
+
+	// If somehow the length of the config handlers array is < 1
+	// Not sure how to replicate this case, since config-handlers = []
+	// returns nil, but would still like to catch it
+	if len(ButlerConfig.Globals.Handlers) < 1 {
+		if ButlerConfig.Globals.ExitOnFailure {
+			log.Fatalf("ParseButlerConfig(): globals.config-handlers has no entries! exiting...")
+		} else {
+			log.Debugf("ParseButlerConfig(): globals.config-handlers has no entries!")
+			return errors.New("globals.config-handlers has no entries. Nothing to do")
+		}
+	}
+
+	ButlerConfig.Handlers = make(map[string]ButlerHandler)
 	// Now let's start processing the handlers. This is going
+	for _, entry := range ButlerConfig.Globals.Handlers {
+		if !viper.IsSet(entry) {
+			log.Debugf("ParseButlerConfig(): %v is not in the configuration as a handler", entry)
+		}
+	}
 
 	return nil
 }
 
 func ButlerConfigHandler() error {
-	log.Printf("ButlerConfigHandler(): running")
+	log.Debugf("ButlerConfigHandler(): running")
 	c, err := NewButlerConfigClient(ButlerConfigScheme)
 	if err != nil {
 		return err
@@ -166,12 +201,12 @@ func ButlerConfigHandler() error {
 	defer response.Body.Close()
 
 	if response.StatusCode != 200 {
-		return errors.New(fmt.Sprintf("Did not receive 200 response code for %s. code=%d\n", ButlerConfigUrl, response.StatusCode))
+		return errors.New(fmt.Sprintf("Did not receive 200 response code for %s. code=%d", ButlerConfigUrl, response.StatusCode))
 	}
 
 	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		return errors.New(fmt.Sprintf("Could not read response body for %s. err=%s\n", ButlerConfigUrl, err))
+		return errors.New(fmt.Sprintf("Could not read response body for %s. err=%s", ButlerConfigUrl, err))
 	}
 
 	err = ValidateButlerConfig(body)

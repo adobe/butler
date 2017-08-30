@@ -36,8 +36,10 @@ post-deploy-build:
 	@echo "Nothing is defined in post-deploy-build step"
 
 test:
-	@docker build -t $(TESTER_TAG) -f Dockerfile-test .
-	@docker run -it --rm $(TESTER_TAG)
+# Have to fix the docker testing
+#	@docker build -t $(TESTER_TAG) -f Dockerfile-test .
+#	@docker run -it --rm $(TESTER_TAG)
+	@go test -check.vv -coverprofile=/tmp/coverage.out -v
 
 build-$(ARTIFACTORY_REPO):
 	@docker build -t $(ARTIFACTORY_REPO):$(ARTIFACTORY_VERSION) .
@@ -77,7 +79,7 @@ help:
 	@printf "make prometheus-logs\t\tTail the logs of the test prometheus instance.\n"
 
 run:
-	$(GO) run butler.go config.go promfuncs.go -config.path woden.corp.adobe.com/butler/config/butler.toml -config.scheme http -config.retrieve-interval 10
+	$(GO) run butler.go config.go promfuncs.go -config.path woden.corp.adobe.com/butler/config/butler.toml -config.scheme http -config.retrieve-interval 10 -log.level debug
 
 start-prometheus:
 	@docker run --rm -it --name=prometheus -d -p 9090:9090 -v /opt/prometheus:/etc/prometheus prom/prometheus -config.file=/etc/prometheus/prometheus.yml -storage.local.path=/prometheus -storage.local.memory-chunks=104857

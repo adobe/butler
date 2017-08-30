@@ -3,6 +3,8 @@ package main
 import (
 	. "gopkg.in/check.v1"
 	"testing"
+
+	log "github.com/sirupsen/logrus"
 )
 
 func Test(t *testing.T) { TestingT(t) }
@@ -13,9 +15,35 @@ type ButlerTestSuite struct {
 var _ = Suite(&ButlerTestSuite{})
 
 func (s *ButlerTestSuite) SetUpSuite(c *C) {
-	ParseConfigFiles(&Files, FileList)
+	//ParseConfigFiles(&Files, FileList)
 }
 
+// Test Suite for the butler prometheus SUCCESS/FAILURE enumeration
+func (s *ButlerTestSuite) TestPrometheusEnums(c *C) {
+	// FAILURE and SUCCESS are float64, hence the decimal point.
+	c.Assert(FAILURE, Equals, 0.0)
+	c.Assert(SUCCESS, Equals, 1.0)
+}
+
+// Test Suite for butler.SetLogLevel()
+func (s *ButlerTestSuite) TestSetLogLevel(c *C) {
+	tests := []struct {
+		name	string
+		level	log.Level
+	}{
+		{"debug", log.DebugLevel},
+		{"info", log.InfoLevel},
+		{"warn", log.WarnLevel},
+		{"error", log.ErrorLevel},
+		{"fatal", log.FatalLevel},
+		{"panic", log.PanicLevel},
+		{"breakme!", log.InfoLevel},
+	}
+	for _, entry := range tests {
+		logLevel := SetLogLevel(entry.name)
+		c.Assert(logLevel, Equals, entry.level)
+	}
+}
 /*
 func (s *ButlerTestSuite) TestParseConfigFilesJsonOkDefault(c *C) {
 	err := ParseConfigFilesJson(&Files, "")
@@ -37,7 +65,7 @@ func (s *ButlerTestSuite) TestParseConfigFilesJsonNotOkCustom(c *C) {
 	c.Assert(Files.Files, HasLen, 3)
 }
 */
-
+/*
 func (s *ButlerTestSuite) TestParseConfigFilesOkDefault(c *C) {
 	err := ParseConfigFiles(&Files, FileList)
 	c.Assert(err, IsNil)
@@ -60,3 +88,4 @@ func (s *ButlerTestSuite) TestGetPCMSUrls(c *C) {
 	urls := GetPCMSUrls()
 	c.Assert(urls, HasLen, 3)
 }
+*/

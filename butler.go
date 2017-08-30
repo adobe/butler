@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	//"log"
 	"net"
 	"net/http"
 	_ "net/http/pprof"
@@ -258,7 +257,7 @@ func DownloadPCMSFile(u string) *os.File {
 	if err != nil {
 		tmpFile.Close()
 		os.Remove(tmpFile.Name())
-		log.Printf("Could not download from %s, err=%s\n", u, err.Error())
+		log.Infof("Could not download from %s, err=%s\n", u, err.Error())
 		tmpFile = nil
 		return tmpFile
 	}
@@ -267,7 +266,7 @@ func DownloadPCMSFile(u string) *os.File {
 	if response.StatusCode != 200 {
 		tmpFile.Close()
 		os.Remove(tmpFile.Name())
-		log.Printf("Did not receive 200 response code for %s. code=%s\n", u, response.StatusCode)
+		log.Infof("Did not receive 200 response code for %s. code=%s\n", u, response.StatusCode)
 		tmpFile = nil
 		return tmpFile
 	}
@@ -276,7 +275,7 @@ func DownloadPCMSFile(u string) *os.File {
 	if err != nil {
 		tmpFile.Close()
 		os.Remove(tmpFile.Name())
-		log.Printf("Could not download from %s, err=%s\n", u, err.Error())
+		log.Infof("Could not download from %s, err=%s\n", u, err.Error())
 		tmpFile = nil
 		return tmpFile
 	}
@@ -286,17 +285,17 @@ func DownloadPCMSFile(u string) *os.File {
 // CacheConfigs stores the currently known good prometheus configurations
 // into memory
 func CacheConfigs() {
-	log.Printf("Storing known good Prometheus configurations to cache.\n")
+	log.Infof("Storing known good Prometheus configurations to cache.\n")
 	ConfigCache = make(map[string][]byte)
 	for _, file := range AllConfigFiles {
 		out, err := ioutil.ReadFile(GetPrometheusPath(file))
 		if err != nil {
-			log.Printf("Could not store %s to cache. err=%s.\n", GetPrometheusPath(file), err.Error())
+			log.Infof("Could not store %s to cache. err=%s.\n", GetPrometheusPath(file), err.Error())
 		} else {
 			ConfigCache[GetPrometheusPath(file)] = out
 		}
 	}
-	log.Printf("Done storing known good Prometheus configurations to cache.\n")
+	log.Infof("Done storing known good Prometheus configurations to cache.\n")
 }
 
 // RestoreCachedConfigs restores the currently cached prometheus configurations
@@ -304,38 +303,38 @@ func CacheConfigs() {
 func RestoreCachedConfigs() {
 	// If we do not have a good configuration cache, then there's nothing for us to do.
 	if ConfigCache == nil {
-		log.Printf("No current known good Prometheus configurations in cache. Cleaning configuration...\n")
+		log.Infof("No current known good Prometheus configurations in cache. Cleaning configuration...\n")
 		for _, file := range AllConfigFiles {
 			fileName := GetPrometheusPath(file)
-			log.Printf("Removing bad Prometheus configuration file %s.", fileName)
+			log.Infof("Removing bad Prometheus configuration file %s.", fileName)
 			os.Remove(fileName)
 		}
-		log.Printf("Done cleaning broken configuration. Returning...")
+		log.Infof("Done cleaning broken configuration. Returning...")
 		SetButlerKnownGoodRestoredVal(FAILURE)
 		return
 	}
 
-	log.Printf("Restoring known good Prometheus configurations from cache.\n")
+	log.Infof("Restoring known good Prometheus configurations from cache.\n")
 	for _, file := range AllConfigFiles {
 		fileName := GetPrometheusPath(file)
 		fileData := ConfigCache[fileName]
 
 		f, err := os.OpenFile(fileName, os.O_WRONLY|os.O_TRUNC, 0644)
 		if err != nil {
-			log.Printf("Could not open %s for writing! err=%s.\n", fileName, err.Error())
+			log.Infof("Could not open %s for writing! err=%s.\n", fileName, err.Error())
 			continue
 		} else {
 			count, err := f.Write(fileData)
 			if err != nil {
-				log.Printf("Could write to %s! err=%s.\n", fileName, err.Error())
+				log.Infof("Could write to %s! err=%s.\n", fileName, err.Error())
 				continue
 			} else {
 				f.Close()
-				log.Printf("Wrote %d bytes for %s.\n", count, fileName)
+				log.Infof("Wrote %d bytes for %s.\n", count, fileName)
 			}
 		}
 	}
-	log.Printf("Done restoring known good Prometheus configurations from cache.\n")
+	log.Infof("Done restoring known good Prometheus configurations from cache.\n")
 }
 
 // CopyFile copies the src path string to the dst path string. If there is an
@@ -478,7 +477,7 @@ func CheckPaths(Files []string) bool {
 			if err != nil {
 				log.Fatalf(err.Error())
 			}
-			log.Printf("Created directory \"%s\"", dir)
+			log.Infof("Created directory \"%s\"", dir)
 		}
 	}
 	// Check to see if there are any additional files that need to be cleaned up
@@ -547,7 +546,7 @@ func ProcessAdditionalConfigFiles(Files []string, c chan bool) {
 		// we did not get a correct configuration, or there is an issue
 		// with the upstream
 		if err := ValidateButlerConfig(f); err != nil {
-			log.Printf("%s for %s.\n", err.Error(), GetPrometheusPaths(Files)[i])
+			log.Infof("%s for %s.\n", err.Error(), GetPrometheusPaths(Files)[i])
 			SetButlerConfigVal(FAILURE, GetPrometheusLabels(Files)[i])
 			continue
 		} else {
@@ -613,7 +612,7 @@ func ProcessPrometheusConfigFiles(Files []string, c chan bool) {
 		// we did not get a correct configuration, or there is an issue
 		// with the upstream
 		if err := ValidateButlerConfig(f); err != nil {
-			log.Printf("%s for %s.\n", err.Error(), GetPrometheusPaths(Files)[i])
+			log.Infof("%s for %s.\n", err.Error(), GetPrometheusPaths(Files)[i])
 			SetButlerConfigVal(FAILURE, GetPrometheusLabels(Files)[i])
 			RenderFile = false
 			FileMap.Success = false
@@ -626,7 +625,7 @@ func ProcessPrometheusConfigFiles(Files []string, c chan bool) {
 		// For the prometheus.yml we have to do some mustache replacement on downloaded file
 		err := RenderPrometheusYaml(f)
 		if err != nil {
-			log.Printf("%s for %s.\n", err.Error(), GetPrometheusPaths(Files)[i])
+			log.Infof("%s for %s.\n", err.Error(), GetPrometheusPaths(Files)[i])
 			SetButlerRenderVal(FAILURE)
 			SetButlerConfigVal(FAILURE, GetPrometheusLabels(Files)[i])
 			RenderFile = false
@@ -656,7 +655,7 @@ func ProcessPrometheusConfigFiles(Files []string, c chan bool) {
 	if RenderFile {
 		out, err := os.OpenFile(TmpMergedFile.Name(), os.O_WRONLY|os.O_TRUNC, 0644)
 		if err != nil {
-			log.Printf("Could not process and merge new %s err=%s.", PrometheusConfigStatic, err.Error())
+			log.Infof("Could not process and merge new %s err=%s.", PrometheusConfigStatic, err.Error())
 			SetButlerConfigVal(FAILURE, PrometheusConfigStatic)
 			// just giving up at this point
 			// Clean up the temporary files
@@ -672,7 +671,7 @@ func ProcessPrometheusConfigFiles(Files []string, c chan bool) {
 				file := GetPrometheusLabels(Files)[i]
 				in, err := os.Open(LegitFileMap[file].TmpFile)
 				if err != nil {
-					log.Printf("Could not process and merge new %s err=%s.", PrometheusConfigStatic, err.Error())
+					log.Infof("Could not process and merge new %s err=%s.", PrometheusConfigStatic, err.Error())
 					SetButlerConfigVal(FAILURE, GetPrometheusLabels(Files)[i])
 					// just giving up at this point, as well...
 					// Clean up the temporary files
@@ -686,7 +685,7 @@ func ProcessPrometheusConfigFiles(Files []string, c chan bool) {
 				}
 				_, err = io.Copy(out, in)
 				if err != nil {
-					log.Printf("Could not process and merge new %s err=%s.", PrometheusConfigStatic, err.Error())
+					log.Infof("Could not process and merge new %s err=%s.", PrometheusConfigStatic, err.Error())
 					SetButlerConfigVal(FAILURE, GetPrometheusLabels(Files)[i])
 					// just giving up at this point, again...
 					// Clean up the temporary files
@@ -725,11 +724,11 @@ func CompareAndCopy(source string, dest string) bool {
 	cmp := equalfile.New(nil, equalfile.Options{})
 	equal, err := cmp.CompareFile(source, dest)
 	if !equal {
-		log.Printf("Found difference in \"%s.\"  Updating.", dest)
+		log.Infof("Found difference in \"%s.\"  Updating.", dest)
 		err = CopyFile(source, dest)
 		if err != nil {
 			SetButlerWriteVal(FAILURE, GetPrometheusLabel(dest))
-			log.Printf(err.Error())
+			log.Infof(err.Error())
 		}
 		SetButlerWriteVal(SUCCESS, GetPrometheusLabel(dest))
 		return true
@@ -758,7 +757,7 @@ func PCMSHandler() {
 		err := ReloadPrometheusHandler()
 		log.Debugf("PCMSHandler(): reloaded prometheus. err=%#v", err)
 	} else {
-		log.Printf("Found no differences in PCMS files.")
+		log.Infof("Found no differences in PCMS files.")
 	}
 	LastRun = time.Now()
 }
@@ -782,7 +781,7 @@ func PrometheusReloadRetryPolicy(resp *http.Response, err error) (bool, error) {
 
 func ReloadPrometheusHandler() error {
 	var err error
-	log.Printf("Reloading prometheus.")
+	log.Infof("Reloading prometheus.")
 	// curl -v -X POST $HOST:9090/-/reload
 	promUrl := fmt.Sprintf("http://%s:9090/-/reload", PrometheusHost)
 
@@ -799,19 +798,19 @@ func ReloadPrometheusHandler() error {
 
 	resp, err := client.Post(promUrl, "application/json", strings.NewReader(`{}`))
 	if err != nil {
-		log.Printf(err.Error())
+		log.Infof(err.Error())
 		SetButlerReloadVal(FAILURE)
 		return err
 	}
 
 	if resp.StatusCode == 200 {
-		log.Printf("Successfully reloaded prometheus config. http_code=%d.\n", int(resp.StatusCode))
+		log.Infof("Successfully reloaded prometheus config. http_code=%d.\n", int(resp.StatusCode))
 		SetButlerKnownGoodCachedVal(SUCCESS)
 		SetButlerKnownGoodRestoredVal(FAILURE)
 		SetButlerReloadVal(SUCCESS)
 		CacheConfigs()
 	} else {
-		log.Printf("Received bad response from prometheus server. reverting to last known good config. http_code=%d.\n", int(resp.StatusCode))
+		log.Infof("Received bad response from prometheus server. reverting to last known good config. http_code=%d.\n", int(resp.StatusCode))
 		SetButlerKnownGoodCachedVal(FAILURE)
 		SetButlerKnownGoodRestoredVal(FAILURE)
 		SetButlerReloadVal(FAILURE)
@@ -840,7 +839,7 @@ func ParseMustacheSubs(Subs map[string]string, configSubs string) error {
 		p = strings.TrimSpace(p)
 		keyvalpairs := strings.Split(p, "=")
 		if len(keyvalpairs) != 2 {
-			log.Printf("ParseMustacheSubs(): invalid key value pair \"%s\"... ignoring.", keyvalpairs)
+			log.Infof("ParseMustacheSubs(): invalid key value pair \"%s\"... ignoring.", keyvalpairs)
 			continue
 		}
 		key := strings.TrimSpace(keyvalpairs[0])
@@ -928,6 +927,7 @@ func main() {
 		configHttpRetries      = flag.Int("http.retries", 4, "The number of http retries for GET requests to obtain the butler configuration files")
 		configHttpRetryWaitMin = flag.Int("http.retry_wait_min", 5, "The minimum amount of time to wait before attemping to retry the http config get operation.")
 		configHttpRetryWaitMax = flag.Int("http.retry_wait_max", 10, "The maximum amount of time to wait before attemping to retry the http config get operation.")
+		configLogLevel         = flag.String("log.level", "info", "The butler log level. Log levels are: debug, info, warn, error, fatal, panic.")
 	)
 	flag.Parse()
 	log.SetLevel(SetLogLevel(*configLogLevel))
@@ -944,7 +944,7 @@ func main() {
 		ButlerConfigPath = *configPath
 	}
 
-	log.Printf("Starting butler version %s\n", version)
+	log.Infof("Starting butler version %s", version)
 
 	// Set the HTTP Timeout
 	log.Debugf("main(): setting HttpTimeout to %d", *configHttpTimeout)
@@ -1017,8 +1017,8 @@ func main() {
 	for {
 		err = ButlerConfigHandler()
 		if err != nil {
-			log.Printf("Cannot retrieve butler configuration. err=%s", err.Error())
-			log.Printf("Sleeping 5 seconds.")
+			log.Infof("Cannot retrieve butler configuration. err=%s", err.Error())
+			log.Infof("Sleeping 5 seconds.")
 			time.Sleep(5 * time.Second)
 		} else {
 			break
@@ -1037,8 +1037,8 @@ func main() {
 	*/
 
 	sched := gocron.NewScheduler()
-	log.Printf("starting scheduler...")
-	log.Printf("Running butler configuration scheduler every %d seconds", *configInterval)
+	log.Debugf("main(): starting scheduler...")
+	log.Debugf("main(): running butler configuration scheduler every %d seconds", *configInterval)
 	sched.Every(uint64(*configInterval)).Seconds().Do(ButlerConfigHandler)
 	//sched.Every(uint64(configSchedulerIntFlag)).Seconds().Do(PCMSHandler)
 

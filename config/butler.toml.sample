@@ -2,9 +2,9 @@
 title = "Butler Configuration"
 
 [globals]
-  ## The Config handlers are where we define which sections we want to support
+  ## The Config managers are where we define which sections we want to support
   ## for butler configuration management
-  config-handlers = ["prometheus", "alertmanager"]
+  config-managers = ["prometheus", "alertmanager"]
 
   ## Scheduler Interval is how often we try to grab configurations from repo
   ## Default: 300
@@ -49,8 +49,8 @@ title = "Butler Configuration"
     ## These are repo specific http get options
     [prometheus.repo1.adobe.net.http]
       retries = 5
-      retry_wait_min = 5
-      retry_wait_max = 10
+      retry-wait-min = 5
+      retry-wait-max = 10
       timeout = 10
 
   ## This will be processed second (and appended / replaced depending)
@@ -74,8 +74,8 @@ title = "Butler Configuration"
     ## These are repo specific http get options
     [prometheus.repo2.adobe.net.http]
       retries = 5
-      retry_wait_min = 5
-      retry_wait_max = 10
+      retry-wait-min = 5
+      retry-wait-max = 10
       timeout = 10
 
   ## These are the options for reloading the prometheus config-handler
@@ -90,8 +90,8 @@ title = "Butler Configuration"
       payload = ""
       # retry info and timeouts
       retries = 5
-      retry_wait_min = 5
-      retry_wait_max = 10
+      retry-wait-min = 5
+      retry-wait-max = 10
       timeout = 10
 
 ## This is the definition for the alertmanager configuration handler
@@ -120,8 +120,8 @@ title = "Butler Configuration"
     ## These are repo specific http get options
     [alertmanager.repo4.adobe.net.http]
       retries = 5
-      retry_wait_min = 5
-      retry_wait_max = 10
+      retry-wait-min = 5
+      retry-wait-max = 10
       timeout = 10
 
   ## This will be processed second (and appended / replaced depending)
@@ -144,8 +144,8 @@ title = "Butler Configuration"
     ## These are repo specific http get options
     [alertmanager.repo1.adobe.net.http]
       retries = 5
-      retry_wait_min = 5
-      retry_wait_max = 10
+      retry-wait-min = 5
+      retry-wait-max = 10
       timeout = 10
 
   ## These are the options for reloading the alertmanager config-handler
@@ -160,7 +160,7 @@ title = "Butler Configuration"
       payload = ""
       # retry info and timeouts
       retries = 5
-      retry_wait_min = 5
-      retry_wait_max = 10
+      retry-wait-min = 5
+      retry-wait-max = 10
       timeout = 10
 #butlerend

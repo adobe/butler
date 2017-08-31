@@ -1,17 +1,17 @@
-SERVICE_NAME=butler
-BUILDER_TAG?=$(or $(sha),$(SERVICE_NAME)-builder)
-TESTER_TAG?=$(or $(sha),$(SERVICE_NAME)-tester)
+export SERVICE_NAME=butler
+export BUILDER_TAG?=$(or $(sha),$(SERVICE_NAME)-builder)
+export TESTER_TAG?=$(or $(sha),$(SERVICE_NAME)-tester)
 
 IMAGE_TAG=$(SERVICE_NAME)-img
 
 GO:=go
 pkgs=$(shell $(GO) list ./... | egrep -v "(vendor)")
 
-ARTIFACTORY_USER=$(shell echo "$$ARTIFACTORY_USER")
-ARTIFACTORY_REPO=butler
-ARTIFACTORY_VERSION=1.0.0
-ARTIFACTORY_PROD_HOST=docker-ethos-core-univ-release.dr-uw2.adobeitc.com
-ARTIFACTORY_DEV_HOST=docker-ethos-core-univ-dev.dr-uw2.adobeitc.com
+export ARTIFACTORY_USER=$(shell echo "$$ARTIFACTORY_USER")
+export ARTIFACTORY_REPO=butler
+export ARTIFACTORY_VERSION=1.0.0
+export ARTIFACTORY_PROD_HOST=docker-ethos-core-univ-release.dr-uw2.adobeitc.com
+export ARTIFACTORY_DEV_HOST=docker-ethos-core-univ-dev.dr-uw2.adobeitc.com
 
 default: ci
 
@@ -28,17 +28,19 @@ build-local:
 	@$(GO) fmt $(pkgs)
 	@$(GO) build butler.go config.go promfuncs.go
 
-pre-deploy-build:
-	@docker build -t $(TESTER_TAG) -f Dockerfile-test .
-	@docker run -it --rm $(TESTER_TAG)
+pre-deploy-build: test
 
 post-deploy-build:
 	@echo "Nothing is defined in post-deploy-build step"
 
 test:
-# Have to fix the docker testing
-#	@docker build -t $(TESTER_TAG) -f Dockerfile-test .
-#	@docker run -it --rm $(TESTER_TAG)
+	@docker build -t $(TESTER_TAG) -f Dockerfile-test .
+	@docker run -it $(TESTER_TAG)
+
+enter-test:
+	@./files/enter_test_container.sh
+
+test-local:
 	@go test -check.vv -coverprofile=/tmp/coverage.out -v
 
 build-$(ARTIFACTORY_REPO):

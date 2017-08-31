@@ -11,11 +11,9 @@ fi
 
 mkdir -p $BUTLER_GO_PATH
 cd $BUTLER_GO_PATH
-rm -v /root/butler/vendor/vendor.json
-mv /root/butler/vendor/* /root/go/src
+#rm -v /root/butler/vendor/vendor.json
+#mv /root/butler/vendor/* /root/go/src
 mv /root/butler/*.go .
-
-go get gopkg.in/check.v1
 
 go test -check.vv -coverprofile=/tmp/coverage.out
 ret=$?

@@ -28,8 +28,8 @@ func (s *ButlerTestSuite) TestPrometheusEnums(c *C) {
 // Test Suite for butler.SetLogLevel()
 func (s *ButlerTestSuite) TestSetLogLevel(c *C) {
 	tests := []struct {
-		name	string
-		level	log.Level
+		name  string
+		level log.Level
 	}{
 		{"debug", log.DebugLevel},
 		{"info", log.InfoLevel},
@@ -44,6 +44,7 @@ func (s *ButlerTestSuite) TestSetLogLevel(c *C) {
 		c.Assert(logLevel, Equals, entry.level)
 	}
 }
+
 /*
 func (s *ButlerTestSuite) TestParseConfigFilesJsonOkDefault(c *C) {
 	err := ParseConfigFilesJson(&Files, "")

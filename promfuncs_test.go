@@ -1,6 +1,6 @@
 package main
 
-import  (
+import (
 	"time"
 
 	. "gopkg.in/check.v1"

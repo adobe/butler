@@ -9,6 +9,12 @@
 			"revisionTime": "2016-08-04T10:47:26Z"
 		},
 		{
+			"checksumSHA1": "RLfOCgdVA03Bq45pbBXjbCIPftA=",
+			"path": "github.com/bouk/monkey",
+			"revision": "5dace501dd6dad5b369748946db553903c8e839c",
+			"revisionTime": "2017-03-20T16:26:55Z"
+		},
+		{
 			"checksumSHA1": "x2Km0Qy3WgJJnV19Zv25VwTJcBM=",
 			"path": "github.com/fsnotify/fsnotify",
 			"revision": "4da3e2cfbabc9f751898f250b49f2439785783a1",

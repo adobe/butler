@@ -1,14 +1,19 @@
 FROM golang:1.8.1-alpine
 LABEL maintaner="Stegen Smith <matthsmi@adobe.com>
 
-RUN mkdir /root/butler
+RUN mkdir -p /root/butler /root/go/src
 COPY ./files/doit.sh /doit.sh
 COPY ./files/build_test.sh /root/build.sh
-COPY butler.go /root/butler/butler.go
-COPY config.go /root/butler/config.go
-COPY promfuncs.go /root/butler/promfuncs.go
-COPY butler_test.go /root/butler/butler_test.go
-COPY ./vendor /root/butler/vendor
+
+#COPY butler.go /root/butler/butler.go
+#COPY config.go /root/butler/config.go
+#COPY promfuncs.go /root/butler/promfuncs.go
+#COPY butler_test.go /root/butler/butler_test.go
+
+COPY *.go /root/butler/
+COPY ./vendor/github.com /root/go/src/github.com
+COPY ./vendor/golang.org /root/go/src/golang.org
+COPY ./vendor/gopkg.in /root/go/src/gopkg.in
 
 RUN apk update && apk add bash git
 

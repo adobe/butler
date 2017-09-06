@@ -1,22 +1,32 @@
-package main
+package stats
 
 import (
 	"time"
 
 	. "gopkg.in/check.v1"
+	"testing"
 	//log "github.com/sirupsen/logrus"
 	"github.com/prometheus/client_model/go"
 )
 
-type ButlerPromTestSuite struct {
+func Test(t *testing.T) { TestingT(t) }
+
+type ButlerStatsTestSuite struct {
 }
 
-var _ = Suite(&ButlerPromTestSuite{})
+var _ = Suite(&ButlerStatsTestSuite{})
 
-func (s *ButlerPromTestSuite) SetUpSuite(c *C) {
+func (s *ButlerStatsTestSuite) SetUpSuite(c *C) {
 }
 
-func (s *ButlerPromTestSuite) TestSetButlerReloadVal(c *C) {
+// Test Suite for the butler prometheus SUCCESS/FAILURE enumeration
+func (s *ButlerStatsTestSuite) TestPrometheusEnums(c *C) {
+	// FAILURE and SUCCESS are float64, hence the decimal point.
+	c.Assert(FAILURE, Equals, 0.0)
+	c.Assert(SUCCESS, Equals, 1.0)
+}
+
+func (s *ButlerStatsTestSuite) TestSetButlerReloadVal(c *C) {
 	metric_success := io_prometheus_client.Metric{}
 	metric_success_ts := io_prometheus_client.Metric{}
 	metric_failure := io_prometheus_client.Metric{}

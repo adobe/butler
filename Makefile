@@ -26,7 +26,7 @@ build:
 
 build-local:
 	@$(GO) fmt $(pkgs)
-	@$(GO) build butler.go config.go promfuncs.go
+	@$(GO) build
 
 pre-deploy-build: test
 
@@ -41,7 +41,7 @@ enter-test:
 	@./files/enter_test_container.sh
 
 test-local:
-	@go test -check.vv -coverprofile=/tmp/coverage.out -v
+	@go test $(pkgs) -check.vv -v
 
 build-$(ARTIFACTORY_REPO):
 	@docker build -t $(ARTIFACTORY_REPO):$(ARTIFACTORY_VERSION) .
@@ -81,7 +81,7 @@ help:
 	@printf "make prometheus-logs\t\tTail the logs of the test prometheus instance.\n"
 
 run:
-	$(GO) run butler.go config.go promfuncs.go -config.path woden.corp.adobe.com/butler/config/butler.toml -config.scheme http -config.retrieve-interval 10 -log.level debug
+	$(GO) run butler.go -config.path woden.corp.adobe.com/butler/config/butler.toml -config.scheme http -config.retrieve-interval 10 -log.level debug
 
 start-prometheus:
 	@docker run --rm -it --name=prometheus -d -p 9090:9090 -v /opt/prometheus:/etc/prometheus prom/prometheus -config.file=/etc/prometheus/prometheus.yml -storage.local.path=/prometheus -storage.local.memory-chunks=104857

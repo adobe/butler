@@ -7,7 +7,7 @@ export BUTLER_GO_PATH=/root/go/src/git.corp.adobe.com/TechOps-IAO/butler
 
 mkdir -p $BUTLER_GO_PATH
 cd $BUTLER_GO_PATH
-mv /root/butler/* .
+cp -Rp /root/butler/* .
 
 go build
 

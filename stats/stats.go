@@ -1,4 +1,4 @@
-package main
+package stats
 
 import (
 	"github.com/prometheus/client_golang/prometheus"
@@ -17,6 +17,17 @@ var (
 	ButlerRenderTime        prometheus.Gauge
 	ButlerWriteSuccess      *prometheus.GaugeVec
 	ButlerWriteTime         *prometheus.GaugeVec
+)
+
+// FAILURE and SUCCESS are float64 enumerations which are used to set the
+// success or failure flags for the prometheus check gauges
+//
+// These need to be outside of the previous const due to them being an
+// enumeration, and putting them in the previous const will mess up the
+// ordering.
+const (
+	FAILURE float64 = 0 + iota
+	SUCCESS
 )
 
 func SetButlerReloadVal(res float64) {

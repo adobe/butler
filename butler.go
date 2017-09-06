@@ -1,8 +1,6 @@
 package main
 
 import (
-	"bufio"
-	"bytes"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -12,12 +10,14 @@ import (
 	"net"
 	"net/http"
 	_ "net/http/pprof"
-	"net/url"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"git.corp.adobe.com/TechOps-IAO/butler/config"
+	"git.corp.adobe.com/TechOps-IAO/butler/stats"
 
 	"github.com/hashicorp/go-retryablehttp"
 	"github.com/hoisie/mustache"
@@ -35,11 +35,7 @@ var (
 	AdditionalConfig        = "alerts/commonalerts.yml,alerts/tenant.yml"
 	PrometheusRootDirectory = "/opt/prometheus"
 	PrometheusHost          string
-	ButlerRawConfig         []byte
-	ButlerConfig            ButlerConfigSettings
 	ButlerConfigInterval    int
-	ButlerConfigPath        string
-	ButlerConfigScheme      string
 	ButlerConfigUrl         string
 	ConfigCache             map[string][]byte
 	AllConfigFiles          []string
@@ -52,26 +48,6 @@ var (
 	HttpRetryWaitMin        int
 	HttpRetryWaitMax        int
 	RequiredSubKeys         = []string{"ethos-cluster-id"}
-)
-
-// butlerHeader and butlerFooter represent the strings that need to be matched
-// against in the configuration files. If these entries do not exist in the
-// downloaded file, then we cannot be assured that these files are legitimate
-// configurations.
-const (
-	butlerHeader = "#butlerstart"
-	butlerFooter = "#butlerend"
-)
-
-// FAILURE and SUCCESS are float64 enumerations which are used to set the
-// success or failure flags for the prometheus check gauges
-//
-// These need to be outside of the previous const due to them being an
-// enumeration, and putting them in the previous const will mess up the
-// ordering.
-const (
-	FAILURE float64 = 0 + iota
-	SUCCESS
 )
 
 // Monitor is the empty structure to be used for starting up the monitor
@@ -310,7 +286,7 @@ func RestoreCachedConfigs() {
 			os.Remove(fileName)
 		}
 		log.Infof("Done cleaning broken configuration. Returning...")
-		SetButlerKnownGoodRestoredVal(FAILURE)
+		stats.SetButlerKnownGoodRestoredVal(stats.FAILURE)
 		return
 	}
 
@@ -393,77 +369,6 @@ func RenderPrometheusYaml(f *os.File) error {
 	return nil
 }
 
-// ValidateButlerConfig takes a pointer to an os.File object. It scans over the
-// file and ensures that it begins with the proper header, and ends with the
-// proper footer. If it does not begin or end with the proper header/footer,
-// then an error is returned. If the file passes the checks, a nil is returned.
-//func ValidateButlerConfig(f *os.File) error {
-func ValidateButlerConfig(f interface{}) error {
-	var (
-		configLine    string
-		isFirstLine   bool
-		isValidHeader bool
-		isValidFooter bool
-		scanner       *bufio.Scanner
-	)
-	isFirstLine = true
-	isValidHeader = true
-	isValidFooter = true
-
-	switch t := f.(type) {
-	case *os.File:
-		newf := f.(*os.File)
-		file, err := os.Open(newf.Name())
-		if err != nil {
-			return err
-		}
-		defer file.Close()
-		scanner = bufio.NewScanner(file)
-	case []byte:
-		newf := f.([]byte)
-		file := bytes.NewReader(newf)
-		scanner = bufio.NewScanner(file)
-	default:
-		return errors.New(fmt.Sprintf("ValidateButlerConfig(): unknown file type %s for %s", t, f))
-	}
-
-	/*
-		file, err := os.Open(f.Name())
-		if err != nil {
-			return err
-		}
-		defer file.Close()
-	*/
-
-	//scanner = bufio.NewScanner(file)
-	for scanner.Scan() {
-		configLine = scanner.Text()
-		// Check that the header is valid
-		if isFirstLine {
-			if configLine != butlerHeader {
-				isValidHeader = false
-			}
-			isFirstLine = false
-		}
-	}
-	// Check that the footer is valid
-	if configLine != butlerFooter {
-		if configLine != butlerFooter {
-			isValidFooter = false
-		}
-	}
-
-	if !isValidHeader && !isValidFooter {
-		return errors.New("Invalid butler header and footer")
-	} else if !isValidHeader {
-		return errors.New("Invalid butler header")
-	} else if !isValidFooter {
-		return errors.New("Invalid butler footer")
-	} else {
-		return nil
-	}
-}
-
 // CheckPaths checks takes a slice of full paths to a file, and checks to see
 // if the underlying directory exists. If the path does not exist, it will
 // create a new directory.
@@ -535,22 +440,22 @@ func ProcessAdditionalConfigFiles(Files []string, c chan bool) {
 		// Grab the remote file into a local temp file
 		f := DownloadPCMSFile(u)
 		if f == nil {
-			SetButlerContactVal(FAILURE, GetPrometheusLabels(Files)[i])
+			stats.SetButlerContactVal(stats.FAILURE, GetPrometheusLabels(Files)[i])
 			continue
 		} else {
-			SetButlerContactVal(SUCCESS, GetPrometheusLabels(Files)[i])
+			stats.SetButlerContactVal(stats.SUCCESS, GetPrometheusLabels(Files)[i])
 		}
 
 		// Let's ensure that the files starts with #butlerstart and
 		// ends with #butlerend. If they do not, then we will assume
 		// we did not get a correct configuration, or there is an issue
 		// with the upstream
-		if err := ValidateButlerConfig(f); err != nil {
+		if err := config.ValidateButlerConfig(f); err != nil {
 			log.Infof("%s for %s.\n", err.Error(), GetPrometheusPaths(Files)[i])
-			SetButlerConfigVal(FAILURE, GetPrometheusLabels(Files)[i])
+			stats.SetButlerConfigVal(stats.FAILURE, GetPrometheusLabels(Files)[i])
 			continue
 		} else {
-			SetButlerConfigVal(SUCCESS, GetPrometheusLabels(Files)[i])
+			stats.SetButlerConfigVal(stats.SUCCESS, GetPrometheusLabels(Files)[i])
 		}
 
 		ModifiedFileMap[f.Name()] = CompareAndCopy(f.Name(), GetPrometheusPaths(Files)[i])
@@ -596,12 +501,12 @@ func ProcessPrometheusConfigFiles(Files []string, c chan bool) {
 		// Grab the remote file into a local temp file
 		f := DownloadPCMSFile(u)
 		if f == nil {
-			SetButlerContactVal(FAILURE, GetPrometheusLabels(Files)[i])
+			stats.SetButlerContactVal(stats.FAILURE, GetPrometheusLabels(Files)[i])
 			FileMap.Success = false
 			RenderFile = false
 			continue
 		} else {
-			SetButlerContactVal(SUCCESS, GetPrometheusLabels(Files)[i])
+			stats.SetButlerContactVal(stats.SUCCESS, GetPrometheusLabels(Files)[i])
 			FileMap.Success = true
 		}
 
@@ -611,14 +516,14 @@ func ProcessPrometheusConfigFiles(Files []string, c chan bool) {
 		// ends with #butlerend. If they do not, then we will assume
 		// we did not get a correct configuration, or there is an issue
 		// with the upstream
-		if err := ValidateButlerConfig(f); err != nil {
+		if err := config.ValidateButlerConfig(f); err != nil {
 			log.Infof("%s for %s.\n", err.Error(), GetPrometheusPaths(Files)[i])
-			SetButlerConfigVal(FAILURE, GetPrometheusLabels(Files)[i])
+			stats.SetButlerConfigVal(stats.FAILURE, GetPrometheusLabels(Files)[i])
 			RenderFile = false
 			FileMap.Success = false
 			continue
 		} else {
-			SetButlerConfigVal(SUCCESS, GetPrometheusLabels(Files)[i])
+			stats.SetButlerConfigVal(stats.SUCCESS, GetPrometheusLabels(Files)[i])
 			FileMap.Success = true
 		}
 
@@ -626,14 +531,14 @@ func ProcessPrometheusConfigFiles(Files []string, c chan bool) {
 		err := RenderPrometheusYaml(f)
 		if err != nil {
 			log.Infof("%s for %s.\n", err.Error(), GetPrometheusPaths(Files)[i])
-			SetButlerRenderVal(FAILURE)
-			SetButlerConfigVal(FAILURE, GetPrometheusLabels(Files)[i])
+			stats.SetButlerRenderVal(stats.FAILURE)
+			stats.SetButlerConfigVal(stats.FAILURE, GetPrometheusLabels(Files)[i])
 			RenderFile = false
 			FileMap.Success = false
 			continue
 		} else {
-			SetButlerRenderVal(SUCCESS)
-			SetButlerConfigVal(SUCCESS, GetPrometheusLabels(Files)[i])
+			stats.SetButlerRenderVal(stats.SUCCESS)
+			stats.SetButlerConfigVal(stats.SUCCESS, GetPrometheusLabels(Files)[i])
 			FileMap.Success = true
 		}
 
@@ -656,7 +561,7 @@ func ProcessPrometheusConfigFiles(Files []string, c chan bool) {
 		out, err := os.OpenFile(TmpMergedFile.Name(), os.O_WRONLY|os.O_TRUNC, 0644)
 		if err != nil {
 			log.Infof("Could not process and merge new %s err=%s.", PrometheusConfigStatic, err.Error())
-			SetButlerConfigVal(FAILURE, PrometheusConfigStatic)
+			stats.SetButlerConfigVal(stats.FAILURE, PrometheusConfigStatic)
 			// just giving up at this point
 			// Clean up the temporary files
 			for _, file := range TmpFiles {
@@ -672,7 +577,7 @@ func ProcessPrometheusConfigFiles(Files []string, c chan bool) {
 				in, err := os.Open(LegitFileMap[file].TmpFile)
 				if err != nil {
 					log.Infof("Could not process and merge new %s err=%s.", PrometheusConfigStatic, err.Error())
-					SetButlerConfigVal(FAILURE, GetPrometheusLabels(Files)[i])
+					stats.SetButlerConfigVal(stats.FAILURE, GetPrometheusLabels(Files)[i])
 					// just giving up at this point, as well...
 					// Clean up the temporary files
 					for _, file := range TmpFiles {
@@ -686,7 +591,7 @@ func ProcessPrometheusConfigFiles(Files []string, c chan bool) {
 				_, err = io.Copy(out, in)
 				if err != nil {
 					log.Infof("Could not process and merge new %s err=%s.", PrometheusConfigStatic, err.Error())
-					SetButlerConfigVal(FAILURE, GetPrometheusLabels(Files)[i])
+					stats.SetButlerConfigVal(stats.FAILURE, GetPrometheusLabels(Files)[i])
 					// just giving up at this point, again...
 					// Clean up the temporary files
 					for _, file := range TmpFiles {
@@ -727,10 +632,10 @@ func CompareAndCopy(source string, dest string) bool {
 		log.Infof("Found difference in \"%s.\"  Updating.", dest)
 		err = CopyFile(source, dest)
 		if err != nil {
-			SetButlerWriteVal(FAILURE, GetPrometheusLabel(dest))
+			stats.SetButlerWriteVal(stats.FAILURE, GetPrometheusLabel(dest))
 			log.Infof(err.Error())
 		}
-		SetButlerWriteVal(SUCCESS, GetPrometheusLabel(dest))
+		stats.SetButlerWriteVal(stats.SUCCESS, GetPrometheusLabel(dest))
 		return true
 	} else {
 		return false
@@ -799,21 +704,21 @@ func ReloadPrometheusHandler() error {
 	resp, err := client.Post(promUrl, "application/json", strings.NewReader(`{}`))
 	if err != nil {
 		log.Infof(err.Error())
-		SetButlerReloadVal(FAILURE)
+		stats.SetButlerReloadVal(stats.FAILURE)
 		return err
 	}
 
 	if resp.StatusCode == 200 {
 		log.Infof("Successfully reloaded prometheus config. http_code=%d.\n", int(resp.StatusCode))
-		SetButlerKnownGoodCachedVal(SUCCESS)
-		SetButlerKnownGoodRestoredVal(FAILURE)
-		SetButlerReloadVal(SUCCESS)
+		stats.SetButlerKnownGoodCachedVal(stats.SUCCESS)
+		stats.SetButlerKnownGoodRestoredVal(stats.FAILURE)
+		stats.SetButlerReloadVal(stats.SUCCESS)
 		CacheConfigs()
 	} else {
 		log.Infof("Received bad response from prometheus server. reverting to last known good config. http_code=%d.\n", int(resp.StatusCode))
-		SetButlerKnownGoodCachedVal(FAILURE)
-		SetButlerKnownGoodRestoredVal(FAILURE)
-		SetButlerReloadVal(FAILURE)
+		stats.SetButlerKnownGoodCachedVal(stats.FAILURE)
+		stats.SetButlerKnownGoodRestoredVal(stats.FAILURE)
+		stats.SetButlerReloadVal(stats.FAILURE)
 		RestoreCachedConfigs()
 	}
 
@@ -940,29 +845,38 @@ func main() {
 
 	if *configPath == "" {
 		log.Fatal("You must provide a -config.path for a path to the butler configuration.")
-	} else {
-		ButlerConfigPath = *configPath
 	}
 
 	log.Infof("Starting butler version %s", version)
 
+	bc := config.NewButlerConfig()
+	bc.SetScheme(*configScheme)
+	bc.SetPath(*configPath)
+
 	// Set the HTTP Timeout
 	log.Debugf("main(): setting HttpTimeout to %d", *configHttpTimeout)
-	HttpTimeout = *configHttpTimeout
+	bc.SetTimeout(*configHttpTimeout)
+	//HttpTimeout = *configHttpTimeout
 
 	// Set the HTTP Retries Counter
 	log.Debugf("main(): setting HttpRetries to %d", *configHttpRetries)
-	HttpRetries = *configHttpRetries
+	bc.SetRetries(*configHttpRetries)
+	//HttpRetries = *configHttpRetries
 
 	// Set the HTTP Holdoff Values
-	HttpRetryWaitMin = *configHttpRetryWaitMin
-	HttpRetryWaitMax = *configHttpRetryWaitMax
+	log.Debugf("main(): setting RetryWaitMin[%d] and RetryWaitMax[%d]", *configHttpRetryWaitMin, *configHttpRetryWaitMax)
+	//HttpRetryWaitMin = *configHttpRetryWaitMin
+	//HttpRetryWaitMax = *configHttpRetryWaitMax
+	bc.SetRetryWaitMin(*configHttpRetryWaitMin)
+	bc.SetRetryWaitMax(*configHttpRetryWaitMax)
 
 	// Set the butler configuration retrieval interval
-	ButlerConfigInterval = *configInterval
+	log.Debugf("main(): setting ConfigInterval to %d", *configInterval)
+	//ButlerConfigInterval = *configInterval
+	bc.SetInterval(*configInterval)
 
 	// Set the butler configuration retrieval scheme
-	ButlerConfigScheme = strings.ToLower(*configScheme)
+	//ButlerConfigScheme = strings.ToLower(*configScheme)
 
 	/*
 		if *configPrometheusHost == "" {
@@ -1001,10 +915,17 @@ func main() {
 	//PrometheusConfigFiles = ParseConfigFiles(*configPrometheusConfigFlag)
 	//AdditionalConfigFiles = ParseConfigFiles(*configAdditionalConfigFlag)
 
-	ButlerConfigUrl = fmt.Sprintf("%s://%s", ButlerConfigScheme, ButlerConfigPath)
+	/*
+		ButlerConfigUrl = fmt.Sprintf("%s://%s", ButlerConfigScheme, ButlerConfigPath)
 
-	if _, err = url.ParseRequestURI(ButlerConfigUrl); err != nil {
-		log.Fatalf("Cannot parse ButlerConfigUrl=%s", ButlerConfigUrl)
+
+		if _, err = url.ParseRequestURI(ButlerConfigUrl); err != nil {
+			log.Fatalf("Cannot parse ButlerConfigUrl=%s", ButlerConfigUrl)
+		}
+		err = bc.Init()
+	*/
+	if err = bc.Init(); err != nil {
+		log.Fatalf("Cannot initialize butler config. err=%s", err.Error())
 	}
 
 	// Start up the monitor web server
@@ -1015,7 +936,8 @@ func main() {
 	// Going to do this in an endless loop until we initially
 	// grab a configuration file.
 	for {
-		err = ButlerConfigHandler()
+		//err = ButlerConfigHandler()
+		err = bc.Handler()
 		if err != nil {
 			log.Infof("Cannot retrieve butler configuration. err=%s", err.Error())
 			log.Infof("Sleeping 5 seconds.")
@@ -1038,8 +960,9 @@ func main() {
 
 	sched := gocron.NewScheduler()
 	log.Debugf("main(): starting scheduler...")
-	log.Debugf("main(): running butler configuration scheduler every %d seconds", *configInterval)
-	sched.Every(uint64(*configInterval)).Seconds().Do(ButlerConfigHandler)
+	log.Debugf("main(): running butler configuration scheduler every %d seconds", bc.GetInterval())
+
+	sched.Every(uint64(bc.GetInterval())).Seconds().Do(bc.Handler)
 	//sched.Every(uint64(configSchedulerIntFlag)).Seconds().Do(PCMSHandler)
 
 	<-sched.Start()

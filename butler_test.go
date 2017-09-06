@@ -18,13 +18,6 @@ func (s *ButlerTestSuite) SetUpSuite(c *C) {
 	//ParseConfigFiles(&Files, FileList)
 }
 
-// Test Suite for the butler prometheus SUCCESS/FAILURE enumeration
-func (s *ButlerTestSuite) TestPrometheusEnums(c *C) {
-	// FAILURE and SUCCESS are float64, hence the decimal point.
-	c.Assert(FAILURE, Equals, 0.0)
-	c.Assert(SUCCESS, Equals, 1.0)
-}
-
 // Test Suite for butler.SetLogLevel()
 func (s *ButlerTestSuite) TestSetLogLevel(c *C) {
 	tests := []struct {

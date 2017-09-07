@@ -1,6 +1,7 @@
 package config
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -18,6 +19,7 @@ type ButlerConfig struct {
 	Path         string
 	Scheme       string
 	Timeout      int
+	RawConfig    []byte
 	Retries      int
 	RetryWaitMin int
 	RetryWaitMax int
@@ -50,6 +52,11 @@ func (bc *ButlerConfig) SetInterval(t int) error {
 	log.Debugf("ButlerConfig::SetInterval(): setting bc.Interval=%v", t)
 	bc.Interval = t
 	return nil
+}
+
+func (bc *ButlerConfig) GetCMInterval() int {
+	log.Debugf("ButlerConfig::GetCMInterval(): getting bc.Config.Globals.SchedulerInterval=%v", bc.Config.Globals.SchedulerInterval)
+	return bc.Config.Globals.SchedulerInterval
 }
 
 func (bc *ButlerConfig) GetInterval() int {
@@ -87,6 +94,12 @@ func (bc *ButlerConfig) SetUrl(u string) error {
 	return nil
 }
 
+func (bc *ButlerConfig) SetLogLevel(level log.Level) {
+	log.SetLevel(level)
+	log.SetFormatter(&log.TextFormatter{FullTimestamp: true})
+	log.Debugf("ButlerConfig::SetLogLevel(): setting log level to %s", level)
+}
+
 func (bc *ButlerConfig) Init() error {
 	log.Debugf("ButlerConfig::Init(): initializing butler config.")
 	var err error
@@ -119,6 +132,7 @@ func (bc *ButlerConfig) Init() error {
 }
 
 func (bc *ButlerConfig) Handler() error {
+	log.Debugf("ButlerConfig::Handler(): entering.")
 	response, err := bc.Client.Get(bc.Url)
 	if err != nil {
 		return err
@@ -141,11 +155,39 @@ func (bc *ButlerConfig) Handler() error {
 		return err
 	}
 
-	if ButlerRawConfig == nil {
-		out, err := bc.Config.ParseButlerConfig(body)
-		_ = out
+	if bc.RawConfig == nil {
+		err := bc.Config.ParseButlerConfig(body)
 		if err != nil {
+			if bc.Config.Globals.ExitOnFailure {
+				log.Fatal(err)
+			} else {
+				return err
+			}
+		} else {
+			log.Debugf("ButlerConfig::Handler(): bc.RawConfig is nil. Filling it up.")
+			bc.RawConfig = body
 		}
 	}
+
+	if !bytes.Equal(bc.RawConfig, body) {
+		err := bc.Config.ParseButlerConfig(body)
+		if err != nil {
+			if bc.Config.Globals.ExitOnFailure {
+				log.Fatal(err)
+			} else {
+				return err
+			}
+		} else {
+			log.Debugf("ButlerConfig::Handler(): butler config has changed. updating.")
+			bc.RawConfig = body
+		}
+	} else {
+		log.Debugf("ButlerConfig::Handler(): butler config unchanged.")
+	}
+	return nil
+}
+
+func (bc *ButlerConfig) RunCMHandler() error {
+	log.Debugf("ButlerConfig::RunCMHandler(): entering")
 	return nil
 }

@@ -850,6 +850,7 @@ func main() {
 	log.Infof("Starting butler version %s", version)
 
 	bc := config.NewButlerConfig()
+	bc.SetLogLevel(SetLogLevel(*configLogLevel))
 	bc.SetScheme(*configScheme)
 	bc.SetPath(*configPath)
 
@@ -937,6 +938,7 @@ func main() {
 	// grab a configuration file.
 	for {
 		//err = ButlerConfigHandler()
+		log.Debugf("main(): running first bc.Handler()")
 		err = bc.Handler()
 		if err != nil {
 			log.Infof("Cannot retrieve butler configuration. err=%s", err.Error())
@@ -960,9 +962,15 @@ func main() {
 
 	sched := gocron.NewScheduler()
 	log.Debugf("main(): starting scheduler...")
-	log.Debugf("main(): running butler configuration scheduler every %d seconds", bc.GetInterval())
 
+	log.Debugf("main(): running butler configuration scheduler every %d seconds", bc.GetInterval())
 	sched.Every(uint64(bc.GetInterval())).Seconds().Do(bc.Handler)
+
+	log.Debugf("main(): doing initial run of butler configuration management handler")
+	bc.RunCMHandler()
+
+	log.Debugf("main(): running butler configuration management scheduler every %d seconds", bc.GetCMInterval())
+	sched.Every(uint64(bc.GetCMInterval())).Seconds().Do(bc.RunCMHandler)
 	//sched.Every(uint64(configSchedulerIntFlag)).Seconds().Do(PCMSHandler)
 
 	<-sched.Start()

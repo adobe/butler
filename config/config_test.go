@@ -327,5 +327,5 @@ func (s *ButlerConfigTestSuite) TestGetButlerManagerOptsFullCheck(c *C) {
 	err = GetButlerManagerOpts("testing.localhost", &ButlerConfigSettings{})
 	c.Assert(err, NotNil)
 	// stegen
-	//c.Assert(err.Error(), Matches, "unknown manager.method.*")
+	c.Assert(err.Error(), Matches, "unknown manager.method.*")
 }

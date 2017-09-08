@@ -107,6 +107,15 @@ func GetButlerManagerMethodOpts(entry string, method string, bc *ButlerConfigSet
 		if err != nil {
 			return result, err
 		}
+		httpOpts.Client = retryablehttp.NewClient()
+		httpOpts.Client.Logger.SetFlags(0)
+		httpOpts.Client.Logger.SetOutput(ioutil.Discard)
+		httpOpts.Client.Logger.SetOutput(ioutil.Discard)
+		httpOpts.Client.Logger.SetOutput(ioutil.Discard)
+		httpOpts.Client.HTTPClient.Timeout = time.Duration(httpOpts.Timeout) * time.Second
+		httpOpts.Client.RetryMax = httpOpts.Retries
+		httpOpts.Client.RetryWaitMax = time.Duration(httpOpts.RetryWaitMax) * time.Second
+		httpOpts.Client.RetryWaitMin = time.Duration(httpOpts.RetryWaitMin) * time.Second
 		return httpOpts, nil
 	default:
 		msg := fmt.Sprintf("unknown manager.method=%s opts for %s", method, entry)
@@ -210,6 +219,7 @@ func GetButlerConfigManager(entry string, bc *ButlerConfigSettings) error {
 	)
 
 	Manager.Name = entry
+	Manager.ReloadManager = false
 
 	err = viper.UnmarshalKey(entry, &Manager)
 	if err != nil {
@@ -225,15 +235,15 @@ func GetButlerConfigManager(entry string, bc *ButlerConfigSettings) error {
 		errors.New(msg)
 	}
 
-	Manager.ManagerOpts = make(map[string]ButlerManagerOpts)
+	Manager.ManagerOpts = make(map[string]*ButlerManagerOpts)
 	for _, m := range Manager.Urls {
-		bc.Managers[entry] = Manager
+		bc.Managers[entry] = &Manager
 		mopts := fmt.Sprintf("%s.%s", entry, m)
 		opts, err := GetButlerManagerOpts(mopts, bc)
 		if err != nil {
 			return err
 		}
-		bc.Managers[entry].ManagerOpts[mopts] = *opts
+		bc.Managers[entry].ManagerOpts[mopts] = opts
 	}
 
 	reloader, err := GetButlerConfigReloader(entry, bc)
@@ -289,7 +299,7 @@ func ParseButlerConfig(config []byte) error {
 		}
 	}
 
-	ButlerConfig.Managers = make(map[string]ButlerManager)
+	ButlerConfig.Managers = make(map[string]*ButlerManager)
 	// Now let's start processing the managers. This is going
 	for _, entry := range ButlerConfig.Globals.Managers {
 		if !viper.IsSet(entry) {
@@ -337,6 +347,7 @@ func (c *ButlerConfigSettings) ParseButlerConfig(config []byte) error {
 	// if we can process it.
 	err := viper.ReadConfig(bytes.NewBuffer(config))
 	if err != nil {
+		log.Debugf("ButlerConfigSettings::ParseButlerConfig(): could not parse config. err=%v", err)
 		return err
 	}
 
@@ -368,7 +379,7 @@ func (c *ButlerConfigSettings) ParseButlerConfig(config []byte) error {
 		}
 	}
 
-	ButlerConfig.Managers = make(map[string]ButlerManager)
+	ButlerConfig.Managers = make(map[string]*ButlerManager)
 	// Now let's start processing the managers. This is going
 	for _, entry := range ButlerConfig.Globals.Managers {
 		log.Debugf("ButlerConfigSettings::ParseButlerConfig(): checking config entry=%s", entry)
@@ -397,21 +408,32 @@ func (c *ButlerConfigSettings) ParseButlerConfig(config []byte) error {
 	// Set the values in the config structure
 	c.Managers = ButlerConfig.Managers
 	c.Globals = ButlerConfig.Globals
-	c.Init()
 
-	return nil
-}
-
-func (c *ButlerConfigSettings) Init() error {
-	log.Debugf("ButlerConfigSettings::Init(): entering")
+	// Let's get the path arrays dialed in
 	for _, m := range c.Managers {
-		log.Debugf("ButlerConfigSettings::Init(): manager=%#v", m)
 		for _, u := range m.Urls {
-			log.Debugf("ButlerConfigSettings::Init(): url=%#v", u)
+			log.Debugf("ButlerConfigSettings::ParseButlerConfig(): url=%#v", u)
 			opts := fmt.Sprintf("%s.%s", m.Name, u)
-			log.Debugf("ButlerConfigSettings::Init(): opts=%s", opts)
-			log.Debugf("ButlerConfigSettings::Init(): ManagerOpts=%#v", m.ManagerOpts[opts])
+			log.Debugf("ButlerConfigSettings::ParseButlerConfig(): ManagerOpts=%#v", m.ManagerOpts[opts])
+			baseUrl := fmt.Sprintf("%s://%s%s", m.ManagerOpts[opts].Method, u, m.ManagerOpts[opts].UriPath)
+			for _, f := range m.ManagerOpts[opts].PrimaryConfig {
+				fullUrl := fmt.Sprintf("%s/%s", baseUrl, f)
+				fullPath := fmt.Sprintf("%s/%s", m.DestPath, f)
+				log.Debugf("ButlerConfigSettings::ParseButlerConfig(): full url to primary config: %s", fullUrl)
+				log.Debugf("ButlerConfigSettings::ParseButlerConfig(): full path to primary config: %s", fullPath)
+				m.ManagerOpts[opts].AppendPrimaryConfigUrl(fullUrl)
+				m.ManagerOpts[opts].AppendPrimaryConfigFile(fullPath)
+			}
+			for _, f := range m.ManagerOpts[opts].AdditionalConfig {
+				fullUrl := fmt.Sprintf("%s/%s", baseUrl, f)
+				fullPath := fmt.Sprintf("%s/%s", m.DestPath, f)
+				log.Debugf("ButlerConfigSettings::ParseButlerConfig(): full url to additional config: %s", fullUrl)
+				log.Debugf("ButlerConfigSettings::ParseButlerConfig(): full path to primary config: %s", fullPath)
+				m.ManagerOpts[opts].AppendAdditionalConfigUrl(fullUrl)
+				m.ManagerOpts[opts].AppendAdditionalConfigFile(fullPath)
+			}
 		}
 	}
+
 	return nil
 }

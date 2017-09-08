@@ -12,7 +12,7 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"path"
-	"path/filepath"
+	//"path/filepath"
 	"strings"
 	"time"
 
@@ -53,18 +53,20 @@ var (
 // Monitor is the empty structure to be used for starting up the monitor
 // health check and prometheus metrics http endpoints.
 type Monitor struct {
+	Config *config.ButlerConfig
 }
 
 // NewMonitor returns a Monitor structure which is used to bring up the
 // monitor health check and prometheus metrics http endpoints.
-func NewMonitor() *Monitor {
-	return &Monitor{}
+func NewMonitor(bc *config.ButlerConfig) *Monitor {
+	return &Monitor{Config: bc}
 }
 
 // MonitorOutput is the structure which holds the formatting which is output
 // to the health check monitor. When /health-check is hit, it returns this
 // structure, which is then Marshal'd to json and provided back to the end
 // user
+/*
 type MonitorOutput struct {
 	ClusterID             string            `json:"cluster_id"`
 	ButlerConfigURL       string            `json:"butler_config_url"`
@@ -74,6 +76,16 @@ type MonitorOutput struct {
 	MustacheSubs          map[string]string `json:"mustache_subs"`
 	LastRun               time.Time         `json:"last_run"`
 	Version               string            `json:"version"`
+}
+*/
+type MonitorOutput struct {
+	ConfigPath       string                      `json:"config_path"`
+	ConfigScheme     string                      `json:"config_scheme"`
+	RetrieveInterval int                         `json:"retrieve_interval"`
+	LogLevel         log.Level                   `json:"log_level"`
+	ConfigSettings   config.ButlerConfigSettings `json:"config_settings"`
+	LastRun          time.Time                   `json:"last_run"`
+	Version          string                      `json:"version"`
 }
 
 type PrometheusFileMap struct {
@@ -98,14 +110,13 @@ func (m *Monitor) Start() {
 // configuration options that buter gets started with, and some run time
 // information
 func (m *Monitor) MonitorHandler(w http.ResponseWriter, r *http.Request) {
-	mOut := MonitorOutput{ClusterID: MustacheSubs["ethos-cluster-id"],
-		ButlerConfigURL:       ButlerConfigUrl,
-		PrometheusHost:        PrometheusHost,
-		PrometheusConfigFiles: PrometheusConfigFiles,
-		AdditionalConfigFiles: AdditionalConfigFiles,
-		MustacheSubs:          MustacheSubs,
-		LastRun:               LastRun,
-		Version:               version}
+	mOut := MonitorOutput{ConfigPath: m.Config.GetPath(),
+		ConfigScheme:     m.Config.Scheme,
+		RetrieveInterval: m.Config.Interval,
+		LogLevel:         m.Config.GetLogLevel(),
+		ConfigSettings:   *m.Config.Config,
+		LastRun:          LastRun,
+		Version:          version}
 	resp, err := json.Marshal(mOut)
 	if err != nil {
 		w.Header().Set("Content-Type", "text/html")
@@ -372,6 +383,9 @@ func RenderPrometheusYaml(f *os.File) error {
 // CheckPaths checks takes a slice of full paths to a file, and checks to see
 // if the underlying directory exists. If the path does not exist, it will
 // create a new directory.
+/*
+
+//deprecated .. this has been moved
 func CheckPaths(Files []string) bool {
 	// Check to see if the files currently exist. If the docker path is properly mounted from the prometheus
 	// container, then we should see those files.  Error out if we cannot see those files.
@@ -397,8 +411,11 @@ func CheckPaths(Files []string) bool {
 		return false
 	}
 }
+*/
 
 // PathCleanup
+/*
+// deprecated , thius has been moved
 func PathCleanup(path string, f os.FileInfo, err error) error {
 	log.Debugf("PathCleanup(): entering")
 	var (
@@ -426,6 +443,7 @@ func PathCleanup(path string, f os.FileInfo, err error) error {
 	}
 	return nil
 }
+*/
 
 func ProcessAdditionalConfigFiles(Files []string, c chan bool) {
 	var (
@@ -642,6 +660,8 @@ func CompareAndCopy(source string, dest string) bool {
 	}
 }
 
+/*
+//deprecated. this is moving away
 func PCMSHandler() {
 	c := make(chan bool)
 	log.Println("Processing PCMS Files.")
@@ -666,6 +686,7 @@ func PCMSHandler() {
 	}
 	LastRun = time.Now()
 }
+*/
 
 // PrometheusReloadRetryPolicy overrides go-retryablehttp's DefaultRetryPolicy
 // for how it handles retrying http connections. By default if it receives a
@@ -930,7 +951,7 @@ func main() {
 	}
 
 	// Start up the monitor web server
-	monitor := NewMonitor()
+	monitor := NewMonitor(bc)
 	monitor.Start()
 
 	// Do initial grab of butler configuration file.
@@ -966,12 +987,11 @@ func main() {
 	log.Debugf("main(): running butler configuration scheduler every %d seconds", bc.GetInterval())
 	sched.Every(uint64(bc.GetInterval())).Seconds().Do(bc.Handler)
 
+	log.Debugf("main(): giving scheduler to butler.")
+	bc.SetScheduler(sched)
+
 	log.Debugf("main(): doing initial run of butler configuration management handler")
 	bc.RunCMHandler()
-
-	log.Debugf("main(): running butler configuration management scheduler every %d seconds", bc.GetCMInterval())
-	sched.Every(uint64(bc.GetCMInterval())).Seconds().Do(bc.RunCMHandler)
-	//sched.Every(uint64(configSchedulerIntFlag)).Seconds().Do(PCMSHandler)
 
 	<-sched.Start()
 }

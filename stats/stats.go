@@ -1,7 +1,10 @@
 package stats
 
 import (
+	"strings"
+
 	"github.com/prometheus/client_golang/prometheus"
+	//log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -13,8 +16,8 @@ var (
 	ButlerKnownGoodRestored prometheus.Gauge
 	ButlerReloadSuccess     prometheus.Gauge
 	ButlerReloadTime        prometheus.Gauge
-	ButlerRenderSuccess     prometheus.Gauge
-	ButlerRenderTime        prometheus.Gauge
+	ButlerRenderSuccess     *prometheus.GaugeVec
+	ButlerRenderTime        *prometheus.GaugeVec
 	ButlerWriteSuccess      *prometheus.GaugeVec
 	ButlerWriteTime         *prometheus.GaugeVec
 )
@@ -57,28 +60,28 @@ func SetButlerReloadVal(res float64) {
 	}
 }
 
-func SetButlerRenderVal(res float64) {
+func SetButlerRenderVal(res float64, repo string, file string) {
 	if ButlerRenderSuccess == nil {
-		ButlerRenderSuccess = prometheus.NewGauge(prometheus.GaugeOpts{
+		ButlerRenderSuccess = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Name: "butler_localconfig_render_success",
 			Help: "Did butler successfully render the prometheus.yml",
-		})
+		}, []string{"config_file", "repo"})
 		prometheus.MustRegister(ButlerRenderSuccess)
 	}
 
 	if ButlerRenderTime == nil {
-		ButlerRenderTime = prometheus.NewGauge(prometheus.GaugeOpts{
+		ButlerRenderTime = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Name: "butler_localconfig_render_time",
 			Help: "Time that butler successfully rendered the prometheus.yml",
-		})
+		}, []string{"config_file", "repo"})
 		prometheus.MustRegister(ButlerRenderTime)
 	}
 
 	if res == SUCCESS {
-		ButlerRenderSuccess.Set(SUCCESS)
-		ButlerRenderTime.SetToCurrentTime()
+		ButlerRenderSuccess.With(prometheus.Labels{"config_file": file, "repo": repo}).Set(SUCCESS)
+		ButlerRenderTime.With(prometheus.Labels{"config_file": file, "repo": repo}).SetToCurrentTime()
 	} else {
-		ButlerRenderSuccess.Set(FAILURE)
+		ButlerRenderSuccess.With(prometheus.Labels{"config_file": file, "repo": repo}).Set(FAILURE)
 	}
 }
 
@@ -107,27 +110,27 @@ func SetButlerWriteVal(res float64, label string) {
 	}
 }
 
-func SetButlerConfigVal(res float64, label string) {
+func SetButlerConfigVal(res float64, repo string, file string) {
 	if ButlerConfigValid == nil {
 		ButlerConfigValid = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Name: "butler_remoterepo_config_valid",
 			Help: "Is the butler configuration valid",
-		}, []string{"config_file"})
+		}, []string{"config_file", "repo"})
 		prometheus.MustRegister(ButlerConfigValid)
 	}
 
 	if res == SUCCESS {
-		ButlerConfigValid.With(prometheus.Labels{"config_file": label}).Set(SUCCESS)
+		ButlerConfigValid.With(prometheus.Labels{"config_file": file, "repo": repo}).Set(SUCCESS)
 	} else {
-		ButlerConfigValid.With(prometheus.Labels{"config_file": label}).Set(FAILURE)
+		ButlerConfigValid.With(prometheus.Labels{"config_file": file, "repo": repo}).Set(FAILURE)
 	}
 }
-func SetButlerContactVal(res float64, label string) {
+func SetButlerContactVal(res float64, repo string, file string) {
 	if ButlerContactSuccess == nil {
 		ButlerContactSuccess = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Name: "butler_remoterepo_contact_success",
 			Help: "Did butler succesfully contact the remote repository",
-		}, []string{"config_file"})
+		}, []string{"config_file", "repo"})
 		prometheus.MustRegister(ButlerContactSuccess)
 
 	}
@@ -136,15 +139,15 @@ func SetButlerContactVal(res float64, label string) {
 		ButlerContactTime = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Name: "butler_remoterepo_contact_time",
 			Help: "Time that butler succesfully contacted the remote repository",
-		}, []string{"config_file"})
+		}, []string{"config_file", "repo"})
 		prometheus.MustRegister(ButlerContactTime)
 	}
 
 	if res == SUCCESS {
-		ButlerContactSuccess.With(prometheus.Labels{"config_file": label}).Set(SUCCESS)
-		ButlerContactTime.With(prometheus.Labels{"config_file": label}).SetToCurrentTime()
+		ButlerContactSuccess.With(prometheus.Labels{"config_file": file, "repo": repo}).Set(SUCCESS)
+		ButlerContactTime.With(prometheus.Labels{"config_file": file, "repo": repo}).SetToCurrentTime()
 	} else {
-		ButlerContactSuccess.With(prometheus.Labels{"config_file": label}).Set(FAILURE)
+		ButlerContactSuccess.With(prometheus.Labels{"config_file": file, "repo": repo}).Set(FAILURE)
 	}
 }
 
@@ -172,4 +175,11 @@ func SetButlerKnownGoodRestoredVal(res float64) {
 	if res == SUCCESS {
 	} else {
 	}
+}
+
+// GetStatsLabel returns the filename of the provided file in url format.
+func GetStatsLabel(file string) string {
+	fileSplit := strings.Split(file, "/")
+	ret := fileSplit[len(fileSplit)-1]
+	return ret
 }

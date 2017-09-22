@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
+	//"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -23,7 +23,6 @@ import (
 	"github.com/hoisie/mustache"
 	"github.com/jasonlvhit/gocron"
 	log "github.com/sirupsen/logrus"
-	"github.com/udhos/equalfile"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -47,7 +46,6 @@ var (
 	HttpRetries             int
 	HttpRetryWaitMin        int
 	HttpRetryWaitMax        int
-	RequiredSubKeys         = []string{"ethos-cluster-id"}
 )
 
 // Monitor is the empty structure to be used for starting up the monitor
@@ -326,6 +324,7 @@ func RestoreCachedConfigs() {
 
 // CopyFile copies the src path string to the dst path string. If there is an
 // error, an error is returned, otherwise nil is returned.
+/* deprecated.. this has moved to config.helpers.go
 func CopyFile(src string, dst string) error {
 	var (
 		err error
@@ -357,6 +356,7 @@ func CopyFile(src string, dst string) error {
 	}
 	return cerr
 }
+*/
 
 // RenderPrometheusYaml takes a pointer to an os.File object. It reads the file
 // attempts to parse the mustache
@@ -458,10 +458,10 @@ func ProcessAdditionalConfigFiles(Files []string, c chan bool) {
 		// Grab the remote file into a local temp file
 		f := DownloadPCMSFile(u)
 		if f == nil {
-			stats.SetButlerContactVal(stats.FAILURE, GetPrometheusLabels(Files)[i])
+			stats.SetButlerContactVal(stats.FAILURE, "hi", GetPrometheusLabels(Files)[i])
 			continue
 		} else {
-			stats.SetButlerContactVal(stats.SUCCESS, GetPrometheusLabels(Files)[i])
+			stats.SetButlerContactVal(stats.SUCCESS, "hi", GetPrometheusLabels(Files)[i])
 		}
 
 		// Let's ensure that the files starts with #butlerstart and
@@ -470,13 +470,13 @@ func ProcessAdditionalConfigFiles(Files []string, c chan bool) {
 		// with the upstream
 		if err := config.ValidateButlerConfig(f); err != nil {
 			log.Infof("%s for %s.\n", err.Error(), GetPrometheusPaths(Files)[i])
-			stats.SetButlerConfigVal(stats.FAILURE, GetPrometheusLabels(Files)[i])
+			stats.SetButlerConfigVal(stats.FAILURE, "hi", GetPrometheusLabels(Files)[i])
 			continue
 		} else {
-			stats.SetButlerConfigVal(stats.SUCCESS, GetPrometheusLabels(Files)[i])
+			stats.SetButlerConfigVal(stats.SUCCESS, "hi", GetPrometheusLabels(Files)[i])
 		}
 
-		ModifiedFileMap[f.Name()] = CompareAndCopy(f.Name(), GetPrometheusPaths(Files)[i])
+		ModifiedFileMap[f.Name()] = config.CompareAndCopy(f.Name(), GetPrometheusPaths(Files)[i])
 
 		// Clean up the temp file
 		os.Remove(f.Name())
@@ -494,6 +494,8 @@ func ProcessAdditionalConfigFiles(Files []string, c chan bool) {
 }
 
 // ProcessPrometheusConfigFiles
+/*
+// deprecated.. refer to config.ProcessPrimaryConfigFiles
 func ProcessPrometheusConfigFiles(Files []string, c chan bool) {
 	var (
 		TmpFiles     []string
@@ -641,7 +643,10 @@ func ProcessPrometheusConfigFiles(Files []string, c chan bool) {
 	// Update the channel
 	c <- IsModified
 }
+*/
 
+/*
+// deprecated - this was moved to config.helpers.go
 func CompareAndCopy(source string, dest string) bool {
 	// Let's compare the source and destination files
 	cmp := equalfile.New(nil, equalfile.Options{})
@@ -659,6 +664,7 @@ func CompareAndCopy(source string, dest string) bool {
 		return false
 	}
 }
+*/
 
 /*
 //deprecated. this is moving away
@@ -759,6 +765,7 @@ func ParseConfigFiles(configFiles string) []string {
 	return FileList
 }
 
+/*
 func ParseMustacheSubs(Subs map[string]string, configSubs string) error {
 	pairs := strings.Split(configSubs, ",")
 	for _, p := range pairs {
@@ -778,7 +785,9 @@ func ParseMustacheSubs(Subs map[string]string, configSubs string) error {
 	}
 	return nil
 }
+*/
 
+/*
 func ValidateMustacheSubs(Subs map[string]string) bool {
 	var (
 		subEntries map[string]bool
@@ -805,6 +814,7 @@ func ValidateMustacheSubs(Subs map[string]string) bool {
 	}
 	return true
 }
+*/
 
 func SetLogLevel(l string) log.Level {
 	switch strings.ToLower(l) {

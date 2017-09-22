@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/go-retryablehttp"
@@ -147,11 +148,8 @@ func GetButlerManagerOpts(entry string, bc *ButlerConfigSettings) (*ButlerManage
 		return &ButlerManagerOpts{}, errors.New("no manager.uri-path defined")
 	}
 
-	/*
-		if ManagerOpts.DestPath == "" {
-			return &ButlerManagerOpts{}, errors.New("no manager.dest-path defined")
-		}
-	*/
+	repoSplit := strings.Split(entry, ".")
+	ManagerOpts.Repo = strings.Join(repoSplit[1:len(repoSplit)], ".")
 
 	if len(ManagerOpts.PrimaryConfig) < 1 {
 		return &ButlerManagerOpts{}, errors.New("no manager.primary-config defined")
@@ -177,6 +175,13 @@ func GetButlerConfigReloaderOpts(entry string, method string, bc *ButlerConfigSe
 		if err != nil {
 			return result, err
 		}
+		httpOpts.Client = retryablehttp.NewClient()
+		httpOpts.Client.Logger.SetFlags(0)
+		httpOpts.Client.Logger.SetOutput(ioutil.Discard)
+		httpOpts.Client.HTTPClient.Timeout = time.Duration(httpOpts.Timeout) * time.Second
+		httpOpts.Client.RetryMax = httpOpts.Retries
+		httpOpts.Client.RetryWaitMax = time.Duration(httpOpts.RetryWaitMax) * time.Second
+		httpOpts.Client.RetryWaitMin = time.Duration(httpOpts.RetryWaitMin) * time.Second
 		return httpOpts, nil
 	default:
 		msg := fmt.Sprintf("unknown config reloader method=%s opts for %s", method, entry)
@@ -248,6 +253,12 @@ func GetButlerConfigManager(entry string, bc *ButlerConfigSettings) error {
 
 	reloader, err := GetButlerConfigReloader(entry, bc)
 	if err != nil {
+		return err
+	}
+
+	Manager.MustacheSubs, err = ParseMustacheSubs(Manager.MustacheSubsArray)
+	if err != nil {
+		log.Debugf("GetButlerConfigManager(): could not get mustache subs. err=%s", err.Error())
 		return err
 	}
 	m := bc.Managers[entry]

@@ -8,8 +8,11 @@ import (
 	"io/ioutil"
 	"net/url"
 	"os"
+	//"path"
 	"path/filepath"
 	"strings"
+
+	"git.corp.adobe.com/TechOps-IAO/butler/stats"
 
 	"github.com/jasonlvhit/gocron"
 	log "github.com/sirupsen/logrus"
@@ -17,6 +20,20 @@ import (
 
 func NewButlerConfig() *ButlerConfig {
 	return &ButlerConfig{FirstRun: true}
+}
+
+func NewConfigChanEvent() *ConfigChanEvent {
+	var (
+		c ConfigChanEvent
+		f RepoFileEvent
+	)
+	c = ConfigChanEvent{}
+	_ = f
+	c.Repo = make(map[string]*RepoFileEvent)
+	//f = RepoFileEvent{}
+	//f.Success = make(map[string]bool)
+	//f.Error = make(map[string]error)
+	return &c
 }
 
 func (bc *ButlerConfig) SetScheme(s string) error {
@@ -101,7 +118,7 @@ func (bc *ButlerConfig) SetRetryWaitMax(t int) error {
 }
 
 func (bc *ButlerConfig) SetUrl(u string) error {
-	log.Debugf("ButlerConfig::SetwUrl(): setting bc.Url=%s", u)
+	log.Debugf("ButlerConfig::SetUrl(): setting bc.Url=%s", u)
 	bc.Url = u
 	return nil
 }
@@ -124,7 +141,7 @@ func (bc *ButlerConfig) Init() error {
 	if bc.Url == "" {
 		ConfigUrl := fmt.Sprintf("%s://%s", bc.Scheme, bc.Path)
 		if _, err = url.ParseRequestURI(ConfigUrl); err != nil {
-			log.Debugf("ButlerConfig::Init(): could not initialize butler config. err=%s", err)
+			log.Debugf("ButlerConfig::Init(): could not initialize butler config. err=%s", err.Error())
 			return err
 		}
 		bc.Url = ConfigUrl
@@ -132,7 +149,7 @@ func (bc *ButlerConfig) Init() error {
 
 	c, err := NewButlerConfigClient(bc.Scheme)
 	if err != nil {
-		log.Debugf("ButlerConfig::Init(): could not initialize butler config. err=%s", err)
+		log.Debugf("ButlerConfig::Init(): could not initialize butler config. err=%s", err.Error())
 		return err
 	}
 
@@ -237,23 +254,52 @@ func (bc *ButlerConfig) SetScheduler(s *gocron.Scheduler) error {
 }
 
 func (bc *ButlerConfig) RunCMHandler() error {
+	var (
+		ReloadManager []string
+	)
 	log.Debugf("ButlerConfig::RunCMHandler(): entering")
-	c := make(chan bool)
-	_ = c
+
+	c1 := make(chan ButlerChanEvent)
+	c2 := make(chan ButlerChanEvent)
 
 	bc.CheckPaths()
 
 	for _, m := range bc.Config.Managers {
-		go m.ProcessPrimaryConfigFiles(c)
-		go m.ProcessAdditionalConfigFiles(c)
+		go m.DownloadPrimaryConfigFiles(c1)
+		go m.DownloadAdditionalConfigFiles(c2)
+		primaryChan, additionalChan := <-c1, <-c2
+
+		if primaryChan.(*ConfigChanEvent).CanCopyFiles() && additionalChan.(*ConfigChanEvent).CanCopyFiles() {
+			log.Debugf("ButlerConfig::RunCMHandler(): successfully retrieved files. processing...")
+			p := primaryChan.(*ConfigChanEvent).CopyPrimaryConfigFiles()
+			a := additionalChan.(*ConfigChanEvent).CopyAdditionalConfigFiles(m.DestPath)
+			if p || a {
+				ReloadManager = append(ReloadManager, m.Name)
+			}
+			primaryChan.(*ConfigChanEvent).CleanTmpFiles()
+			additionalChan.(*ConfigChanEvent).CleanTmpFiles()
+		} else {
+			log.Debugf("ButlerConfig::RunCMHandler(): cannot copy files. cleaning up...")
+			primaryChan.(*ConfigChanEvent).CleanTmpFiles()
+			additionalChan.(*ConfigChanEvent).CleanTmpFiles()
+		}
 	}
+
+	if len(ReloadManager) == 0 {
+		log.Debugf("ButlerConfig::RunCMHandler(): CM files unchanged... continuing.")
+	} else {
+		for _, m := range ReloadManager {
+			log.Debugf("ButlerConfig::RunCMHandler(): CM file changes. reloading manager %v...", m)
+			bc.Config.Managers[m].Reload()
+		}
+	}
+
 	return nil
 }
 
 func (bc *ButlerConfig) CheckPaths() error {
 	log.Debugf("ButlerConfig::CheckPaths(): entering")
 	for _, m := range bc.Config.Managers {
-		log.Debugf("ButlerConfig::CheckPaths(): m=%#v", m)
 		for _, f := range m.GetAllLocalPaths() {
 			dir := filepath.Dir(f)
 			if _, err := os.Stat(dir); err != nil {
@@ -280,54 +326,227 @@ func (bc *ButlerConfig) CheckPaths() error {
 }
 
 // Rewrite of main.ProcessPrometheusConfigFiles
-func (bm *ButlerManager) ProcessPrimaryConfigFiles(c chan bool) error {
+func (bm *ButlerManager) DownloadPrimaryConfigFiles(c chan ButlerChanEvent) error {
 	var (
-		TmpFiles     []string
-		LegitFileMap map[string]ConfigFileMap
-		IsModified   bool
-		RenderFile   bool
+		Chan *ConfigChanEvent
+		PrimaryConfigName string
 	)
 
-	IsModified = false
-	RenderFile = true
-	LegitFileMap = make(map[string]ConfigFileMap)
-	_ = TmpFiles
-	_ = IsModified
-	_ = RenderFile
-	_ = LegitFileMap
+	Chan = NewConfigChanEvent()
+	PrimaryConfigName = fmt.Sprintf("%s/%s", bm.DestPath, bm.PrimaryConfigName)
+	Chan.ConfigFile = &PrimaryConfigName
 
-	TmpMergedFile, err := ioutil.TempFile("/tmp", "pcmsfile")
+	// Create a temporary file for the merged prometheus configurations.
+	tmpFile, err := ioutil.TempFile("/tmp", "pcmsfile")
 	if err != nil {
-		msg := fmt.Sprintf("ButlerManager::ProcessPrimaryConfigFiles(): Could not create temporary file . err=v", err.Error())
+		msg := fmt.Sprintf("ButlerManager::DownloadPrimaryConfigFiles(): Could not create temporary file . err=v", err.Error())
 		log.Fatal(msg)
 	}
+	Chan.TmpFile = tmpFile
 
-	//for _, opts := range bm.Opts.GetPrimaryConfigUrls
+	// Process the prometheus.yml configuration files
+	// We are going to iterate through each of the potential managers configured
 	for _, opts := range bm.ManagerOpts {
-		log.Debugf("ButlerManager::ProcessPrimaryConfigFiles(): opts=%#v", opts)
 		for i, u := range opts.GetPrimaryConfigUrls() {
-			log.Debugf("ButlerManager::ProcessPrimaryConfigFiles(): i=%v, u=%v", i, u)
-			FileMap := ConfigFileMap{}
-			_ = FileMap
+			log.Debugf("ButlerManager::DownloadPrimaryConfigFiles(): i=%v, u=%v", i, u)
+			log.Debugf("ButlerManager::DownloadPrimaryConfigFiles(): f=%s", opts.GetPrimaryRemoteConfigFiles()[i])
 			f := opts.DownloadConfigFile(u)
 			if f == nil {
-				// unsure what to do with this right now
-				//stats.SetButlerContactVal(stats.FAILURE, GetPrometheusLabels(Files)[i])
+				stats.SetButlerContactVal(stats.FAILURE, opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i])
+				log.Debugf("ButlerManager::DownloadPrimaryConfigFiles(): download for %s is nil.", u)
+				Chan.SetFailure(opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i], errors.New("could not download file"))
 				continue
 			} else {
-				// unsure what to do with this right now
-				//stats.SetButlerContactVal(stats.SUCCESS, GetPrometheusLabels(Files)[i])
+				stats.SetButlerContactVal(stats.SUCCESS, opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i])
+				Chan.SetSuccess(opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i], nil)
+			}
+			Chan.SetTmpFile(opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i], f.Name())
+
+			// Let's ensure that the files starts with #butlerstart and
+			// ends with #butlerend. If they do not, then we will assume
+			// we did not get a correct configuration, or that there is an
+			// issue with the upstream
+			if err := ValidateButlerConfig(f); err != nil {
+				log.Infof("%s for %s.", err.Error(), u)
+				stats.SetButlerConfigVal(stats.FAILURE, opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i])
+				Chan.SetFailure(opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i], errors.New("could not validate file"))
+				continue
+			} else {
+				stats.SetButlerConfigVal(stats.SUCCESS, opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i])
+				Chan.SetSuccess(opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i], nil)
+			}
+
+			// For the prometheus.yml we have to do some mustache replacement on downloaded file
+			if err := RenderConfigMustache(f, bm.MustacheSubs); err != nil {
+				log.Infof("%s for %s.\n", err.Error(), u)
+				stats.SetButlerRenderVal(stats.FAILURE, opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i])
+				stats.SetButlerConfigVal(stats.FAILURE, opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i])
+				log.Debugf("ButlerManager::DownloadPrimaryConfigFiles(): render for %s is nil.", opts.GetPrimaryRemoteConfigFiles()[i])
+				Chan.SetFailure(opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i], errors.New("could not render file"))
+				continue
+			} else {
+				// stats
+				stats.SetButlerRenderVal(stats.SUCCESS, opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i])
+				stats.SetButlerConfigVal(stats.SUCCESS, opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i])
+				Chan.SetSuccess(opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i], nil)
+			}
+			// Going to want to keep tabs on TmpFiles, and remove all of them at the end.
+			// Remember that we want to merge all of the downloaded files, so why remove them
+			// right now.
+		}
+	}
+	// Need to verify whether or not we got all of the prometheus configuration
+	// files. If not, then we should not try to process anything
+	/*
+		for _, v := range LegitFileMap {
+			if !v.Success {
+				RenderFile = false
+			}
+		}
+	*/
+
+	// Let's process and merge the prometheus files
+	/*
+		* we aren't going to do this here anymore
+		log.Infof("ButlerManager::DownloadPrimaryConfigFiles(): Chan.CanCopyFiles()=%v", Chan.CanCopyFiles())
+		if Chan.CanCopyFiles() {
+			out, err := os.OpenFile(Chan.TmpFile.Name(), os.O_WRONLY|os.O_TRUNC, 0644)
+			_ = out
+			if err != nil {
+				log.Infof("Could not process and merge new %s err=%s.", PrimaryConfigName, err.Error())
+				stats.SetButlerConfigVal(stats.FAILURE, "local", stats.GetStatsLabel(PrimaryConfigName))
+				// Just giving up at this point. Cleaning the temporary files.
+				Chan.CleanTmpFiles()
+
+				// Clean up the Primary temp file
+				// This is handled elsewhere now
+				//os.Remove(TmpMergedFile.Name())
+				Chan.SetFailure("local", stats.GetStatsLabel(PrimaryConfigName), errors.New("could not process file"))
+				c <- Chan
+				return err
+			} else {
+				//for _, f := range ProcessedFiles {
+				for _, f := range Chan.GetTmpFileMap() {
+					in, err := os.Open(f)
+					if err != nil {
+						log.Infof("Could not process and merge new %s err=%s.", PrimaryConfigName, err.Error())
+						stats.SetButlerConfigVal(stats.FAILURE, "local", stats.GetStatsLabel(f))
+						// just giving up at this point, as well...
+						// Clean up the temporary files
+						Chan.CleanTmpFiles()
+
+						// Clean up the primary config temp file
+						//os.Remove(TmpMergedFile.Name())
+						Chan.SetFailure("local", stats.GetStatsLabel(PrimaryConfigName), errors.New("could not process file"))
+						c <- Chan
+						return err
+					}
+					_, err = io.Copy(out, in)
+					if err != nil {
+						log.Infof("Could not process and merge new %s err=%s.", PrimaryConfigName, err.Error())
+						stats.SetButlerConfigVal(stats.FAILURE, "local", stats.GetStatsLabel(f))
+						// just giving up at this point, again...
+						// Clean up the temporary files
+						Chan.CleanTmpFiles()
+
+						// Clean up the primary config temp file
+						//os.Remove(TmpMergedFile.Name())
+						Chan.SetFailure("local", stats.GetStatsLabel(PrimaryConfigName), errors.New("could not process file"))
+						c <- Chan
+						return err
+					}
+					in.Close()
+				}
+				log.Debugf("ButlerManager::DownloadPrimaryConfigFiles(): rendering final primary config file %s", PrimaryConfigName)
+			}
+			out.Close()
+			IsModified = CompareAndCopy(Chan.TmpFile.Name(), PrimaryConfigName)
+			if !IsModified {
+				log.Debugf("ButlerManager::DownloadPrimaryConfigFiles(): primary config file %s is unchanged", PrimaryConfigName)
+			}
+		} else {
+			log.Debugf("ButlerManager::DownloadPrimaryConfigFiles(): not rendering final primary config file %s", PrimaryConfigName)
+			IsModified = false
+		}
+	*/
+
+	// Clean up Primary temp file
+	//os.Remove(TmpMergedFile.Name())
+
+	// Update the channel
+	c <- Chan
+
+	return nil
+}
+
+func (bm *ButlerManager) DownloadAdditionalConfigFiles(c chan ButlerChanEvent) error {
+	var (
+		Chan       *ConfigChanEvent
+		IsModified bool
+	)
+
+	Chan = NewConfigChanEvent()
+	IsModified = false
+	_ = IsModified
+
+	// Process the additional configuration files
+	for _, opts := range bm.ManagerOpts {
+		for i, u := range opts.GetAdditionalConfigUrls() {
+			log.Debugf("ButlerManager::DownloadAdditionalConfigFiles(): i=%v, u=%v", i, u)
+			f := opts.DownloadConfigFile(u)
+			if f == nil {
+				log.Debugf("ButlerManager::DownloadAdditionalConfigFiles(): download for %s is nil.", u)
+				stats.SetButlerContactVal(stats.FAILURE, opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i])
+				Chan.SetFailure(opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i], errors.New("could not download file"))
+				continue
+			} else {
+				stats.SetButlerContactVal(stats.SUCCESS, opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i])
+				Chan.SetSuccess(opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i], nil)
+				Chan.SetTmpFile(opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i], f.Name())
+			}
+
+			// Let's ensure that the files starts with #butlerstart and
+			// ends with #butlerend. IF they do not, then we will assume
+			// we did not get a correct configuration, or that there is an
+			// issue with the upstream
+			if err := ValidateButlerConfig(f); err != nil {
+				stats.SetButlerConfigVal(stats.FAILURE, opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i])
+				Chan.SetFailure(opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i], errors.New("could not validate file"))
+				continue
+			} else {
+				stats.SetButlerConfigVal(stats.SUCCESS, opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i])
+				Chan.SetSuccess(opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i], nil)
+			}
+
+			// Let's process some mustache ...
+			// NOTE: We USED to do this only for the primary configuration. Unsure how this will
+			// affect the additional configurations. we can remove this if there are adverse
+			// effects.
+			if err := RenderConfigMustache(f, bm.MustacheSubs); err != nil {
+				stats.SetButlerRenderVal(stats.FAILURE, opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i])
+				stats.SetButlerConfigVal(stats.FAILURE, opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i])
+				Chan.SetFailure(opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i], errors.New("could not render file"))
+				continue
+			} else {
+				stats.SetButlerRenderVal(stats.SUCCESS, opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i])
+				stats.SetButlerConfigVal(stats.SUCCESS, opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i])
+				Chan.SetSuccess(opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i], nil)
 			}
 		}
 	}
 
-	// Clean up the temporary configuration file
-	os.Remove(TmpMergedFile.Name())
-	return nil
-}
+	/*
+		if Chan.CanCopyFiles() {
+		}
 
-func (bm *ButlerManager) ProcessAdditionalConfigFiles(c chan bool) error {
-	var ()
+		Chan.GetTmpFileMap()
+
+		// Clean up the temporary files
+		Chan.CleanTmpFiles()
+	*/
+
+	// Update the channel
+	c <- Chan
 	return nil
 }
 
@@ -402,23 +621,30 @@ func (bmo *ButlerManagerOpts) GetPrimaryConfigUrls() []string {
 	return bmo.PrimaryConfigsFullUrls
 }
 
-func (bmo *ButlerManagerOpts) GetPrimaryConfigFiles() []string {
+func (bmo *ButlerManagerOpts) GetPrimaryLocalConfigFiles() []string {
 	return bmo.PrimaryConfigsFullLocalPaths
+}
+
+func (bmo *ButlerManagerOpts) GetPrimaryRemoteConfigFiles() []string {
+	return bmo.PrimaryConfig
 }
 
 func (bmo *ButlerManagerOpts) GetAdditionalConfigUrls() []string {
 	return bmo.AdditionalConfigsFullUrls
 }
 
-func (bmo *ButlerManagerOpts) GetAdditionalConfigFiles() []string {
+func (bmo *ButlerManagerOpts) GetAdditionalLocalConfigFiles() []string {
 	return bmo.AdditionalConfigsFullLocalPaths
+}
+
+func (bmo *ButlerManagerOpts) GetAdditionalRemoteConfigFiles() []string {
+	return bmo.AdditionalConfig
 }
 
 // Really need to come up with a better method for this.
 func (bmo *ButlerManagerOpts) DownloadConfigFile(file string) *os.File {
 	switch bmo.Method {
 	case "http", "https":
-		log.Debugf("ButlerManagereOpts::DownloadConfigFile(): here i am")
 		tmpFile, err := ioutil.TempFile("/tmp", "pcmsfile")
 		if err != nil {
 			msg := fmt.Sprintf("ButlerManagerOpts::DownloadConfigFile(): could not create temporary file. err=%v", err)

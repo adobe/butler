@@ -4,15 +4,21 @@ title = "Butler Configuration"
 [globals]
   ## The Config managers are where we define which sections we want to support
   ## for butler configuration management
-  config-managers = ["prometheus", "alertmanager"]
+  #config-managers = ["prometheus", "alertmanager"]
+  config-managers = ["prometheus"]
 
   ## Scheduler Interval is how often we try to grab configurations from repo
   ## Default: 300
-  scheduler-interval = 300
+  scheduler-interval = 10
+  #scheduler-interval = 5
 
   ## Do we want to exit from butler if there are butler configuration load issues
   ## Default: false
   exit-on-config-failure = false
+
+## This is the definition for the prometheus configuration handler
+[prometheus]
+  urls = ["repo1.adobe.net", "repo2.adobe.net"]
 
   ## !!! IMPORTANT !!! Do you want butler to clean up any NON BUTLER MANAGED files under dest-path?
   ## Butler would prefer to manage all the files under the configuration path. This is so that no
@@ -21,15 +27,15 @@ title = "Butler Configuration"
   ## Default: false
   clean-files = true
 
-## This is the definition for the prometheus configuration handler
-[prometheus]
-  urls = ["repo1.adobe.net", "repo2.adobe.net"]
-
   ## These are the mustache substitutions that we'll attempt to make on the merged prometheus.yml
   mustache-subs = ["ethos-cluster-id=ethos01-dev-or1", "endpoint=external"]
 
   ## Destination path to install the configuration files to
   dest-path = "/opt/prometheus"
+
+  ## Since there is a primary configuration (merged), and additional configurations (unmerged),
+  ## we need a name for the merged configuration file. It will be put under dest-path
+  primary-config-name = "prometheus.yml"
 
   ## These are the definitions for the first repo which is defined for prometheus
   [prometheus.repo1.adobe.net]
@@ -95,10 +101,21 @@ title = "Butler Configuration"
 [alertmanager]
   urls = ["repo3.adobe.net", "repo4.adobe.net"]
 
+  ## !!! IMPORTANT !!! Do you want butler to clean up any NON BUTLER MANAGED files under dest-path?
+  ## Butler would prefer to manage all the files under the configuration path. This is so that no
+  ## new files get snuck in, which could affect the monitoring of the system.
+  ## !!! THIS WILL CAUSE UNANTICIPATED DATA LOSS !!!
+  ## Default: false
+  clean-files = true
+
   mustache-subs = ["ethos-cluster-id=ethos01-dev-or1", "endpoint=external"]
 
   ## Destination path
   dest-path = "/opt/alertmanager"
+
+  ## Since there is a primary configuration (merged), and additional configurations (unmerged),
+  ## we need a name for the merged configuration file. It will be put under dest-path
+  primary-config-name = "alertmanager.yml"
 
   ## These are the definitions for the first repo which is defined for alertmanager
   [alertmanager.repo3.adobe.net]

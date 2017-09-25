@@ -237,8 +237,8 @@ type ButlerConfigSettings struct {
 
 type ButlerConfigGlobals struct {
 	Managers          []string `mapstructure:"config-managers",json:"-"`
-	SchedulerInterval int      `mapstructure:"scheduler-interval",json:"scheduler_interval"`
-	ExitOnFailure     bool     `mapstructure:"exit-on-config-failure",json:"exit_on_failure"`
+	SchedulerInterval int      `mapstructure:"scheduler-interval",json:"scheduler-interval"`
+	ExitOnFailure     bool     `mapstructure:"exit-on-config-failure",json:"exit-on-failure"`
 }
 
 type ButlerManager struct {
@@ -246,9 +246,9 @@ type ButlerManager struct {
 	Urls              []string          `mapstructure:"urls"`
 	CleanFiles        bool              `mapstructure:"clean-files"`
 	MustacheSubsArray []string          `mapstructure:"mustache-subs",json:"-"`
-	MustacheSubs      map[string]string `json:"mustache_subs"`
+	MustacheSubs      map[string]string `json:"mustache-subs"`
 	DestPath          string            `mapstructure:"dest-path"`
-	PrimaryConfigName string            `mapstructure:"primary-config-name",json:"primary_config-name"`
+	PrimaryConfigName string            `mapstructure:"primary-config-name",json:"primary-config-name"`
 	ManagerOpts       map[string]*ButlerManagerOpts
 	Reloader          ButlerManagerReloader `mapstructure:"-"`
 	ReloadManager     bool
@@ -276,7 +276,11 @@ type ButlerManagerOpts struct {
 	AdditionalConfigsFullUrls       []string
 	PrimaryConfigsFullLocalPaths    []string
 	AdditionalConfigsFullLocalPaths []string
-	Opts                            interface{}
+	Opts                            ButlerManagerMethodOpts
+}
+
+type ButlerManagerMethodOpts interface {
+	Get(string) (*http.Response, error)
 }
 
 type ButlerManagerMethodHttpOpts struct {
@@ -287,24 +291,31 @@ type ButlerManagerMethodHttpOpts struct {
 	Timeout      int                   `mapstructure:"timeout",json:"timeout"`
 }
 
+func (b ButlerManagerMethodHttpOpts) Get(file string) (*http.Response, error) {
+	res, err := b.Client.Get(file)
+	return res, err
+}
+
+type ButlerManagerMethodGenericOpts struct {
+}
+
+func (b ButlerManagerMethodGenericOpts) Get(file string) (*http.Response, error) {
+	var (
+		err error
+		res *http.Response
+	)
+	return res, err
+}
+
 type ButlerManagerReloader interface {
 	Reload() error
 	GetMethod() string
 	GetOpts() ReloaderOpts
 	SetOpts(ReloaderOpts) bool
-	//GetOpts() interface{}
-	//SetOpts(interface{}) bool
 }
 
 type ReloaderOpts interface {
 }
-
-/*
-type ButlerManagerReloader struct {
-	Method string `mapstructure:"method"`
-	Opts   interface{}
-}
-*/
 
 type ButlerManagerReloaderHttp struct {
 	Method string `mapstructer:"method"`
@@ -336,6 +347,8 @@ func (r ButlerManagerReloaderHttp) Reload() error {
 	log.Debugf("ButlerManagerReloaderHttp::Reload() reloading manager using http")
 	o := r.GetOpts().(ButlerManagerReloaderHttpOpts)
 	c := o.GetClient()
+	// Set the reloader retry policy
+	c.CheckRetry = r.ManagerReloadRetryPolicy
 	reloadUrl := fmt.Sprintf("%s://%s:%d%s", r.Method, o.Host, o.Port, o.Uri)
 
 	switch o.Method {

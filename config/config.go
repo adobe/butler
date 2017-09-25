@@ -98,9 +98,9 @@ func ParseButlerConfigManager(config []byte) (ButlerManager, error) {
 	return ButlerManager{}, nil
 }
 
-func GetButlerManagerMethodOpts(entry string, method string, bc *ButlerConfigSettings) (interface{}, error) {
+func GetButlerManagerMethodOpts(entry string, method string, bc *ButlerConfigSettings) (ButlerManagerMethodOpts, error) {
 	var (
-		result interface{}
+		result ButlerManagerMethodGenericOpts
 		err    error
 	)
 

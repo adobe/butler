@@ -650,7 +650,8 @@ func (bmo *ButlerManagerOpts) DownloadConfigFile(file string) *os.File {
 			log.Fatal(msg)
 		}
 
-		response, err := bmo.Opts.(ButlerManagerMethodHttpOpts).Client.Get(file)
+		//response, err := bmo.Opts.(ButlerManagerMethodHttpOpts).Client.Get(file)
+		response, err := bmo.Opts.Get(file)
 
 		if err != nil {
 			tmpFile.Close()

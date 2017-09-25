@@ -64,31 +64,14 @@ func NewMonitor(bc *config.ButlerConfig) *Monitor {
 // to the health check monitor. When /health-check is hit, it returns this
 // structure, which is then Marshal'd to json and provided back to the end
 // user
-/*
 type MonitorOutput struct {
-	ClusterID             string            `json:"cluster_id"`
-	ButlerConfigURL       string            `json:"butler_config_url"`
-	PrometheusHost        string            `json:"prometheus_host"`
-	PrometheusConfigFiles []string          `json:"prometheus_config_files"`
-	AdditionalConfigFiles []string          `json:"additional_config_files"`
-	MustacheSubs          map[string]string `json:"mustache_subs"`
-	LastRun               time.Time         `json:"last_run"`
-	Version               string            `json:"version"`
-}
-*/
-type MonitorOutput struct {
-	ConfigPath       string                      `json:"config_path"`
-	ConfigScheme     string                      `json:"config_scheme"`
-	RetrieveInterval int                         `json:"retrieve_interval"`
-	LogLevel         log.Level                   `json:"log_level"`
-	ConfigSettings   config.ButlerConfigSettings `json:"config_settings"`
-	LastRun          time.Time                   `json:"last_run"`
+	ConfigPath       string                      `json:"config-path"`
+	ConfigScheme     string                      `json:"config-scheme"`
+	RetrieveInterval int                         `json:"retrieve-interval"`
+	LogLevel         log.Level                   `json:"log-level"`
+	ConfigSettings   config.ButlerConfigSettings `json:"config-settings"`
+	LastRun          time.Time                   `json:"last-run"`
 	Version          string                      `json:"version"`
-}
-
-type PrometheusFileMap struct {
-	TmpFile string
-	Success bool
 }
 
 // Start turns up the http server for monitoring butler.

@@ -22,6 +22,11 @@ var (
 
 type ButlerChanEvent interface{}
 
+type TmpFile struct {
+	Name string
+	File string
+}
+
 type ConfigChanEvent struct {
 	HasChanged bool
 	TmpFile    *os.File
@@ -64,14 +69,13 @@ func (c *ConfigChanEvent) CleanTmpFiles() error {
 	return nil
 }
 
-func (c *ConfigChanEvent) GetTmpFileMap() map[string]string {
+func (c *ConfigChanEvent) GetTmpFileMap() []TmpFile {
 	var (
 		keys   []string
+		res    []TmpFile
 		tmpRes map[string]string
-		res    map[string]string
 	)
 	tmpRes = make(map[string]string)
-	res = make(map[string]string)
 
 	for _, r := range c.Repo {
 		for k, v := range r.TmpFile {
@@ -86,9 +90,9 @@ func (c *ConfigChanEvent) GetTmpFileMap() map[string]string {
 	// configuration reload
 	sort.Strings(keys)
 	for _, v := range keys {
-		res[v] = tmpRes[v]
+		res = append(res, TmpFile{Name: v, File: tmpRes[v]})
 	}
-	log.Debugf("ConfigChanEvent::GetTmpFileMap(): res=%v", res)
+	log.Debugf("ConfigChanEvent::GetTmpFileMap(): res=%#v", res)
 	return res
 }
 
@@ -141,10 +145,10 @@ func (c *ConfigChanEvent) CopyPrimaryConfigFiles() bool {
 		return false
 	} else {
 		for _, f := range c.GetTmpFileMap() {
-			in, err := os.Open(f)
+			in, err := os.Open(f.File)
 			if err != nil {
 				log.Infof("ConfigChanEvent::CopyPrimaryConfigFiles(): Could not process and merge new %s err=%s.", c.ConfigFile, err.Error())
-				stats.SetButlerConfigVal(stats.FAILURE, "local", stats.GetStatsLabel(f))
+				stats.SetButlerConfigVal(stats.FAILURE, "local", stats.GetStatsLabel(f.Name))
 				c.CleanTmpFiles()
 				out.Close()
 				return false
@@ -152,7 +156,7 @@ func (c *ConfigChanEvent) CopyPrimaryConfigFiles() bool {
 			_, err = io.Copy(out, in)
 			if err != nil {
 				log.Infof("ConfigChanEvent::CopyPrimaryConfigFiles(): Could not process and merge new %s err=%s.", c.ConfigFile, err.Error())
-				stats.SetButlerConfigVal(stats.FAILURE, "local", stats.GetStatsLabel(f))
+				stats.SetButlerConfigVal(stats.FAILURE, "local", stats.GetStatsLabel(f.Name))
 				c.CleanTmpFiles()
 				out.Close()
 				return false
@@ -169,12 +173,11 @@ func (c *ConfigChanEvent) CopyAdditionalConfigFiles(destDir string) bool {
 		IsModified bool
 	)
 	log.Debugf("ButlerManager::CopyAdditionalConfigFiles(): entering")
-	log.Debugf("ButlerManager::CopyAdditionalConfigFiles(): destDir=%v", destDir)
 	IsModified = false
 
-	for i, f := range c.GetTmpFileMap() {
-		destFile := fmt.Sprintf("%s/%s", destDir, i)
-		if CompareAndCopy(f, destFile) {
+	for _, f := range c.GetTmpFileMap() {
+		destFile := fmt.Sprintf("%s/%s", destDir, f.Name)
+		if CompareAndCopy(f.File, destFile) {
 			IsModified = true
 		}
 	}
@@ -310,7 +313,7 @@ type ButlerManagerReloaderHttp struct {
 
 type ButlerManagerReloaderHttpOpts struct {
 	Client       *retryablehttp.Client `json:"-"`
-	ContentType	string		`json:"content-type"`
+	ContentType  string                `json:"content-type"`
 	Host         string                `json:"host"`
 	Port         int                   `json:"port"`
 	Uri          string                `json:"uri"`
@@ -375,7 +378,7 @@ func (r ButlerManagerReloaderHttp) ManagerReloadRetryPolicy(resp *http.Response,
 
 	// Here is our policy override. By default it looks for
 	// res.StatusCode >= 500 ...
-	if resp.StatusCode == 0  || resp.StatusCode >= 600 {
+	if resp.StatusCode == 0 || resp.StatusCode >= 600 {
 		return true, nil
 	}
 	return false, nil

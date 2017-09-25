@@ -90,7 +90,8 @@ title = "Butler Configuration"
       port = 9999
       uri = "/-/reload"
       method = "post"
-      payload = ""
+      payload = "{}"
+      content-type = "application/json"
       # retry info and timeouts
       retries = 5
       retry-wait-min = 5
@@ -168,7 +169,8 @@ title = "Butler Configuration"
       port = 9999
       uri = "/-/reload"
       method = "post"
-      payload = ""
+      payload = "{}"
+      content-type = "application/json"
       # retry info and timeouts
       retries = 5
       retry-wait-min = 5

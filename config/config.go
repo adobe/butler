@@ -2,14 +2,17 @@ package config
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
+	//"reflect"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/hashicorp/go-retryablehttp"
+	//"github.com/mitchellh/mapstructure"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
@@ -162,19 +165,35 @@ func GetButlerManagerOpts(entry string, bc *ButlerConfigSettings) (*ButlerManage
 	return &ManagerOpts, nil
 }
 
-func GetButlerConfigReloaderOpts(entry string, method string, bc *ButlerConfigSettings) (interface{}, error) {
+func GetButlerConfigReloader(entry string, bc *ButlerConfigSettings) (ButlerManagerReloader, error) {
 	var (
-		result interface{}
+		res    ButlerManagerReloader
+		method string
+		result map[string]interface{}
 		err    error
 	)
+	key := fmt.Sprintf("%s.reloader", entry)
+
+	err = viper.UnmarshalKey(key, &result)
+	if err != nil {
+		return ButlerGenericReloader{}, err
+	}
+
+	method = result["method"].(string)
+	jsonRes, err := json.Marshal(result[method])
+	if err != nil {
+		return ButlerGenericReloader{}, err
+	}
+	log.Debugf("GetButlerConfigReloader(): jsonRes=%s", jsonRes)
 
 	switch method {
 	case "http", "https":
 		var httpOpts ButlerManagerReloaderHttpOpts
-		err = viper.UnmarshalKey(entry, &httpOpts)
+		err = json.Unmarshal(jsonRes, &httpOpts)
 		if err != nil {
-			return result, err
+			return ButlerGenericReloader{}, err
 		}
+		log.Debugf("GetButlerConfigReloader(): httpOpts=%#v", httpOpts)
 		httpOpts.Client = retryablehttp.NewClient()
 		httpOpts.Client.Logger.SetFlags(0)
 		httpOpts.Client.Logger.SetOutput(ioutil.Discard)
@@ -182,39 +201,13 @@ func GetButlerConfigReloaderOpts(entry string, method string, bc *ButlerConfigSe
 		httpOpts.Client.RetryMax = httpOpts.Retries
 		httpOpts.Client.RetryWaitMax = time.Duration(httpOpts.RetryWaitMax) * time.Second
 		httpOpts.Client.RetryWaitMin = time.Duration(httpOpts.RetryWaitMin) * time.Second
-		return httpOpts, nil
-	default:
-		msg := fmt.Sprintf("unknown config reloader method=%s opts for %s", method, entry)
-		return result, errors.New(msg)
-	}
-	return result, err
-}
-
-func GetButlerConfigReloader(entry string, bc *ButlerConfigSettings) (ButlerManagerReloader, error) {
-	var (
-		result ButlerManagerReloader
-		err    error
-	)
-	key := fmt.Sprintf("%s.reloader", entry)
-	err = viper.UnmarshalKey(key, &result)
-	if err != nil {
-		return ButlerManagerReloader{}, err
-	}
-
-	switch result.Method {
-	case "http", "https":
-		ent := fmt.Sprintf("%s.%s", key, result.Method)
-		opts, err := GetButlerConfigReloaderOpts(ent, result.Method, bc)
-		if err != nil {
-			return ButlerManagerReloader{}, err
-		}
-		result.Opts = opts
+		res = ButlerManagerReloaderHttp{Method: method, Opts: httpOpts}
 		break
 	default:
-		msg := fmt.Sprintf("unknown reloader method=%s for %s", result.Method, entry)
-		return ButlerManagerReloader{}, errors.New(msg)
+		msg := fmt.Sprintf("unknown reloader method=%s for %s", method, entry)
+		return ButlerGenericReloader{}, errors.New(msg)
 	}
-	return result, err
+	return res, err
 }
 
 func GetButlerConfigManager(entry string, bc *ButlerConfigSettings) error {
@@ -230,6 +223,7 @@ func GetButlerConfigManager(entry string, bc *ButlerConfigSettings) error {
 	if err != nil {
 		return err
 	}
+
 	if len(Manager.Urls) < 1 {
 		msg := fmt.Sprintf("No urls configured for manager %s", entry)
 		return errors.New(msg)

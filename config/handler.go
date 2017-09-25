@@ -328,7 +328,7 @@ func (bc *ButlerConfig) CheckPaths() error {
 // Rewrite of main.ProcessPrometheusConfigFiles
 func (bm *ButlerManager) DownloadPrimaryConfigFiles(c chan ButlerChanEvent) error {
 	var (
-		Chan *ConfigChanEvent
+		Chan              *ConfigChanEvent
 		PrimaryConfigName string
 	)
 
@@ -552,7 +552,6 @@ func (bm *ButlerManager) DownloadAdditionalConfigFiles(c chan ButlerChanEvent) e
 
 // PathCleanup
 func (bm *ButlerManager) PathCleanup(path string, f os.FileInfo, err error) error {
-	log.Debugf("ButlerManager::PathCleanup(): entering")
 	var (
 		Found bool
 	)

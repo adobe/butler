@@ -711,6 +711,7 @@ func PrometheusReloadRetryPolicy(resp *http.Response, err error) (bool, error) {
 	return false, nil
 }
 
+/*
 func ReloadPrometheusHandler() error {
 	var err error
 	log.Infof("Reloading prometheus.")
@@ -751,6 +752,7 @@ func ReloadPrometheusHandler() error {
 
 	return nil
 }
+*/
 
 func ParseConfigFiles(configFiles string) []string {
 	var FileList []string

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"strings"
 
@@ -215,4 +216,65 @@ func CopyFile(src string, dst string) error {
 		return err
 	}
 	return cerr
+}
+
+// CacheConfigs takes in a string of the base directory for
+// the config directory and a slice of config file names and
+// caches those files into memory. It returns an error
+// on the event of error
+func CacheConfigs(files []string) error {
+	log.Infof("CacheConfig(): Storing known good configurations to cache.")
+	ConfigCache = make(map[string][]byte)
+	for _, file := range files {
+		out, err := ioutil.ReadFile(file)
+		if err != nil {
+			msg := fmt.Sprintf("CacheConfig(): Could not store %s to cache. err=%s", file, err.Error())
+			log.Infof(msg)
+			return errors.New(msg)
+		} else {
+			ConfigCache[file] = out
+		}
+	}
+	log.Infof("CacheConfig(): Done storing known good configurations to cache")
+	return nil
+}
+
+// RestoreCachedConfigs takes in a strint of the base directory for
+// the config directory and a slice of config file names
+// and restores those files from the cache back to the
+// filesystem. It returns an error on the event of an error
+func RestoreCachedConfigs(files []string) error {
+	// If we do not have a good configuration cache, then there's nothing for us to do.
+	if ConfigCache == nil {
+		log.Infof("RestoreCachedConfigFs(): No current known good configurations in cache. Cleaning configuration...")
+		for _, file := range files {
+			log.Infof("RestoreCachedConfigs(): Removing bad Prometheus configuration file %s.", file)
+			os.Remove(file)
+		}
+		log.Infof("RestoreCachedConfigs(): Done cleaning broken configuration. Returning...")
+		stats.SetButlerKnownGoodRestoredVal(stats.FAILURE)
+		return nil
+	}
+
+	log.Infof("RestoreCachedConfigs(): Restoring known good Prometheus configurations from cache.")
+	for _, file := range files {
+		fileData := ConfigCache[file]
+
+		f, err := os.OpenFile(file, os.O_WRONLY|os.O_TRUNC, 0644)
+		if err != nil {
+			log.Infof("RestoreCachedConfigs(): Could not open %s for writing! err=%s.", file, err.Error())
+			continue
+		} else {
+			count, err := f.Write(fileData)
+			if err != nil {
+				log.Infof("RestoreCachedConfigs(): Could write to %s! err=%s.", file, err.Error())
+				continue
+			} else {
+				f.Close()
+				log.Infof("RestoreCachedConfigs(): Wrote %d bytes for %s.", count, file)
+			}
+		}
+	}
+	log.Infof("RestoreCachedConfigs(): Done restoring known good Prometheus configurations from cache.")
+	return nil
 }

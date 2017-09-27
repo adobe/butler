@@ -18,6 +18,7 @@ import (
 
 var (
 	RequiredSubKeys = []string{"ethos-cluster-id"}
+	ConfigCache     map[string][]byte
 )
 
 type ButlerChanEvent interface{}
@@ -235,6 +236,19 @@ type ButlerConfigSettings struct {
 	Globals  ButlerConfigGlobals       `json:"globals"`
 }
 
+func (b *ButlerConfigSettings) GetAllConfigLocalPaths() []string {
+	var result []string
+	for _, m := range b.Managers {
+		result = append(result, fmt.Sprintf("%s/%s", m.DestPath, m.PrimaryConfigName))
+		for _, o := range m.ManagerOpts {
+			for _, f := range o.AdditionalConfigsFullLocalPaths {
+				result = append(result, f)
+			}
+		}
+	}
+	return result
+}
+
 type ButlerConfigGlobals struct {
 	Managers          []string `mapstructure:"config-managers",json:"-"`
 	SchedulerInterval int      `mapstructure:"scheduler-interval",json:"scheduler-interval"`
@@ -366,15 +380,15 @@ func (r ButlerManagerReloaderHttp) Reload() error {
 			stats.SetButlerKnownGoodCachedVal(stats.SUCCESS)
 			stats.SetButlerKnownGoodRestoredVal(stats.FAILURE)
 			stats.SetButlerReloadVal(stats.SUCCESS)
-			// stegen - must do this!
-			//CacheConfigs()
+			// at this point error should be nil, so things are OK
 		} else {
-			log.Infof("ButlerManagerReloaderHttp::Reload(): received bad response from server. reverting to last known good config. http_code=%d", int(resp.StatusCode))
+			msg := fmt.Sprintf("ButlerManagerReloaderHttp::Reload(): received bad response from server. reverting to last known good config. http_code=%d", int(resp.StatusCode))
+			log.Infof(msg)
 			stats.SetButlerKnownGoodCachedVal(stats.FAILURE)
 			stats.SetButlerKnownGoodRestoredVal(stats.FAILURE)
 			stats.SetButlerReloadVal(stats.FAILURE)
-			// stegen - must do this!
-			//RestoreCachedConfigs()
+			// at this point we should raise an error
+			return errors.New(msg)
 		}
 	default:
 		msg := fmt.Sprintf("ButlerManagerReloaderHttp::Reload(): %s is not a supported reload method", r.Method)

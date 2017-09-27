@@ -267,21 +267,21 @@ func (bc *ButlerConfig) RunCMHandler() error {
 	for _, m := range bc.Config.Managers {
 		go m.DownloadPrimaryConfigFiles(c1)
 		go m.DownloadAdditionalConfigFiles(c2)
-		primaryChan, additionalChan := <-c1, <-c2
+		PrimaryChan, AdditionalChan := <-c1, <-c2
 
-		if primaryChan.(*ConfigChanEvent).CanCopyFiles() && additionalChan.(*ConfigChanEvent).CanCopyFiles() {
+		if PrimaryChan.(*ConfigChanEvent).CanCopyFiles() && AdditionalChan.(*ConfigChanEvent).CanCopyFiles() {
 			log.Debugf("ButlerConfig::RunCMHandler(): successfully retrieved files. processing...")
-			p := primaryChan.(*ConfigChanEvent).CopyPrimaryConfigFiles()
-			a := additionalChan.(*ConfigChanEvent).CopyAdditionalConfigFiles(m.DestPath)
+			p := PrimaryChan.(*ConfigChanEvent).CopyPrimaryConfigFiles()
+			a := AdditionalChan.(*ConfigChanEvent).CopyAdditionalConfigFiles(m.DestPath)
 			if p || a {
 				ReloadManager = append(ReloadManager, m.Name)
 			}
-			primaryChan.(*ConfigChanEvent).CleanTmpFiles()
-			additionalChan.(*ConfigChanEvent).CleanTmpFiles()
+			PrimaryChan.(*ConfigChanEvent).CleanTmpFiles()
+			AdditionalChan.(*ConfigChanEvent).CleanTmpFiles()
 		} else {
 			log.Debugf("ButlerConfig::RunCMHandler(): cannot copy files. cleaning up...")
-			primaryChan.(*ConfigChanEvent).CleanTmpFiles()
-			additionalChan.(*ConfigChanEvent).CleanTmpFiles()
+			PrimaryChan.(*ConfigChanEvent).CleanTmpFiles()
+			AdditionalChan.(*ConfigChanEvent).CleanTmpFiles()
 		}
 	}
 
@@ -289,8 +289,16 @@ func (bc *ButlerConfig) RunCMHandler() error {
 		log.Debugf("ButlerConfig::RunCMHandler(): CM files unchanged... continuing.")
 	} else {
 		for _, m := range ReloadManager {
-			log.Debugf("ButlerConfig::RunCMHandler(): CM file changes. reloading manager %v...", m)
-			bc.Config.Managers[m].Reload()
+			log.Debugf("ButlerConfig::RunCMHandler(): m=%#v", m)
+			err := bc.Config.Managers[m].Reload()
+			log.Debugf("ButlerConfig::RunCMHandler(): err=%#v", err)
+			if err != nil {
+				log.Debugf("ButlerConfig::RunCMHandler(): here 1")
+				RestoreCachedConfigs(bc.Config.GetAllConfigLocalPaths())
+			} else {
+				log.Debugf("ButlerConfig::RunCMHandler(): here 2")
+				CacheConfigs(bc.Config.GetAllConfigLocalPaths())
+			}
 		}
 	}
 

@@ -2,6 +2,7 @@ package stats
 
 import (
 	"strings"
+	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
 	//log "github.com/sirupsen/logrus"
@@ -20,6 +21,7 @@ var (
 	ButlerRenderTime        *prometheus.GaugeVec
 	ButlerWriteSuccess      *prometheus.GaugeVec
 	ButlerWriteTime         *prometheus.GaugeVec
+	statsMutex              *sync.Mutex
 )
 
 // FAILURE and SUCCESS are float64 enumerations which are used to set the
@@ -33,7 +35,15 @@ const (
 	SUCCESS
 )
 
+func init() {
+	statsMutex = &sync.Mutex{}
+}
+
 func SetButlerReloadVal(res float64) {
+	// We don't want to have a race condition where two
+	// we try to initialize the same stat at the same time
+	// this will cause the prometheus client to panic
+	statsMutex.Lock()
 	if ButlerReloadSuccess == nil {
 		ButlerReloadSuccess = prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: "butler_localconfig_reload_success",
@@ -51,6 +61,7 @@ func SetButlerReloadVal(res float64) {
 		prometheus.MustRegister(ButlerReloadTime)
 
 	}
+	statsMutex.Unlock()
 
 	if res == SUCCESS {
 		ButlerReloadSuccess.Set(SUCCESS)
@@ -61,6 +72,10 @@ func SetButlerReloadVal(res float64) {
 }
 
 func SetButlerRenderVal(res float64, repo string, file string) {
+	// We don't want to have a race condition where two
+	// we try to initialize the same stat at the same time
+	// this will cause the prometheus client to panic
+	statsMutex.Lock()
 	if ButlerRenderSuccess == nil {
 		ButlerRenderSuccess = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Name: "butler_localconfig_render_success",
@@ -76,6 +91,7 @@ func SetButlerRenderVal(res float64, repo string, file string) {
 		}, []string{"config_file", "repo"})
 		prometheus.MustRegister(ButlerRenderTime)
 	}
+	statsMutex.Unlock()
 
 	if res == SUCCESS {
 		ButlerRenderSuccess.With(prometheus.Labels{"config_file": file, "repo": repo}).Set(SUCCESS)
@@ -86,6 +102,10 @@ func SetButlerRenderVal(res float64, repo string, file string) {
 }
 
 func SetButlerWriteVal(res float64, label string) {
+	// We don't want to have a race condition where two
+	// we try to initialize the same stat at the same time
+	// this will cause the prometheus client to panic
+	statsMutex.Lock()
 	if ButlerWriteSuccess == nil {
 		ButlerWriteSuccess = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Name: "butler_localconfig_write_success",
@@ -101,6 +121,7 @@ func SetButlerWriteVal(res float64, label string) {
 		}, []string{"config_file"})
 		prometheus.MustRegister(ButlerWriteTime)
 	}
+	statsMutex.Unlock()
 
 	if res == SUCCESS {
 		ButlerWriteSuccess.With(prometheus.Labels{"config_file": label}).Set(SUCCESS)
@@ -111,6 +132,10 @@ func SetButlerWriteVal(res float64, label string) {
 }
 
 func SetButlerConfigVal(res float64, repo string, file string) {
+	// We don't want to have a race condition where two
+	// we try to initialize the same stat at the same time
+	// this will cause the prometheus client to panic
+	statsMutex.Lock()
 	if ButlerConfigValid == nil {
 		ButlerConfigValid = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Name: "butler_remoterepo_config_valid",
@@ -118,6 +143,7 @@ func SetButlerConfigVal(res float64, repo string, file string) {
 		}, []string{"config_file", "repo"})
 		prometheus.MustRegister(ButlerConfigValid)
 	}
+	statsMutex.Unlock()
 
 	if res == SUCCESS {
 		ButlerConfigValid.With(prometheus.Labels{"config_file": file, "repo": repo}).Set(SUCCESS)
@@ -126,6 +152,10 @@ func SetButlerConfigVal(res float64, repo string, file string) {
 	}
 }
 func SetButlerContactVal(res float64, repo string, file string) {
+	// We don't want to have a race condition where two
+	// we try to initialize the same stat at the same time
+	// this will cause the prometheus client to panic
+	statsMutex.Lock()
 	if ButlerContactSuccess == nil {
 		ButlerContactSuccess = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Name: "butler_remoterepo_contact_success",
@@ -142,6 +172,7 @@ func SetButlerContactVal(res float64, repo string, file string) {
 		}, []string{"config_file", "repo"})
 		prometheus.MustRegister(ButlerContactTime)
 	}
+	statsMutex.Unlock()
 
 	if res == SUCCESS {
 		ButlerContactSuccess.With(prometheus.Labels{"config_file": file, "repo": repo}).Set(SUCCESS)
@@ -152,6 +183,10 @@ func SetButlerContactVal(res float64, repo string, file string) {
 }
 
 func SetButlerKnownGoodCachedVal(res float64) {
+	// We don't want to have a race condition where two
+	// we try to initialize the same stat at the same time
+	// this will cause the prometheus client to panic
+	statsMutex.Lock()
 	if ButlerKnownGoodCached == nil {
 		ButlerKnownGoodCached = prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: "butler_lastknowngood_cached",
@@ -160,17 +195,22 @@ func SetButlerKnownGoodCachedVal(res float64) {
 		prometheus.MustRegister(ButlerKnownGoodCached)
 
 	}
+	statsMutex.Unlock()
 }
 
 func SetButlerKnownGoodRestoredVal(res float64) {
+	// We don't want to have a race condition where two
+	// we try to initialize the same stat at the same time
+	// this will cause the prometheus client to panic
+	statsMutex.Lock()
 	if ButlerKnownGoodRestored == nil {
 		ButlerKnownGoodRestored = prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: "butler_lastknowngood_restored",
 			Help: "Did butler restore the known good configuration",
 		})
 		prometheus.MustRegister(ButlerKnownGoodRestored)
-
 	}
+	statsMutex.Unlock()
 
 	if res == SUCCESS {
 	} else {

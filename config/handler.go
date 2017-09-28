@@ -22,20 +22,6 @@ func NewButlerConfig() *ButlerConfig {
 	return &ButlerConfig{FirstRun: true}
 }
 
-func NewConfigChanEvent() *ConfigChanEvent {
-	var (
-		c ConfigChanEvent
-		f RepoFileEvent
-	)
-	c = ConfigChanEvent{}
-	_ = f
-	c.Repo = make(map[string]*RepoFileEvent)
-	//f = RepoFileEvent{}
-	//f.Success = make(map[string]bool)
-	//f.Error = make(map[string]error)
-	return &c
-}
-
 func (bc *ButlerConfig) SetScheme(s string) error {
 	scheme := strings.ToLower(s)
 	if !IsValidScheme(scheme) {
@@ -67,29 +53,24 @@ func (bc *ButlerConfig) SetInterval(t int) error {
 }
 
 func (bc *ButlerConfig) GetCMInterval() int {
-	//log.Debugf("ButlerConfig::GetCMInterval(): getting bc.Config.Globals.SchedulerInterval=%v", bc.Config.Globals.SchedulerInterval)
 	return bc.Config.Globals.SchedulerInterval
 }
 
 func (bc *ButlerConfig) SetCMInterval(i int) error {
-	//log.Debugf("ButlerConfig::SetCMInterval(): setting bc.Config.Globals.SchedulerInterval=%v", i)
 	bc.Config.Globals.SchedulerInterval = i
 	return nil
 }
 
 func (bc *ButlerConfig) GetCMPrevInterval() int {
-	//log.Debugf("ButlerConfig::GetCMPrevInterval(): getting bc.Config.Globals.PrevSchedulerInterval=%v", bc.Config.Globals.PrevSchedulerInterval)
 	return bc.PrevCMSchedulerInterval
 }
 
 func (bc *ButlerConfig) SetCMPrevInterval(i int) error {
-	//log.Debugf("ButlerConfig::SetCMPrevInterval(): setting bc.Config.Globals.PrevSchedulerInterval=%v", i)
 	bc.PrevCMSchedulerInterval = i
 	return nil
 }
 
 func (bc *ButlerConfig) GetInterval() int {
-	//log.Debugf("ButlerConfig::GetInterval(): getting bc.Interval=%v", bc.Interval)
 	return bc.Interval
 }
 

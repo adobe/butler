@@ -9,8 +9,7 @@ title = "Butler Configuration"
 
   ## Scheduler Interval is how often we try to grab configurations from repo
   ## Default: 300
-  scheduler-interval = 10
-  #scheduler-interval = 5
+  scheduler-interval = 300
 
   ## Do we want to exit from butler if there are butler configuration load issues
   ## Default: false
@@ -30,7 +29,13 @@ title = "Butler Configuration"
   ## These are the mustache substitutions that we'll attempt to make on the merged prometheus.yml
   mustache-subs = ["ethos-cluster-id=ethos01-dev-or1", "endpoint=external"]
 
-  ## Destination path to install the configuration files to
+  ## Should config caching be used
+  enable-cache = false
+
+  ## Destination path to install cached configuration files to
+  cache-path = "/opt/cache/prometheus"
+
+  ## Destination path to install the managed configuration files to
   dest-path = "/opt/prometheus"
 
   ## Since there is a primary configuration (merged), and additional configurations (unmerged),
@@ -111,7 +116,10 @@ title = "Butler Configuration"
 
   mustache-subs = ["ethos-cluster-id=ethos01-dev-or1", "endpoint=external"]
 
-  ## Destination path
+  ## Destination path to install cached configuration files to
+  cache-path = "/opt/cache/alertmanager"
+
+  ## Destination path to install the managed configuration files to
   dest-path = "/opt/alertmanager"
 
   ## Since there is a primary configuration (merged), and additional configurations (unmerged),

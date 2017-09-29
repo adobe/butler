@@ -13,26 +13,26 @@ import (
 )
 
 type Manager struct {
-	Name              string
-	Urls              []string          `mapstructure:"urls"`
-	CleanFiles        bool              `mapstructure:"clean-files"`
-	MustacheSubsArray []string          `mapstructure:"mustache-subs",json:"-"`
+	Name              string            `json:"name"`
+	Urls              []string          `mapstructure:"urls" json:"urls"`
+	CleanFiles        bool              `mapstructure:"clean-files" json:"clean-files"`
+	MustacheSubsArray []string          `mapstructure:"mustache-subs" json:"-"`
 	MustacheSubs      map[string]string `json:"mustache-subs"`
-	EnableCache       bool              `mapstructure:"enable-cache"`
-	CachePath         string            `mapstructure:"cache-path"`
-	DestPath          string            `mapstructure:"dest-path"`
-	PrimaryConfigName string            `mapstructure:"primary-config-name",json:"primary-config-name"`
+	EnableCache       bool              `mapstructure:"enable-cache" json:"enable-cache"`
+	CachePath         string            `mapstructure:"cache-path" json:"cache-path"`
+	DestPath          string            `mapstructure:"dest-path" json:"dest-path"`
+	PrimaryConfigName string            `mapstructure:"primary-config-name" json:"primary-config-name"`
 	ManagerOpts       map[string]*ManagerOpts
 	Reloader          ManagerReloader `mapstructure:"-"`
-	ReloadManager     bool
+	ReloadManager     bool            `json:"-"`
 }
 
 type ManagerOpts struct {
-	Method                          string `mapstructure:"method"`
-	UriPath                         string `mapstructure:"uri-path"`
-	Repo                            string
-	PrimaryConfig                   []string `mapstructure:"primary-config"`
-	AdditionalConfig                []string `mapstructure:"additional-config"`
+	Method                          string   `mapstructure:"method" json:"method"`
+	UriPath                         string   `mapstructure:"uri-path" json:"uri-path"`
+	Repo                            string   `json:"repo"`
+	PrimaryConfig                   []string `mapstructure:"primary-config" json:"primary-config"`
+	AdditionalConfig                []string `mapstructure:"additional-config" json:"additional-config"`
 	PrimaryConfigsFullUrls          []string
 	AdditionalConfigsFullUrls       []string
 	PrimaryConfigsFullLocalPaths    []string

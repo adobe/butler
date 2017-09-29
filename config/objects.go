@@ -8,8 +8,7 @@ import (
 )
 
 var (
-	RequiredSubKeys = []string{"ethos-cluster-id"}
-	ConfigCache     map[string][]byte
+	ConfigCache map[string]map[string][]byte
 )
 
 type TmpFile struct {

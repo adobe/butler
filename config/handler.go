@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"git.corp.adobe.com/TechOps-IAO/butler/stats"
+
 	"github.com/jasonlvhit/gocron"
 	log "github.com/sirupsen/logrus"
 )
@@ -284,11 +286,15 @@ func (bc *ButlerConfig) RunCMHandler() error {
 			err := bc.Config.Managers[m].Reload()
 			log.Debugf("Config::RunCMHandler(): err=%#v", err)
 			if err != nil {
-				log.Debugf("Config::RunCMHandler(): here 1")
-				RestoreCachedConfigs(bc.Config.GetAllConfigLocalPaths())
+				stats.SetButlerReloadVal(stats.FAILURE, m)
+				if bc.Config.Managers[m].EnableCache {
+					RestoreCachedConfigs(m, bc.Config.GetAllConfigLocalPaths())
+				}
 			} else {
-				log.Debugf("Config::RunCMHandler(): here 2")
-				CacheConfigs(bc.Config.GetAllConfigLocalPaths())
+				stats.SetButlerReloadVal(stats.SUCCESS, m)
+				if bc.Config.Managers[m].EnableCache {
+					CacheConfigs(m, bc.Config.GetAllConfigLocalPaths())
+				}
 			}
 		}
 	}

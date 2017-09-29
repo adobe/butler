@@ -6,8 +6,6 @@ import (
 	"net/http"
 	"strings"
 
-	"git.corp.adobe.com/TechOps-IAO/butler/stats"
-
 	"github.com/hashicorp/go-retryablehttp"
 	log "github.com/sirupsen/logrus"
 )
@@ -63,21 +61,15 @@ func (r ManagerReloaderHttp) Reload() error {
 		if err != nil {
 			msg := fmt.Sprintf("ManagerReloaderHttp::Reload(): err=%v", err.Error())
 			log.Infof(msg)
-			stats.SetButlerReloadVal(stats.FAILURE)
+			//stats.SetButlerReloadVal(stats.FAILURE)
 			return errors.New(msg)
 		}
 		if resp.StatusCode == 200 {
 			log.Infof("ManagerReloaderHttp::Reload(): successfully reloaded config. http_code=%d", int(resp.StatusCode))
-			stats.SetButlerKnownGoodCachedVal(stats.SUCCESS)
-			stats.SetButlerKnownGoodRestoredVal(stats.FAILURE)
-			stats.SetButlerReloadVal(stats.SUCCESS)
 			// at this point error should be nil, so things are OK
 		} else {
 			msg := fmt.Sprintf("ManagerReloaderHttp::Reload(): received bad response from server. reverting to last known good config. http_code=%d", int(resp.StatusCode))
 			log.Infof(msg)
-			stats.SetButlerKnownGoodCachedVal(stats.FAILURE)
-			stats.SetButlerKnownGoodRestoredVal(stats.FAILURE)
-			stats.SetButlerReloadVal(stats.FAILURE)
 			// at this point we should raise an error
 			return errors.New(msg)
 		}

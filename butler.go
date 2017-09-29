@@ -57,13 +57,13 @@ func NewMonitor(bc *config.ButlerConfig) *Monitor {
 // structure, which is then Marshal'd to json and provided back to the end
 // user
 type MonitorOutput struct {
-	ConfigPath       string                      `json:"config-path"`
-	ConfigScheme     string                      `json:"config-scheme"`
-	RetrieveInterval int                         `json:"retrieve-interval"`
-	LogLevel         log.Level                   `json:"log-level"`
+	ConfigPath       string                `json:"config-path"`
+	ConfigScheme     string                `json:"config-scheme"`
+	RetrieveInterval int                   `json:"retrieve-interval"`
+	LogLevel         log.Level             `json:"log-level"`
 	ConfigSettings   config.ConfigSettings `json:"config-settings"`
-	LastRun          time.Time                   `json:"last-run"`
-	Version          string                      `json:"version"`
+	LastRun          time.Time             `json:"last-run"`
+	Version          string                `json:"version"`
 }
 
 // Start turns up the http server for monitoring butler.
@@ -121,8 +121,8 @@ func SetLogLevel(l string) log.Level {
 
 func main() {
 	var (
-		err         error
-		versionFlag = flag.Bool("version", false, "Print version information.")
+		err                    error
+		versionFlag            = flag.Bool("version", false, "Print version information.")
 		configPath             = flag.String("config.path", "", "Full remote path to butler configuration file (eg: URI without scheme://).")
 		configScheme           = flag.String("config.scheme", "http", "Scheme used to download the butler configuration file. Currently supported schemes: http, https.")
 		configInterval         = flag.Int("config.retrieve-interval", 300, "The interval, in seconds, to retrieve new butler configuration files.")

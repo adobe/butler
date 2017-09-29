@@ -3,17 +3,21 @@ package config
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"strings"
+	"time"
 
 	"git.corp.adobe.com/TechOps-IAO/butler/stats"
 
+	"github.com/hashicorp/go-retryablehttp"
 	"github.com/hoisie/mustache"
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 	"github.com/udhos/equalfile"
 )
 
@@ -30,12 +34,12 @@ func IsValidScheme(s string) bool {
 	return Found
 }
 
-// ValidateButlerConfig takes a pointer to an os.File object. It scans over the
+// ValidateConfig takes a pointer to an os.File object. It scans over the
 // file and ensures that it begins with the proper header, and ends with the
 // proper footer. If it does not begin or end with the proper header/footer,
 // then an error is returned. If the file passes the checks, a nil is returned.
-//func ValidateButlerConfig(f *os.File) error {
-func ValidateButlerConfig(f interface{}) error {
+//func ValidateConfig(f *os.File) error {
+func ValidateConfig(f interface{}) error {
 	var (
 		configLine    string
 		isFirstLine   bool
@@ -61,7 +65,7 @@ func ValidateButlerConfig(f interface{}) error {
 		file := bytes.NewReader(newf)
 		scanner = bufio.NewScanner(file)
 	default:
-		return errors.New(fmt.Sprintf("ValidateButlerConfig(): unknown file type %s for %s", t, f))
+		return errors.New(fmt.Sprintf("ValidateConfig(): unknown file type %s for %s", t, f))
 	}
 
 	for scanner.Scan() {
@@ -277,4 +281,276 @@ func RestoreCachedConfigs(files []string) error {
 	}
 	log.Infof("RestoreCachedConfigs(): Done restoring known good Prometheus configurations from cache.")
 	return nil
+}
+
+func ParseConfigManager(config []byte) (Manager, error) {
+	return Manager{}, nil
+}
+
+func GetManagerMethodOpts(entry string, method string, bc *ConfigSettings) (ManagerMethodOpts, error) {
+	var (
+		result ManagerMethodGenericOpts
+		err    error
+	)
+
+	switch method {
+	case "http", "https":
+		var httpOpts ManagerMethodHttpOpts
+		err = viper.UnmarshalKey(entry, &httpOpts)
+		if err != nil {
+			return result, err
+		}
+		httpOpts.Client = retryablehttp.NewClient()
+		httpOpts.Client.Logger.SetFlags(0)
+		httpOpts.Client.Logger.SetOutput(ioutil.Discard)
+		httpOpts.Client.Logger.SetOutput(ioutil.Discard)
+		httpOpts.Client.Logger.SetOutput(ioutil.Discard)
+		httpOpts.Client.HTTPClient.Timeout = time.Duration(httpOpts.Timeout) * time.Second
+		httpOpts.Client.RetryMax = httpOpts.Retries
+		httpOpts.Client.RetryWaitMax = time.Duration(httpOpts.RetryWaitMax) * time.Second
+		httpOpts.Client.RetryWaitMin = time.Duration(httpOpts.RetryWaitMin) * time.Second
+		return httpOpts, nil
+	default:
+		msg := fmt.Sprintf("unknown manager.method=%s opts for %s", method, entry)
+		return &result, errors.New(msg)
+	}
+	// Shouldn't get here.
+	return result, nil
+}
+
+func GetManagerOpts(entry string, bc *ConfigSettings) (*ManagerOpts, error) {
+	var (
+		err     error
+		MgrOpts ManagerOpts
+	)
+	err = viper.UnmarshalKey(entry, &MgrOpts)
+	if err != nil {
+		return &ManagerOpts{}, err
+	}
+
+	switch MgrOpts.Method {
+	case "http", "https":
+		break
+	default:
+		msg := fmt.Sprintf("unknown manager.method=%v", MgrOpts.Method)
+		return &ManagerOpts{}, errors.New(msg)
+	}
+
+	if MgrOpts.UriPath == "" {
+		return &ManagerOpts{}, errors.New("no manager.uri-path defined")
+	}
+
+	repoSplit := strings.Split(entry, ".")
+	MgrOpts.Repo = strings.Join(repoSplit[1:len(repoSplit)], ".")
+
+	if len(MgrOpts.PrimaryConfig) < 1 {
+		return &ManagerOpts{}, errors.New("no manager.primary-config defined")
+	}
+
+	methodOpts := fmt.Sprintf("%s.%s", entry, MgrOpts.Method)
+	mopts, err := GetManagerMethodOpts(methodOpts, MgrOpts.Method, bc)
+	MgrOpts.Opts = mopts
+
+	return &MgrOpts, nil
+}
+
+func GetConfigReloader(entry string, bc *ConfigSettings) (ManagerReloader, error) {
+	var (
+		res    ManagerReloader
+		method string
+		result map[string]interface{}
+		err    error
+	)
+	key := fmt.Sprintf("%s.reloader", entry)
+
+	err = viper.UnmarshalKey(key, &result)
+	if err != nil {
+		return GenericReloader{}, err
+	}
+
+	method = result["method"].(string)
+	jsonRes, err := json.Marshal(result[method])
+	if err != nil {
+		return GenericReloader{}, err
+	}
+	log.Debugf("GetConfigReloader(): jsonRes=%s", jsonRes)
+
+	switch method {
+	case "http", "https":
+		var httpOpts ManagerReloaderHttpOpts
+		err = json.Unmarshal(jsonRes, &httpOpts)
+		if err != nil {
+			return GenericReloader{}, err
+		}
+		log.Debugf("GetConfigReloader(): httpOpts=%#v", httpOpts)
+		httpOpts.Client = retryablehttp.NewClient()
+		httpOpts.Client.Logger.SetFlags(0)
+		httpOpts.Client.Logger.SetOutput(ioutil.Discard)
+		httpOpts.Client.HTTPClient.Timeout = time.Duration(httpOpts.Timeout) * time.Second
+		httpOpts.Client.RetryMax = httpOpts.Retries
+		httpOpts.Client.RetryWaitMax = time.Duration(httpOpts.RetryWaitMax) * time.Second
+		httpOpts.Client.RetryWaitMin = time.Duration(httpOpts.RetryWaitMin) * time.Second
+		res = ManagerReloaderHttp{Method: method, Opts: httpOpts}
+		break
+	default:
+		msg := fmt.Sprintf("unknown reloader method=%s for %s", method, entry)
+		return GenericReloader{}, errors.New(msg)
+	}
+	return res, err
+}
+
+func GetConfigManager(entry string, bc *ConfigSettings) error {
+	var (
+		err     error
+		Manager Manager
+	)
+
+	Manager.Name = entry
+	Manager.ReloadManager = false
+
+	err = viper.UnmarshalKey(entry, &Manager)
+	if err != nil {
+		return err
+	}
+
+	if len(Manager.Urls) < 1 {
+		msg := fmt.Sprintf("No urls configured for manager %s", entry)
+		return errors.New(msg)
+	}
+
+	if Manager.DestPath == "" {
+		msg := fmt.Sprintf("No dest-path configured for manager %s", entry)
+		errors.New(msg)
+	}
+
+	Manager.ManagerOpts = make(map[string]*ManagerOpts)
+	for _, m := range Manager.Urls {
+		bc.Managers[entry] = &Manager
+		mopts := fmt.Sprintf("%s.%s", entry, m)
+		opts, err := GetManagerOpts(mopts, bc)
+		if err != nil {
+			return err
+		}
+		bc.Managers[entry].ManagerOpts[mopts] = opts
+	}
+
+	reloader, err := GetConfigReloader(entry, bc)
+	if err != nil {
+		return err
+	}
+
+	Manager.MustacheSubs, err = ParseMustacheSubs(Manager.MustacheSubsArray)
+	if err != nil {
+		log.Debugf("GetConfigManager(): could not get mustache subs. err=%s", err.Error())
+		return err
+	}
+	m := bc.Managers[entry]
+	m.Reloader = reloader
+	bc.Managers[entry] = m
+	return nil
+}
+
+func ParseConfig(config []byte) error {
+	var (
+		//handlers []string
+		Config  ConfigSettings
+		Globals ConfigGlobals
+	)
+	// The  configuration is in TOML format
+	viper.SetConfigType("toml")
+
+	// We grab the config from a remote repo so it's in []byte format. let's see
+	// if we can process it.
+	err := viper.ReadConfig(bytes.NewBuffer(config))
+	if err != nil {
+		return err
+	}
+
+	Config = ConfigSettings{}
+
+	// Let's start piecing together the globals
+	err = viper.UnmarshalKey("globals", &Globals)
+	if err != nil {
+		log.Fatalf("Unable to decode into struct, %v", err)
+	}
+	Config.Globals = Globals
+
+	// Let's grab some of the global settings
+	if Config.Globals.SchedulerInterval == 0 {
+		Config.Globals.SchedulerInterval = ConfigSchedulerInterval
+	}
+
+	log.Debugf("ParseConfig(): globals.config-managers=%#v", Config.Globals.Managers)
+	log.Debugf("ParseConfig(): len(globals.config-managers)=%v", len(Config.Globals.Managers))
+
+	// If there are no entries for config-managers, then the Unmarshal will create an empty array
+	if len(Config.Globals.Managers) < 1 {
+		if Config.Globals.ExitOnFailure {
+			log.Fatalf("ParseConfig(): globals.config-managers has no entries! exiting...")
+		} else {
+			log.Debugf("ParseConfig(): globals.config-managers has no entries!")
+			return errors.New("globals.config-managers has no entries. Nothing to do")
+		}
+	}
+
+	Config.Managers = make(map[string]*Manager)
+	// Now let's start processing the managers. This is going
+	for _, entry := range Config.Globals.Managers {
+		if !viper.IsSet(entry) {
+			if Config.Globals.ExitOnFailure {
+				log.Fatalf("ParseConfig(): %v is not in the configuration as a manager! exiting...", entry)
+			} else {
+				log.Debugf("ParseConfig(): %v is not in the configuration as a manager", entry)
+				msg := fmt.Sprintf("Cannot find manager for %s", entry)
+				return errors.New(msg)
+			}
+		} else {
+			err = GetConfigManager(entry, &Config)
+			if err != nil {
+				if Config.Globals.ExitOnFailure {
+					log.Fatalf("ParseConfig(): could not retrieve config options for %v. err=%v", entry, err.Error())
+				} else {
+					log.Debugf("ParseConfig(): could not retrieve config options for %v. err=%v", entry, err.Error())
+					msg := fmt.Sprintf("could not retrieve config options for %v. err=%v", entry, err.Error())
+					return errors.New(msg)
+				}
+			}
+			//Config.Managers[entry] = Manager{}
+		}
+	}
+
+	log.Debugf("Config.Managers=%#v", Config.Managers)
+	return nil
+}
+
+func NewButlerConfig() *ButlerConfig {
+	return &ButlerConfig{FirstRun: true}
+}
+
+func NewConfigChanEvent() *ConfigChanEvent {
+	var (
+		c ConfigChanEvent
+	)
+	c = ConfigChanEvent{}
+	c.Repo = make(map[string]*RepoFileEvent)
+	return &c
+}
+
+func NewConfigClient(scheme string) (*ConfigClient, error) {
+	var c ConfigClient
+	switch scheme {
+	case "http", "https":
+		c.Scheme = "http"
+		c.HttpClient = retryablehttp.NewClient()
+		c.HttpClient.Logger.SetFlags(0)
+		c.HttpClient.Logger.SetOutput(ioutil.Discard)
+	default:
+		errMsg := fmt.Sprintf("Unsupported butler config scheme: %s", scheme)
+		return &ConfigClient{}, errors.New(errMsg)
+	}
+	return &c, nil
+}
+
+func NewConfigSettings() *ConfigSettings {
+	return &ConfigSettings{}
 }

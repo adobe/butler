@@ -14,12 +14,12 @@ import (
 
 func Test(t *testing.T) { TestingT(t) }
 
-var _ = Suite(&ButlerConfigTestSuite{})
+var _ = Suite(&ConfigTestSuite{})
 var TestHttpCase = 0
 
-type ButlerConfigTestSuite struct {
+type ConfigTestSuite struct {
 	TestServer *httptest.Server
-	Config     *ButlerConfig
+	Config     *Config
 }
 
 type TestHttpHandler struct {
@@ -35,54 +35,54 @@ func (h *TestHttpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusNotFound),
 			http.StatusNotFound)
 	case 2:
-		fmt.Fprintf(w, string(TestButlerConfigBroken))
+		fmt.Fprintf(w, string(TestConfigBroken))
 	default:
-		fmt.Fprintf(w, string(TestButlerConfigBroken))
+		fmt.Fprintf(w, string(TestConfigBroken))
 	}
 }
 
-var TestButlerConfigEmpty = []byte(``)
-var TestButlerConfigNoHandlers = []byte(`[globals]
+var TestConfigEmpty = []byte(``)
+var TestConfigNoHandlers = []byte(`[globals]
 scheduler-interval2 = 300
 scheduler-interval = 300
 exit-on-config-failure = false
 clean-files = true
 `)
 
-var TestButlerConfigNoHandlersExit = []byte(`[globals]
+var TestConfigNoHandlersExit = []byte(`[globals]
 scheduler-interval = 300
 exit-on-config-failure = true
 clean-files = true
 `)
-var TestButlerConfigEmptyHandlers = []byte(`[globals]
+var TestConfigEmptyHandlers = []byte(`[globals]
 config-managers = []
 scheduler-interval = 300
 exit-on-config-failure = false
 clean-files = true
 `)
 
-var TestButlerConfigEmptyHandlersExit = []byte(`[globals]
+var TestConfigEmptyHandlersExit = []byte(`[globals]
 config-managers = []
 scheduler-interval = 300
 exit-on-config-failure = true
 clean-files = true
 `)
 
-var TestButlerConfigBroken = []byte(`[globals]
+var TestConfigBroken = []byte(`[globals]
 config-managers = ["test-handler"]
 scheduler-interval = 300
 exit-on-config-failure = false
 clean-files = true
 `)
 
-var TestButlerConfigBrokenExit = []byte(`[globals]
+var TestConfigBrokenExit = []byte(`[globals]
 config-managers = ["test-handler"]
 scheduler-interval = 300
 exit-on-config-failure = true
 clean-files = true
 `)
 
-var TestButlerConfigBrokenIncompleteHandler = []byte(`[globals]
+var TestConfigBrokenIncompleteHandler = []byte(`[globals]
 config-managers = ["test-handler", "test-handler2"]
 scheduler-interval = 300
 exit-on-config-failure = false
@@ -91,7 +91,7 @@ clean-files = true
   urls = ["localhost", "localhost"]
 `)
 
-var TestButlerConfigBrokenIncompleteHandlerExit = []byte(`[globals]
+var TestConfigBrokenIncompleteHandlerExit = []byte(`[globals]
 config-managers = ["test-handler", "test-handler2"]
 scheduler-interval = 300
 exit-on-config-failure = true
@@ -100,7 +100,7 @@ clean-files = true
   urls = ["localhost", "localhost"]
 `)
 
-var TestButlerConfigCompleteNoExit = []byte(`[globals]
+var TestConfigCompleteNoExit = []byte(`[globals]
 config-managers = ["test-handler", "test-handler2"]
 scheduler-interval = 300
 exit-on-config-failure = false
@@ -111,33 +111,33 @@ clean-files = true
 [test-handler2]
 `)
 
-var TestButlerManagerNoUrls = []byte(`[testing]
+var TestManagerNoUrls = []byte(`[testing]
 `)
 
-var TestButlerManagerUrls = []byte(`[testing]
+var TestManagerUrls = []byte(`[testing]
   urls = ["woden.corp.adobe.com", "localhost"]
   mustache-subs = ["ethos-cluster-id=ethos01-dev-or1", "endpoint=external"]
 `)
 
-var TestButlerManagerOptsEmpty = []byte(`[testing.localhost]
+var TestManagerOptsEmpty = []byte(`[testing.localhost]
 `)
 
-var TestButlerManagerOptsFail1 = []byte(`[testing.localhost]
+var TestManagerOptsFail1 = []byte(`[testing.localhost]
  method = "http"
 `)
 
-var TestButlerManagerOptsFail2 = []byte(`[testing.localhost]
+var TestManagerOptsFail2 = []byte(`[testing.localhost]
  method = "http"
  uri-path = "/foo/bar"
 `)
 
-var TestButlerManagerOptsFail3 = []byte(`[testing.localhost]
+var TestManagerOptsFail3 = []byte(`[testing.localhost]
  method = "http"
  uri-path = "/foo/bar"
  dest-path = ""
 `)
 
-var TestButlerManagerOptsFail4 = []byte(`[testing.localhost]
+var TestManagerOptsFail4 = []byte(`[testing.localhost]
  method = "http"
  uri-path = "/foo/bar"
  dest-path = "/bar/baz"
@@ -145,23 +145,23 @@ var TestButlerManagerOptsFail4 = []byte(`[testing.localhost]
  additional-config = ["alerts/butler.yml", "rules/commonrules.yml"]
 `)
 
-func (s *ButlerConfigTestSuite) SetUpSuite(c *C) {
+func (s *ConfigTestSuite) SetUpSuite(c *C) {
 	s.TestServer = httptest.NewServer(&TestHttpHandler{})
-	s.Config = NewButlerConfig()
+	s.Config = NewConfig()
 	log.SetLevel(log.DebugLevel)
 }
 
-func (s *ButlerConfigTestSuite) TearDownSuite(c *C) {
+func (s *ConfigTestSuite) TearDownSuite(c *C) {
 	s.TestServer.Close()
 }
 
-func (s *ButlerConfigTestSuite) TestConfigSchedulerInterval(c *C) {
+func (s *ConfigTestSuite) TestConfigSchedulerInterval(c *C) {
 	c.Assert(ConfigSchedulerInterval, Equals, 300)
 }
 
-func (s *ButlerConfigTestSuite) TestNewButlerConfigClientHttp(c *C) {
-	c1, err1 := NewButlerConfigClient("http")
-	c2, err2 := NewButlerConfigClient("https")
+func (s *ConfigTestSuite) TestNewConfigClientHttp(c *C) {
+	c1, err1 := NewConfigClient("http")
+	c2, err2 := NewConfigClient("https")
 	c.Assert(err1, IsNil)
 	c.Assert(err2, IsNil)
 	c.Assert(c1.Scheme, Equals, "http")
@@ -169,13 +169,13 @@ func (s *ButlerConfigTestSuite) TestNewButlerConfigClientHttp(c *C) {
 	log.Debugf("c1=%#v c2=%#v\n", c1, c2)
 }
 
-func (s *ButlerConfigTestSuite) TestNewButlerConfigClientDefault(c *C) {
-	c1, err1 := NewButlerConfigClient("hiya")
+func (s *ConfigTestSuite) TestNewConfigClientDefault(c *C) {
+	c1, err1 := NewConfigClient("hiya")
 	c.Assert(err1, NotNil)
 	c.Assert(c1.Scheme, Equals, "")
 }
 
-func (s *ButlerConfigTestSuite) TestConfigButlerConfigHandler_InternalServerError(c *C) {
+func (s *ConfigTestSuite) TestConfigConfigHandler_InternalServerError(c *C) {
 	var err error
 	TestHttpCase = 0
 	urlSplit := strings.Split(s.TestServer.URL, "://")
@@ -189,7 +189,7 @@ func (s *ButlerConfigTestSuite) TestConfigButlerConfigHandler_InternalServerErro
 	c.Assert(err.Error(), Matches, "GET.*attempts")
 }
 
-func (s *ButlerConfigTestSuite) TestConfigButlerConfigHandler_NotFound(c *C) {
+func (s *ConfigTestSuite) TestConfigConfigHandler_NotFound(c *C) {
 	var err error
 	TestHttpCase = 1
 	urlSplit := strings.Split(s.TestServer.URL, "://")
@@ -203,128 +203,128 @@ func (s *ButlerConfigTestSuite) TestConfigButlerConfigHandler_NotFound(c *C) {
 	c.Assert(err.Error(), Matches, "Did not receive 200.*404")
 }
 
-func (s *ButlerConfigTestSuite) TestParseButlerConfigEmpty(c *C) {
+func (s *ConfigTestSuite) TestParseConfigEmpty(c *C) {
 	var err error
-	err = ParseButlerConfig(TestButlerConfigEmpty)
+	err = ParseConfig(TestConfigEmpty)
 	log.Infof("err=%#v\n", err.Error())
 	c.Assert(err, NotNil)
 	//c.Assert(err.Error(), Matches, "No globals.config-managers in butler.*")
 	c.Assert(err.Error(), Matches, "globals.config-managers has no entries.*")
 }
 
-func (s *ButlerConfigTestSuite) TestParseButlerConfigBrokenNoHandlersNoExit(c *C) {
+func (s *ConfigTestSuite) TestParseConfigBrokenNoHandlersNoExit(c *C) {
 	var err error
-	err = ParseButlerConfig(TestButlerConfigNoHandlers)
+	err = ParseConfig(TestConfigNoHandlers)
 	log.Infof("err=%#v\n", err)
 	c.Assert(err, NotNil)
 	//c.Assert(err.Error(), Matches, "No globals.config-managers in butler.*")
 	c.Assert(err.Error(), Matches, "globals.config-managers has no entries.*")
 }
 
-func (s *ButlerConfigTestSuite) TestParseButlerConfigBrokenNoHandlersExit(c *C) {
+func (s *ConfigTestSuite) TestParseConfigBrokenNoHandlersExit(c *C) {
 	var err error
 	var ExitTest = 0
 	patch := monkey.Patch(log.Fatalf, func(string, ...interface{}) {
 		ExitTest = 5
 	})
 	defer patch.Unpatch()
-	err = ParseButlerConfig(TestButlerConfigNoHandlersExit)
+	err = ParseConfig(TestConfigNoHandlersExit)
 	c.Assert(err, IsNil)
 	c.Assert(ExitTest, Equals, 5)
 }
 
-func (s *ButlerConfigTestSuite) TestParseButlerConfigBrokenEmptyHandlersNoExit(c *C) {
+func (s *ConfigTestSuite) TestParseConfigBrokenEmptyHandlersNoExit(c *C) {
 	var err error
-	err = ParseButlerConfig(TestButlerConfigEmptyHandlers)
+	err = ParseConfig(TestConfigEmptyHandlers)
 	log.Infof("err=%#v\n", err)
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Matches, "globals.config-managers has no entries.*")
 }
 
-func (s *ButlerConfigTestSuite) TestParseButlerConfigBrokenEmptyHandlersExit(c *C) {
+func (s *ConfigTestSuite) TestParseConfigBrokenEmptyHandlersExit(c *C) {
 	var err error
 	var ExitTest = 0
 	patch := monkey.Patch(log.Fatalf, func(string, ...interface{}) {
 		ExitTest = 5
 	})
 	defer patch.Unpatch()
-	err = ParseButlerConfig(TestButlerConfigEmptyHandlersExit)
+	err = ParseConfig(TestConfigEmptyHandlersExit)
 	c.Assert(err, IsNil)
 	c.Assert(ExitTest, Equals, 5)
 }
 
-func (s *ButlerConfigTestSuite) TestParseButlerConfigBrokenIncompleteHandlerNoExit(c *C) {
+func (s *ConfigTestSuite) TestParseConfigBrokenIncompleteHandlerNoExit(c *C) {
 	var err error
-	err = ParseButlerConfig(TestButlerConfigBrokenIncompleteHandler)
+	err = ParseConfig(TestConfigBrokenIncompleteHandler)
 	log.Infof("err=%#v\n", err)
 	c.Assert(err, NotNil)
 	// stegen
 	//c.Assert(err.Error(), Matches, "Cannot find manager for test-handler2")
 }
 
-func (s *ButlerConfigTestSuite) TestParseButlerConfigBrokenIncompleteHandlerExit(c *C) {
+func (s *ConfigTestSuite) TestParseConfigBrokenIncompleteHandlerExit(c *C) {
 	var err error
 	var ExitTest = 0
 	patch := monkey.Patch(log.Fatalf, func(string, ...interface{}) {
 		ExitTest = 5
 	})
 	defer patch.Unpatch()
-	err = ParseButlerConfig(TestButlerConfigBrokenIncompleteHandlerExit)
+	err = ParseConfig(TestConfigBrokenIncompleteHandlerExit)
 	c.Assert(err, IsNil)
 	c.Assert(ExitTest, Equals, 5)
 }
 
 /*
-func (s *ButlerConfigTestSuite) TestParseButlerConfigCompleteNoExit(c *C) {
+func (s *ConfigTestSuite) TestParseConfigCompleteNoExit(c *C) {
 	var err error
-	err = ParseButlerConfig(TestButlerConfigCompleteNoExit)
+	err = ParseConfig(TestConfigCompleteNoExit)
 	log.Infof("err=%#v\n", err)
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Matches, "Cannot find handler for test-handler2")
 }
 */
 
-func (s *ButlerConfigTestSuite) TestGetButlerConfigManagerNoUrls(c *C) {
+func (s *ConfigTestSuite) TestGetConfigManagerNoUrls(c *C) {
 	var err error
 
 	// Load the config initially
-	err = ParseButlerConfig(TestButlerManagerNoUrls)
+	err = ParseConfig(TestManagerNoUrls)
 	c.Assert(err, NotNil)
-	err = GetButlerConfigManager("testing", &ButlerConfigSettings{})
+	err = GetConfigManager("testing", &ConfigSettings{})
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Matches, "No urls configured for manager testing.*")
 }
 
-func (s *ButlerConfigTestSuite) TestGetButlerConfigManagerUrls(c *C) {
+func (s *ConfigTestSuite) TestGetConfigManagerUrls(c *C) {
 	var err error
 
 	// Load the config initially
-	err = ParseButlerConfig(TestButlerManagerUrls)
+	err = ParseConfig(TestManagerUrls)
 	c.Assert(err, NotNil)
-	err = GetButlerConfigManager("testing", &ButlerConfigSettings{})
+	err = GetConfigManager("testing", &ConfigSettings{})
 	c.Assert(err, NotNil)
 	// stegen
 	//c.Assert(err.Error(), Matches, "No urls configured for manager testing.*")
 }
 
-func (s *ButlerConfigTestSuite) TestGetButlerManagerOptsNoConfig(c *C) {
+func (s *ConfigTestSuite) TestGetManagerOptsNoConfig(c *C) {
 	var err error
 
 	// Load the config initially
-	err = ParseButlerConfig(TestButlerManagerOptsEmpty)
+	err = ParseConfig(TestManagerOptsEmpty)
 	c.Assert(err, NotNil)
-	err = GetButlerManagerOpts("testing.localhost", &ButlerConfigSettings{})
+	err = GetManagerOpts("testing.localhost", &ConfigSettings{})
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Matches, "unknown manager.method.*")
 }
 
-func (s *ButlerConfigTestSuite) TestGetButlerManagerOptsFullCheck(c *C) {
+func (s *ConfigTestSuite) TestGetManagerOptsFullCheck(c *C) {
 	var err error
 
 	// Load the config initially
-	err = ParseButlerConfig(TestButlerManagerOptsFail1)
+	err = ParseConfig(TestManagerOptsFail1)
 	c.Assert(err, NotNil)
-	err = GetButlerManagerOpts("testing.localhost", &ButlerConfigSettings{})
+	err = GetManagerOpts("testing.localhost", &ConfigSettings{})
 	c.Assert(err, NotNil)
 	// stegen
 	c.Assert(err.Error(), Matches, "unknown manager.method.*")

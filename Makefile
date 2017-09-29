@@ -1,18 +1,17 @@
-SERVICE_NAME=butler
-BUILDER_TAG?=$(or $(sha),$(SERVICE_NAME)-builder)
-TESTER_TAG?=$(or $(sha),$(SERVICE_NAME)-tester)
+export SERVICE_NAME=butler
+export BUILDER_TAG?=$(or $(sha),$(SERVICE_NAME)-builder)
+export TESTER_TAG?=$(or $(sha),$(SERVICE_NAME)-tester)
 
 IMAGE_TAG=$(SERVICE_NAME)-img
 
 GO:=go
 pkgs=$(shell $(GO) list ./... | egrep -v "(vendor)")
 
-ARTIFACTORY_USER=$(shell echo "$$ARTIFACTORY_USER")
-ARTIFACTORY_REPO=butler
-ARTIFACTORY_VERSION=0.6.7
-ARTIFACTORY_PROD_HOST=docker-ethos-core-univ-release.dr-uw2.adobeitc.com
-ARTIFACTORY_DEV_HOST=docker-ethos-core-univ-dev.dr-uw2.adobeitc.com
-
+export ARTIFACTORY_USER=$(shell echo "$$ARTIFACTORY_USER")
+export ARTIFACTORY_REPO=butler
+export ARTIFACTORY_VERSION=1.0.0
+export ARTIFACTORY_PROD_HOST=docker-ethos-core-univ-release.dr-uw2.adobeitc.com
+export ARTIFACTORY_DEV_HOST=docker-ethos-core-univ-dev.dr-uw2.adobeitc.com
 
 default: ci
 
@@ -20,20 +19,29 @@ ci: build
 	@echo "Success"
 
 build:
+	@$(GO) fmt $(pkgs)
 	@docker build -t $(BUILDER_TAG) -f Dockerfile-build .
 	@docker run -v m2:/root/.m2 -v `pwd`:/build $(BUILDER_TAG) cp /root/butler/butler /build
 	@docker build -t $(IMAGE_TAG) .
 
-pre-deploy-build:
-	@docker build -t $(TESTER_TAG) -f Dockerfile-test .
-	@docker run -it --rm $(TESTER_TAG)
+build-local:
+	@$(GO) fmt $(pkgs)
+	@$(GO) build
+
+pre-deploy-build: test
 
 post-deploy-build:
 	@echo "Nothing is defined in post-deploy-build step"
 
 test:
 	@docker build -t $(TESTER_TAG) -f Dockerfile-test .
-	@docker run -it --rm $(TESTER_TAG)
+	@docker run -it $(TESTER_TAG)
+
+enter-test:
+	@./files/enter_test_container.sh
+
+test-local:
+	@go test $(pkgs) -check.vv -v
 
 build-$(ARTIFACTORY_REPO):
 	@docker build -t $(ARTIFACTORY_REPO):$(ARTIFACTORY_VERSION) .
@@ -62,6 +70,7 @@ push-butler-dockerhub: build-$(ARTIFACTORY_REPO)
 help:
 	@printf "Usage:\n\n"
 	@printf "make\t\t\t\tBuilds butler, for use in CI.\n"
+	@printf "make build-local\t\tBuilds a local binary of butler.\n"
 	@printf "make build-$(ARTIFACTORY_REPO)\t\tBuilds butler locally, for use in pushing to artifactory.\n"
 	@printf "make push-$(ARTIFACTORY_REPO)-dev\t\tPushes butler to $(ARTIFACTORY_DEV_HOST).\n"
 	@printf "make push-$(ARTIFACTORY_REPO)-release\tPushes butler to $(ARTIFACTORY_PROD_HOST).\n"
@@ -72,7 +81,7 @@ help:
 	@printf "make prometheus-logs\t\tTail the logs of the test prometheus instance.\n"
 
 run:
-	$(GO) run butler.go promfuncs.go -config.url http://git1.dev.or1.adobe.net/cgit/adobe-platform/ethos-monitoring/plain/oncluster -config.mustache-subs "ethos-cluster-id=ethos01-dev-or1" -config.scheduler-interval 10 -config.prometheus-host localhost
+	$(GO) run butler.go -config.path woden.corp.adobe.com/butler/config/butler.toml -config.scheme http -config.retrieve-interval 10 -log.level debug
 
 start-prometheus:
 	@docker run --rm -it --name=prometheus -d -p 9090:9090 -v /opt/prometheus:/etc/prometheus prom/prometheus -config.file=/etc/prometheus/prometheus.yml -storage.local.path=/prometheus -storage.local.memory-chunks=104857

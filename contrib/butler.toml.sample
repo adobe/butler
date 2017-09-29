@@ -1,0 +1,187 @@
+#butlerstart
+title = "Butler Configuration"
+
+[globals]
+  ## The Config managers are where we define which sections we want to support
+  ## for butler configuration management
+  #config-managers = ["prometheus", "alertmanager"]
+  config-managers = ["prometheus"]
+
+  ## Scheduler Interval is how often we try to grab configurations from repo
+  ## Default: 300
+  scheduler-interval = 300
+
+  ## Do we want to exit from butler if there are butler configuration load issues
+  ## Default: false
+  exit-on-config-failure = false
+
+## This is the definition for the prometheus configuration handler
+[prometheus]
+  urls = ["repo1.adobe.net", "repo2.adobe.net"]
+
+  ## !!! IMPORTANT !!! Do you want butler to clean up any NON BUTLER MANAGED files under dest-path?
+  ## Butler would prefer to manage all the files under the configuration path. This is so that no
+  ## new files get snuck in, which could affect the monitoring of the system.
+  ## !!! THIS WILL CAUSE UNANTICIPATED DATA LOSS !!!
+  ## Default: false
+  clean-files = true
+
+  ## These are the mustache substitutions that we'll attempt to make on the merged prometheus.yml
+  mustache-subs = ["ethos-cluster-id=ethos01-dev-or1", "endpoint=external"]
+
+  ## Should config caching be used
+  enable-cache = false
+
+  ## Destination path to install cached configuration files to
+  cache-path = "/opt/cache/prometheus"
+
+  ## Destination path to install the managed configuration files to
+  dest-path = "/opt/prometheus"
+
+  ## Since there is a primary configuration (merged), and additional configurations (unmerged),
+  ## we need a name for the merged configuration file. It will be put under dest-path
+  primary-config-name = "prometheus.yml"
+
+  ## These are the definitions for the first repo which is defined for prometheus
+  [prometheus.repo1.adobe.net]
+    ## Method can be http or https. In the future it may support Amazon s3 or Azure blob
+    method = "http"
+
+    ## Path is the URI / Path to the configuration files on the repo
+    uri-path = "/butler/configs/prometheus"
+
+    ## This is a list of the primary configuration files which get MERGED together
+    primary-config = ["prometheus.yml"]
+
+    ## This is a list of additional configuration files which will get thrown onto the filesystem.
+    ## If there are duplicates, then the last file will be taken.
+    additional-config = ["alerts/butler.yml", "rules/commonrules.yml"]
+
+    ## These are repo specific http get options
+    [prometheus.repo1.adobe.net.http]
+      retries = 5
+      retry-wait-min = 5
+      retry-wait-max = 10
+      timeout = 10
+
+  ## This will be processed second (and appended / replaced depending)
+  [prometheus.repo2.adobe.net]
+    ## Method can be http or https. In the future it may support Amazon s3 or Azure blob
+    method = "http"
+
+    ## Path is the URI / Path to the configuration files on the repo
+    uri-path = "/butler/configs/prometheus"
+
+    ## This is a list of the primary configuration files which get MERGED together
+    primary-config = ["ethos01-dev-or1.prometheus.yml"]
+
+    ## This is a list of additional configuration files which will get thrown onto the filesystem
+    ## If there are duplicates, then the last file will be taken.
+    additional-config = ["rules/mode1.yml", "rules/commonrules.yml"]
+
+    ## These are repo specific http get options
+    [prometheus.repo2.adobe.net.http]
+      retries = 5
+      retry-wait-min = 5
+      retry-wait-max = 10
+      timeout = 10
+
+  ## These are the options for reloading the prometheus config-handler
+  [prometheus.reloader]
+    method = "http"
+
+    [prometheus.reloader.http]
+      host = "localhost"
+      port = 9999
+      uri = "/-/reload"
+      method = "post"
+      payload = "{}"
+      content-type = "application/json"
+      # retry info and timeouts
+      retries = 5
+      retry-wait-min = 5
+      retry-wait-max = 10
+      timeout = 10
+
+## This is the definition for the alertmanager configuration handler
+[alertmanager]
+  urls = ["repo3.adobe.net", "repo4.adobe.net"]
+
+  ## !!! IMPORTANT !!! Do you want butler to clean up any NON BUTLER MANAGED files under dest-path?
+  ## Butler would prefer to manage all the files under the configuration path. This is so that no
+  ## new files get snuck in, which could affect the monitoring of the system.
+  ## !!! THIS WILL CAUSE UNANTICIPATED DATA LOSS !!!
+  ## Default: false
+  clean-files = true
+
+  mustache-subs = ["ethos-cluster-id=ethos01-dev-or1", "endpoint=external"]
+
+  ## Destination path to install cached configuration files to
+  cache-path = "/opt/cache/alertmanager"
+
+  ## Destination path to install the managed configuration files to
+  dest-path = "/opt/alertmanager"
+
+  ## Since there is a primary configuration (merged), and additional configurations (unmerged),
+  ## we need a name for the merged configuration file. It will be put under dest-path
+  primary-config-name = "alertmanager.yml"
+
+  ## These are the definitions for the first repo which is defined for alertmanager
+  [alertmanager.repo3.adobe.net]
+    ## Method can be http or https. In the future it may support Amazon s3 or Azure blob
+    method = "http"
+
+    ## Path is the URI / Path to the file on the repo
+    uri-path = "/butler/configs/alertmanager"
+
+    ## primary alertmanager.yml
+    primary-config = ["alertmanager.yml"]
+
+    ## Do not need any additional configuartions for alertmanager!
+    #additional-config = ["alerts/butler.yml", "rules/commonrules.yml"]
+
+    ## These are repo specific http get options
+    [alertmanager.repo3.adobe.net.http]
+      retries = 5
+      retry-wait-min = 5
+      retry-wait-max = 10
+      timeout = 10
+
+  ## This will be processed second (and appended / replaced depending)
+  [alertmanager.repo4.adobe.net]
+    ## Method can be http or https. In the future it may support Amazon s3 or Azure blob
+    method = "http"
+
+    ## Path is the URI / Path to the file on the repo
+    uri-path = "/butler/configs/alertmanager"
+
+    ## appended alertmanager.yml
+    primary-config = ["ethos01-dev-or1.prometheus.yml"]
+
+    ## Do not need any additional configuartions for alertmanager!
+    #additional-config = ["rules/mode1.yml", "rules/commonrules.yml"]
+
+    ## These are repo specific http get options
+    [alertmanager.repo4.adobe.net.http]
+      retries = 5
+      retry-wait-min = 5
+      retry-wait-max = 10
+      timeout = 10
+
+  ## These are the options for reloading the alertmanager config-handler
+  [alertmanager.reloader]
+    method = "http"
+
+    [alertmanager.reloader.http]
+      host = "localhost"
+      port = 9999
+      uri = "/-/reload"
+      method = "post"
+      payload = "{}"
+      content-type = "application/json"
+      # retry info and timeouts
+      retries = 5
+      retry-wait-min = 5
+      retry-wait-max = 10
+      timeout = 10
+#butlerend

@@ -1,3 +1,4 @@
 butler
 *.swp
 *.key
+*.toml

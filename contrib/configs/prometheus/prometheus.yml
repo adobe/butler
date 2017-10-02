@@ -1,0 +1,538 @@
+#butlerstart
+global:
+  external_labels:
+    cluster: {{ethos-cluster-id}}
+  evaluation_interval: 30s
+  scrape_interval: 30s
+  scrape_timeout: 5s
+
+rule_files:
+  - /etc/prometheus/rules/*
+  - /etc/prometheus/alerts/*
+
+alerting:
+  alert_relabel_configs:
+  - source_labels: [instance]
+    target_label: host
+  - source_labels: [instance, application]
+    regex: ".*;(.+)"
+    target_label: host
+  - source_labels: [cluster, host]
+    regex: "(.*);"
+    target_label: host
+  - source_labels: [cluster]
+    regex: ".*-dev-.*"
+    action: replace
+    replacement: EthosJira
+    target_label: routing_info
+#  - source_labels: ['cluster', 'instance']
+#    separator:     ';'
+#    regex:         '(.*);(.*)'
+#    replacement:   '${1}:${2}'
+#    target_label:  'host'
+#  - action: replace
+#    replacement:
+#    target_label: source
+  - action: replace
+    replacement: {{endpoint}}
+    target_label: endpoint
+
+  alertmanagers:
+    - marathon_sd_configs:
+      - servers: ['http://marathon.mesos:8080']
+      relabel_configs:
+      - source_labels: ['__meta_marathon_app']
+        regex: ^/prometheus-alertmanager.*
+        action: keep
+      - source_labels: [__address__]
+        regex: ^(.*):.*$
+        replacement: ${1}:9093
+        target_label: __address__
+
+scrape_configs:
+- job_name: cadvisor
+  marathon_sd_configs:
+  - servers: ['http://marathon.mesos:8080']
+  relabel_configs:
+  - source_labels: ['__meta_marathon_app']
+    regex: /(.*)
+    target_label: job
+    action: replace
+  - source_labels: ['job']
+    regex: ^(prometheus-cadvisor-exporter).*
+    action: keep
+  - source_labels: [__address__]
+    regex: ^(.*):.*$
+    target_label: instance
+    replacement: ${1}
+  metric_relabel_configs:
+  - source_labels: [container_env_marathon_app_id]
+    regex: (.*)
+    target_label: app
+  - source_labels: [container_env_marathon_app_id]
+    regex: /(.*)
+    target_label: application
+  - source_labels: [container_env_marathon_app_label_application]
+    regex: (.*)-.*-.*
+    target_label: application
+  - source_labels: [container_env_marathon_app_label_application]
+    regex: .*-.*-(.*)
+    target_label: commit
+  - source_labels: [container_env_marathon_app_label_arch_path]
+    target_label: arch_path
+  - source_labels: [container_env_marathon_app_label_image]
+    target_label: image
+  - source_labels: [container_env_marathon_app_label_adobe_owner]
+    target_label: adobe_owner
+  - source_labels: [container_env_marathon_app_label_container]
+    target_label: container
+  - source_labels: [container_env_marathon_app_label_adobe_cost_center]
+    target_label: adobe_cost_center
+  - source_labels: [container_env_marathon_app_label_class]
+    target_label: class
+  - source_labels: [container_env_marathon_app_label_adobe_environment]
+    target_label: adobe_environment
+  - source_labels: [container_env_marathon_app_label_user]
+    target_label: user
+  - action: labeldrop
+    regex: container_env_.*
+  - action: labeldrop
+    regex: container_label_.*
+
+- job_name: marathon
+  marathon_sd_configs:
+  - servers: ['http://marathon.mesos:8080']
+  relabel_configs:
+  - source_labels: ['__meta_marathon_app']
+    regex: /(.*)
+    target_label: job
+    action: replace
+  - source_labels: ['job']
+    regex: ^(prometheus-marathon-exporter).*
+    action: keep
+  - source_labels: [__address__]
+    regex: ^(.*):.*$
+    target_label: instance
+    replacement: ${1}
+
+- job_name: mesos-master
+  marathon_sd_configs:
+  - servers: ['http://marathon.mesos:8080']
+  relabel_configs:
+  - source_labels: ['__meta_marathon_app']
+    regex: ^/prometheus-mesos-exporter-master$
+    action: keep
+  - source_labels: ['__meta_marathon_app']
+    regex: /(.*)
+    target_label: job
+    action: replace
+  - source_labels: ['job']
+    regex: ^(prometheus-mesos-exporter-master).*
+    action: keep
+  - source_labels: [__address__]
+    regex: ^(.*):.*$
+    target_label: instance
+    replacement: ${1}
+
+- job_name: mesos-slave
+  marathon_sd_configs:
+  - servers: ['http://marathon.mesos:8080']
+  relabel_configs:
+  - source_labels: ['__meta_marathon_app']
+    regex: ^/prometheus-mesos-exporter-slave$
+    action: keep
+  - source_labels: ['__meta_marathon_app']
+    regex: /(.*)
+    target_label: job
+    action: replace
+  - source_labels: ['job']
+    regex: ^(prometheus-mesos-exporter).*
+    action: keep
+  - source_labels: [__address__]
+    regex: ^(.*):.*$
+    target_label: instance
+    replacement: ${1}
+  metric_relabel_configs:
+  - source_labels: [__name__]
+    regex: (.*)
+    target_label: __name__
+    replacement: mesosagent_${1}
+
+- job_name: prometheus-node-exporter-master
+  dns_sd_configs:
+  - names:
+    - 'master.mesos' 
+    type: A
+    port: 9100 
+    refresh_interval: 600s
+  relabel_configs:
+  - source_labels: [__address__]
+    regex: ^(.*):.*$
+    target_label: instance
+    replacement: ${1}
+  - target_label: role
+    replacement: master
+    action: replace
+
+- job_name: meta-prometheus-blackbox
+  marathon_sd_configs:
+  - servers: ['http://marathon.mesos:8080']
+  relabel_configs:
+  - source_labels: ['__meta_marathon_app']
+    regex: /(.*)
+    target_label: job
+    action: replace
+  - source_labels: ['job']
+    regex: (prometheus-blackbox.*)
+    action: keep
+  - source_labels: [__address__]
+    regex: ^(.*):.*$
+    target_label: instance
+    replacement: ${1}
+  - source_labels: [__address__]
+    regex: ^(.*):.*$
+    replacement: ${1}:9115
+    target_label: __address__
+
+- job_name: meta-prometheus-alertmanager
+  marathon_sd_configs:
+  - servers: ['http://marathon.mesos:8080']
+  relabel_configs:
+  - source_labels: ['__meta_marathon_app']
+    regex: /(.*)
+    target_label: job
+    action: replace
+  - source_labels: ['job']
+    regex: (prometheus-alertmanager.*)
+    action: keep
+  - source_labels: [__address__]
+    regex: ^(.*):.*$
+    target_label: instance
+    replacement: ${1}
+  - source_labels: [__address__]
+    regex: ^(.*):.*$
+    replacement: ${1}:9093
+    target_label: __address__
+
+- job_name: butler
+  marathon_sd_configs:
+  - servers: ['http://marathon.mesos:8080']
+  relabel_configs:
+  - source_labels: ['__meta_marathon_app']
+    regex: /(.*)
+    target_label: job
+    action: replace
+  - source_labels: ['job']
+    regex: (prometheus.*butler.*)
+    action: keep
+  - source_labels: [__address__]
+    regex: ^(.*):.*$
+    target_label: instance
+    replacement: ${1}
+
+
+- job_name: prometheus-node-exporter
+  marathon_sd_configs:
+  - servers: ['http://marathon.mesos:8080']
+  relabel_configs:
+  - source_labels: ['__meta_marathon_app']
+    regex: /(.*)
+    target_label: job
+    action: replace
+  - source_labels: ['job']
+    regex: (prometheus-node-exporter.*)
+    action: keep
+  - source_labels: ['job']
+    regex: prometheus-node-exporter-(.*)$
+    target_label: role
+    replacement: ${1}
+  - source_labels: [__address__]
+    regex: ^(.*):.*$
+    target_label: instance
+    replacement: ${1}
+  - source_labels: [__address__]
+    regex: ^(.*):.*$
+    replacement: ${1}:9274
+    target_label: __address__
+
+- job_name: etcd
+  dns_sd_configs:
+  - names:
+    - 'etcd-server.etcd.mesos' 
+    type: A
+    port: 1026 
+    refresh_interval: 600s
+  relabel_configs:
+#  - source_labels: ['__meta_marathon_app']
+#    regex: (/prometheus-node-exporter-control)
+#    action: keep
+  - source_labels: [__address__]
+    regex: ^(.*):.*$
+    target_label: instance
+    replacement: ${1}
+#  - source_labels: [__address__]
+#    regex: ^(.*):.*$
+#    replacement: ${1}:1026
+#    target_label: __address__
+
+- job_name: meta-prometheus-server
+  static_configs:
+  - targets: ['localhost:9090']
+
+- job_name: blackbox:local:icmp
+  marathon_sd_configs:
+  - servers: ['http://marathon.mesos:8080']
+  relabel_configs:
+  - source_labels: ['__meta_marathon_app']
+    regex: /(.*)
+    target_label: job
+    replacement: blackbox:local:icmp
+  - regex: ^(.*):.*$
+    replacement: ${1}
+    source_labels: [__address__]
+    target_label: __param_target
+  - regex: ^(.*):.*$
+    replacement: ${1}
+    source_labels: [__address__]
+    target_label: instance
+  - replacement: 'prometheus-blackbox-exporter.marathon.mesos:9115'
+    target_label: __address__
+  metrics_path: /probe
+  params:
+    module: [icmp]
+
+
+- job_name: blackbox:local:notificationrouter
+  metrics_path: /probe
+  params:
+    module: [http_post_2xx]
+  static_configs:
+    - targets:
+      - https://moningestweb-or1-ext.adobe.net/api/ping
+      - https://moningestweb-or1.adobe.net/api/ping
+  relabel_configs:
+  - regex: (.*)
+    replacement: ${1}
+    source_labels: [__address__]
+    target_label: __param_target
+  - regex: (.*)
+    replacement: ${1}
+    source_labels: [__address__]
+    target_label: instance
+  - replacement: 'prometheus-blackbox-exporter.marathon.mesos:9115'
+    target_label: __address__
+
+- job_name: blackbox:local:api
+  metrics_path: /probe
+  params:
+    module: [http_2xx]  # Look for a HTTP 200 response.
+  static_configs:
+    - targets:
+      - http://master0.mesos:8080/v2/apps/?embed=apps.tasks
+      - http://master1.mesos:8080/v2/apps/?embed=apps.tasks
+      - http://master2.mesos:8080/v2/apps/?embed=apps.tasks
+  relabel_configs:
+  - regex: (.*)
+    replacement: ${1}
+    source_labels: [__address__]
+    target_label: __param_target
+  - regex: (.*)
+    replacement: ${1}
+    source_labels: [__address__]
+    target_label: instance
+  - replacement: 'prometheus-blackbox-exporter.marathon.mesos:9115'
+    target_label: __address__
+
+- job_name: blackbox:local:canary
+  marathon_sd_configs:
+  - servers: ['http://marathon.mesos:8080']
+  relabel_configs:
+  - source_labels: ['__meta_marathon_app']
+    regex: /(.*)
+    target_label: job
+    action: replace
+  - source_labels: ['job']
+    regex: (canary-.*)
+    action: keep
+  - regex: (.*)
+    replacement: https://${1}--canary.gw.{{ethos-cluster-id}}.ethos.adobe.net/ping
+    source_labels: ['__meta_marathon_app_label_application']
+    target_label: __param_target
+  - regex: (.*)
+    replacement: ${1}
+    source_labels: [__param_target]
+    target_label: instance
+  - replacement: 'prometheus-blackbox-exporter.marathon.mesos:9115'
+    target_label: __address__
+  metrics_path: /probe
+  params:
+    module: [http_2xx]
+
+- job_name: blackbox:local:capcom
+  marathon_sd_configs:
+  - servers: ['http://marathon.mesos:8080']
+  relabel_configs:
+  - source_labels: ['__meta_marathon_app']
+    regex: /(.*)
+    target_label: job
+    action: replace
+  - source_labels: ['job']
+    regex: (capcom.*)
+    action: keep
+  - regex: (.*)
+    replacement: http://${1}/health-check
+    source_labels: [__address__]
+    target_label: __param_target
+  - regex: (.*)
+    replacement: ${1}
+    source_labels: [__param_target]
+    target_label: instance
+  - replacement: 'prometheus-blackbox-exporter.marathon.mesos:9115'
+    target_label: __address__
+  metrics_path: /probe
+  params:
+    module: [http_2xx]
+
+
+- job_name: blackbox:local:apigateway
+  marathon_sd_configs:
+  - servers: ['http://marathon.mesos:8080']
+  relabel_configs:
+  - source_labels: ['__meta_marathon_app']
+    regex: /(.*)
+    target_label: job
+    action: replace
+  - source_labels: ['job']
+    regex: (apigateway.*)
+    action: keep
+  - regex: (.*):.*
+    replacement: http://${1}:80/health-check
+    source_labels: [__address__]
+    target_label: __param_target
+  - regex: (.*)
+    replacement: ${1}
+    source_labels: [__param_target]
+    target_label: instance
+  - replacement: 'prometheus-blackbox-exporter.marathon.mesos:9115'
+    target_label: __address__
+  metrics_path: /probe
+  params:
+    module: [http_2xx]
+
+- job_name: blackbox:local:flightdirector
+  marathon_sd_configs:
+  - servers: ['http://marathon.mesos:8080']
+  relabel_configs:
+  - source_labels: ['__meta_marathon_app']
+    regex: /(.*)
+    target_label: job
+    action: replace
+  - source_labels: ['job']
+    regex: (flight-director.*)
+    action: keep
+  - regex: (.*)
+    replacement: http://${1}/about
+    source_labels: [__address__]
+    target_label: __param_target
+  - regex: (.*)
+    replacement: ${1}
+    source_labels: [__param_target]
+    target_label: instance
+  - replacement: 'prometheus-blackbox-exporter.marathon.mesos:9115'
+    target_label: __address__
+  metrics_path: /probe
+  params:
+    module: [http_2xx]
+
+- job_name: blackbox:local:agentfill
+  marathon_sd_configs:
+  - servers: ['http://marathon.mesos:8080']
+  relabel_configs:
+  - source_labels: ['__meta_marathon_app']
+    regex: /(.*)
+    target_label: job
+    action: replace
+  - source_labels: ['job']
+    regex: (agentfill.*)
+    action: keep
+  - regex: (.*)
+    replacement: http://${1}/health
+    source_labels: [__address__]
+    target_label: __param_target
+  - regex: (.*)
+    replacement: ${1}
+    source_labels: [__param_target]
+    target_label: instance
+  - replacement: 'prometheus-blackbox-exporter.marathon.mesos:9115'
+    target_label: __address__
+  metrics_path: /probe
+  params:
+    module: [http_2xx]
+
+- job_name: blackbox:local:tcp
+  marathon_sd_configs:
+  - servers: ['http://marathon.mesos:8080']
+  relabel_configs:
+  - source_labels: ['__meta_marathon_app']
+    regex: /(.*)
+    target_label: job
+    replacement: blackbox:local:tcp
+  - regex: (.*)
+    replacement: ${1}
+    source_labels: [__address__]
+    target_label: __param_target
+  - regex: (.*)
+    replacement: ${1}
+    source_labels: [__address__]
+    target_label: instance
+  - replacement: 'prometheus-blackbox-exporter.marathon.mesos:9115'
+    target_label: __address__
+  metrics_path: /probe
+  params:
+    module: [tcp_connect]
+    
+- job_name: loadtest
+  marathon_sd_configs:
+  - servers: ['http://marathon.mesos:8080']
+  scrape_interval: 15s
+  scrape_timeout: 5s
+  relabel_configs:
+  - source_labels: ['__meta_marathon_app']
+    regex: /(.*)
+    target_label: job
+    action: replace
+  - source_labels: ['job']
+    regex: (nginxloadreceiver.*)
+    action: keep
+  - source_labels: [__address__]
+    regex: ^(.*):.*$
+    target_label: instance
+    replacement: ${1}
+  - source_labels: [__address__]
+    regex: ^(.*):.*$
+    replacement: ${1}:9913
+    target_label: __address__
+
+- job_name: apigatewayvtsplugin
+  marathon_sd_configs:
+  - servers: ['http://marathon.mesos:8080']
+  scrape_interval: 15s
+  scrape_timeout: 5s
+  relabel_configs:
+  - source_labels: ['__meta_marathon_app']
+    regex: /(.*)
+    target_label: job
+    action: replace
+  - source_labels: ['job']
+    regex: (apigateway.*)
+    action: keep
+  - source_labels: [__address__]
+    regex: ^(.*):.*$
+    target_label: instance
+    replacement: ${1}
+  - source_labels: [__address__]
+    regex: ^(.*):.*$
+    replacement: ${1}:80
+    target_label: __address__
+
+#butlerend

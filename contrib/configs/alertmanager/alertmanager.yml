@@ -1,0 +1,66 @@
+#butlerstart
+
+
+global:
+  slack_api_url: 'https://localhost:4444/services/XXXXXXXXX/YYYYYYYYY/ZZZZZZZZZZZZZZZZZZZZZZZZ'
+templates:
+
+route:
+  group_by: ['alertname', 'application', 'instance', 'id','cluster', 'host']
+  group_wait: 10s
+  group_interval: 20s
+  repeat_interval: 30m
+  receiver: CatchAll
+  routes:
+  - match_re:
+      cluster: '.*(test|stage|trash|dumpster|fire|litter|tray).*'
+    receiver: Dumpster
+  - match_re:
+      routing_info: '^EthosSlack'
+      cluster: '.*-prod-.*'
+    receiver: ProdSlack
+  - match_re:
+      routing_info: '^EthosSlack'
+      cluster: '.*-dev-.*'
+    receiver: DevSlack
+  - match:
+      endpoint: 'external' 
+    routes:    
+    - match:
+        team_name: 'EthosDMa' 
+      routes:
+      - match_re:
+          routing_info: '^Ethos.*'
+          cluster: '.*-prod-.*'
+        receiver: ProdExternal
+      - match_re:
+          routing_info: '^Ethos.*'
+          cluster: '.*-dev-.*'
+        receiver: DevExternal
+    - match:
+        team_name: 'EthosHealthcheck'
+      receiver: HealthcheckExternal  
+    - match:
+        team_name: 'EthosTenant' 
+      receiver: TenantExternal   
+  - match:
+      endpoint: 'internal' 
+    routes:    
+    - match:
+        team_name: 'EthosDMa' 
+      routes:
+      - match_re:
+          routing_info: '^Ethos.*'
+          cluster: '.*-prod-.*'
+        receiver: ProdInternal
+      - match_re:
+          routing_info: '^Ethos.*'
+          cluster: '.*-dev-.*'
+        receiver: DevInternal
+    - match:
+        team_name: 'EthosHealthcheck'
+      receiver: HealthcheckInternal  
+    - match:
+        team_name: 'EthosTenant' 
+      receiver: TenantInternal
+#butlerend

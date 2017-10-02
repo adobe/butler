@@ -1,0 +1,71 @@
+#butlerstart
+
+ALERT TenantCPUOver99OfShare
+  IF (rate(container_cpu_system_seconds_total{adobe_owner=~"[a-zA-Z0-9].*"}[2m]) + rate(container_cpu_user_seconds_total{app=~"/[a-zA-Z0-9].*",adobe_owner=~"[a-zA-Z0-9].*"}[2m])) /(container_spec_cpu_shares/1024) > 0.99
+#  FOR 1m
+  LABELS {notification_source="EthosPrometheus", team_name="EthosTenant"}
+  ANNOTATIONS 
+  {
+  summary="A container from {{$labels.application}} exceeded 99% CPU", 
+  description="CPU reading {{$value}} [Container {{$labels.app}}] [Owner {{$labels.adobe_owner}} {{$labels.adobe_cost_center}} {{$labels.adobe_environment}}][Docker id {{$labels.id}}]"
+  }
+
+#ALERT TenantCPUOver80OfShare
+#  IF (rate(container_cpu_system_seconds_total{adobe_owner=~"[a-zA-Z0-9].*"}[2m]) + rate(container_cpu_user_seconds_total{app=~"/[a-zA-Z0-9].*",adobe_owner=~"[a-zA-Z0-9].*"}[2m])) /(container_spec_cpu_shares/1024) > 0.8
+#  FOR 1m
+#  LABELS {notification_source="EthosPrometheus", team_name="EthosTenant"}
+#  ANNOTATIONS {description="Container CPU is {{$value}}% of reserved value on {{$labels.app}} {{$labels.id}}", summary="CPU warning on {{$labels.application}}"}
+
+#ALERT TenantMemUsedOver90OfShare
+#  IF container_memory_usage_bytes{adobe_owner=~"[a-zA-Z0-9].*"} / container_spec_memory_limit_bytes > 0.9
+#  FOR 1m
+#  LABELS {notification_source="EthosPrometheus", team_name="EthosTenant"}
+#  ANNOTATIONS {description="Container memory usage is {{$value}}% on {{$labels.app}} {{$labels.id}} Current usage reading is {{ with printf \"container_memory_usage_bytes{app='%s'}/1024/1024\" .Labels.app | query }} {{ . | first | value | humanize }}{{ end }}MB from share of {{ with printf \"container_spec_memory_limit_bytes{app='%s'}/1024/1024\" .Labels.app | query }} {{ . | first | value | humanize }}{{ end }}MB ", summary="Memory warning on {{$labels.application}}"}
+
+#ALERT TenantMemUsedOver80OfShare
+#  IF container_memory_usage_bytes{adobe_owner=~"[a-zA-Z0-9].*"} / container_spec_memory_limit_bytes > 0.8
+#  FOR 1m
+#  LABELS {notification_source="EthosPrometheus", team_name="EthosTenant"}
+#  ANNOTATIONS {description="Container memory usage is {{$value}}% on {{$labels.app}} {{$labels.id}} Current usage is {{ with printf \"container_memory_usage_bytes{id='%s'}/1024/1024\" .Labels.id | query }} {{ . | first | value }}{{ end }}MB from share of {{ with printf \"container_spec_memory_limit_bytes{id='%s'}/1024/1024\" .Labels.id | query }} {{ . | first | value  }}{{ end }}MB ", summary="Memory warning on {{$labels.application}}"}
+
+ALERT TenantMemUsedOver99OfShare
+  IF round(container_memory_usage_bytes{adobe_owner=~"[a-zA-Z0-9].*"} / container_spec_memory_limit_bytes,0.01) > 0.99
+#  FOR 1m
+  LABELS {notification_source="EthosPrometheus", team_name="EthosTenant"}
+  ANNOTATIONS 
+  {
+  summary="A container from {{$labels.application}} exceeded 99% memory", 
+  description="Memory usage is {{$value}} [Container {{$labels.app}}] [Owner {{$labels.adobe_owner}} {{$labels.adobe_cost_center}} {{$labels.adobe_environment}}][Docker id {{$labels.id}}]"
+  }
+
+ALERT TenantContainerDisappeared
+  IF time() - container_last_seen{adobe_owner=~"[a-zA-Z0-9].*"} > 120
+  LABELS {notification_source="EthosPrometheus", team_name="EthosTenant"}
+#  ANNOTATIONS {description="Container {{$labels.app}} {{$labels.id}} {{$labels.name}} hasnt been seen for 2mins. Still running on this cluster are {{ range query \"time() - container_last_seen{{application='%s'}} < 120\" .Labels.application | query}} {{ .Labels.id }} {{ end }}", summary="Container stopped or restarted {{$labels.application}}"}
+  ANNOTATIONS 
+  {
+  summary="A container from {{$labels.application}} hasnt been seen for 2mins {{$labels.cluster}}", 
+  description="[Container {{$labels.app}}] [Owner {{$labels.adobe_owner}} {{$labels.adobe_cost_center}} {{$labels.adobe_environment}}][Docker id {{$labels.id}}]"
+  }
+
+ALERT TenantMemoryFailureCountHigh
+  IF container_memory_failcnt{adobe_owner=~"[a-zA-Z0-9].*"} > 1000
+  LABELS {notification_source="EthosPrometheus", team_name="EthosTenant"}
+  ANNOTATIONS 
+  {
+  summary="A container from {{$labels.application}} has a memory failure count over 1000", 
+  description="Memory failure count is {{$value}}  [Container {{$labels.app}}] [Owner {{$labels.adobe_owner}} {{$labels.adobe_cost_center}} {{$labels.adobe_environment}}][Docker id {{$labels.id}}]"
+  }
+ALERT TenantNetworkTransmitDrops
+  IF rate(container_network_transmit_packets_dropped_total{adobe_owner=~"[a-zA-Z0-9].*"}[2m])  > 2
+  LABELS {notification_source="EthosPrometheus", team_name="EthosTenant"}
+  ANNOTATIONS {description="Container {{$labels.app}} {{$labels.id}} Tx drops/s {{$value}} ", summary="Network Transmit Drops {{$labels.application}}"}
+
+ALERT TenantNetworkReceiveDrops
+  IF rate(container_network_receive_packets_dropped_total{adobe_owner=~"[a-zA-Z0-9].*"}[2m])  > 2
+  LABELS {notification_source="EthosPrometheus", team_name="EthosTenant"}
+  ANNOTATIONS {description="Container {{$labels.app}} {{$labels.id}} Rx drops/s {{$value}} ", summary="Network Receive Drops {{$labels.application}}"}
+
+
+
+#butlerend

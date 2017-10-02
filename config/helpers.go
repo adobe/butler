@@ -3,15 +3,15 @@ package config
 import (
 	"bufio"
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"strings"
-	"time"
 
+	"git.corp.adobe.com/TechOps-IAO/butler/config/methods"
+	"git.corp.adobe.com/TechOps-IAO/butler/config/reloaders"
 	"git.corp.adobe.com/TechOps-IAO/butler/stats"
 
 	"github.com/hashicorp/go-retryablehttp"
@@ -113,10 +113,6 @@ func ParseMustacheSubs(pairs []string) (map[string]string, error) {
 		val := strings.TrimSpace(keyvalpairs[1])
 		subs[key] = val
 	}
-	// validate against RequiredSubKeys
-	if !ValidateMustacheSubs(subs) {
-		return nil, errors.New(fmt.Sprintf("could not validate required mustache subs. check your config. required subs=%s.", RequiredSubKeys))
-	}
 	return subs, nil
 }
 
@@ -125,11 +121,6 @@ func ValidateMustacheSubs(Subs map[string]string) bool {
 		subEntries map[string]bool
 	)
 	subEntries = make(map[string]bool)
-
-	// set the default return value to false
-	for _, vs := range RequiredSubKeys {
-		subEntries[vs] = false
-	}
 
 	// range over the subs and see if the keys match the required list of substitution keys
 	for k, _ := range Subs {
@@ -226,9 +217,12 @@ func CopyFile(src string, dst string) error {
 // the config directory and a slice of config file names and
 // caches those files into memory. It returns an error
 // on the event of error
-func CacheConfigs(files []string) error {
+func CacheConfigs(manager string, files []string) error {
 	log.Infof("CacheConfig(): Storing known good configurations to cache.")
-	ConfigCache = make(map[string][]byte)
+	if ConfigCache == nil {
+		ConfigCache = make(map[string]map[string][]byte)
+	}
+	ConfigCache[manager] = make(map[string][]byte)
 	for _, file := range files {
 		out, err := ioutil.ReadFile(file)
 		if err != nil {
@@ -236,10 +230,12 @@ func CacheConfigs(files []string) error {
 			log.Infof(msg)
 			return errors.New(msg)
 		} else {
-			ConfigCache[file] = out
+			ConfigCache[manager][file] = out
 		}
 	}
 	log.Infof("CacheConfig(): Done storing known good configurations to cache")
+	stats.SetButlerKnownGoodCachedVal(stats.SUCCESS, manager)
+	stats.SetButlerKnownGoodRestoredVal(stats.FAILURE, manager)
 	return nil
 }
 
@@ -247,7 +243,7 @@ func CacheConfigs(files []string) error {
 // the config directory and a slice of config file names
 // and restores those files from the cache back to the
 // filesystem. It returns an error on the event of an error
-func RestoreCachedConfigs(files []string) error {
+func RestoreCachedConfigs(manager string, files []string) error {
 	// If we do not have a good configuration cache, then there's nothing for us to do.
 	if ConfigCache == nil {
 		log.Infof("RestoreCachedConfigFs(): No current known good configurations in cache. Cleaning configuration...")
@@ -256,13 +252,14 @@ func RestoreCachedConfigs(files []string) error {
 			os.Remove(file)
 		}
 		log.Infof("RestoreCachedConfigs(): Done cleaning broken configuration. Returning...")
-		stats.SetButlerKnownGoodRestoredVal(stats.FAILURE)
+		stats.SetButlerKnownGoodCachedVal(stats.FAILURE, manager)
+		stats.SetButlerKnownGoodRestoredVal(stats.FAILURE, manager)
 		return nil
 	}
 
 	log.Infof("RestoreCachedConfigs(): Restoring known good Prometheus configurations from cache.")
 	for _, file := range files {
-		fileData := ConfigCache[file]
+		fileData := ConfigCache[manager][file]
 
 		f, err := os.OpenFile(file, os.O_WRONLY|os.O_TRUNC, 0644)
 		if err != nil {
@@ -280,42 +277,13 @@ func RestoreCachedConfigs(files []string) error {
 		}
 	}
 	log.Infof("RestoreCachedConfigs(): Done restoring known good Prometheus configurations from cache.")
+	stats.SetButlerKnownGoodCachedVal(stats.FAILURE, manager)
+	stats.SetButlerKnownGoodRestoredVal(stats.SUCCESS, manager)
 	return nil
 }
 
 func ParseConfigManager(config []byte) (Manager, error) {
 	return Manager{}, nil
-}
-
-func GetManagerMethodOpts(entry string, method string, bc *ConfigSettings) (ManagerMethodOpts, error) {
-	var (
-		result ManagerMethodGenericOpts
-		err    error
-	)
-
-	switch method {
-	case "http", "https":
-		var httpOpts ManagerMethodHttpOpts
-		err = viper.UnmarshalKey(entry, &httpOpts)
-		if err != nil {
-			return result, err
-		}
-		httpOpts.Client = retryablehttp.NewClient()
-		httpOpts.Client.Logger.SetFlags(0)
-		httpOpts.Client.Logger.SetOutput(ioutil.Discard)
-		httpOpts.Client.Logger.SetOutput(ioutil.Discard)
-		httpOpts.Client.Logger.SetOutput(ioutil.Discard)
-		httpOpts.Client.HTTPClient.Timeout = time.Duration(httpOpts.Timeout) * time.Second
-		httpOpts.Client.RetryMax = httpOpts.Retries
-		httpOpts.Client.RetryWaitMax = time.Duration(httpOpts.RetryWaitMax) * time.Second
-		httpOpts.Client.RetryWaitMin = time.Duration(httpOpts.RetryWaitMin) * time.Second
-		return httpOpts, nil
-	default:
-		msg := fmt.Sprintf("unknown manager.method=%s opts for %s", method, entry)
-		return &result, errors.New(msg)
-	}
-	// Shouldn't get here.
-	return result, nil
 }
 
 func GetManagerOpts(entry string, bc *ConfigSettings) (*ManagerOpts, error) {
@@ -348,55 +316,10 @@ func GetManagerOpts(entry string, bc *ConfigSettings) (*ManagerOpts, error) {
 	}
 
 	methodOpts := fmt.Sprintf("%s.%s", entry, MgrOpts.Method)
-	mopts, err := GetManagerMethodOpts(methodOpts, MgrOpts.Method, bc)
+	mopts, err := methods.New(MgrOpts.Method, methodOpts)
 	MgrOpts.Opts = mopts
 
 	return &MgrOpts, nil
-}
-
-func GetConfigReloader(entry string, bc *ConfigSettings) (ManagerReloader, error) {
-	var (
-		res    ManagerReloader
-		method string
-		result map[string]interface{}
-		err    error
-	)
-	key := fmt.Sprintf("%s.reloader", entry)
-
-	err = viper.UnmarshalKey(key, &result)
-	if err != nil {
-		return GenericReloader{}, err
-	}
-
-	method = result["method"].(string)
-	jsonRes, err := json.Marshal(result[method])
-	if err != nil {
-		return GenericReloader{}, err
-	}
-	log.Debugf("GetConfigReloader(): jsonRes=%s", jsonRes)
-
-	switch method {
-	case "http", "https":
-		var httpOpts ManagerReloaderHttpOpts
-		err = json.Unmarshal(jsonRes, &httpOpts)
-		if err != nil {
-			return GenericReloader{}, err
-		}
-		log.Debugf("GetConfigReloader(): httpOpts=%#v", httpOpts)
-		httpOpts.Client = retryablehttp.NewClient()
-		httpOpts.Client.Logger.SetFlags(0)
-		httpOpts.Client.Logger.SetOutput(ioutil.Discard)
-		httpOpts.Client.HTTPClient.Timeout = time.Duration(httpOpts.Timeout) * time.Second
-		httpOpts.Client.RetryMax = httpOpts.Retries
-		httpOpts.Client.RetryWaitMax = time.Duration(httpOpts.RetryWaitMax) * time.Second
-		httpOpts.Client.RetryWaitMin = time.Duration(httpOpts.RetryWaitMin) * time.Second
-		res = ManagerReloaderHttp{Method: method, Opts: httpOpts}
-		break
-	default:
-		msg := fmt.Sprintf("unknown reloader method=%s for %s", method, entry)
-		return GenericReloader{}, errors.New(msg)
-	}
-	return res, err
 }
 
 func GetConfigManager(entry string, bc *ConfigSettings) error {
@@ -434,7 +357,8 @@ func GetConfigManager(entry string, bc *ConfigSettings) error {
 		bc.Managers[entry].ManagerOpts[mopts] = opts
 	}
 
-	reloader, err := GetConfigReloader(entry, bc)
+	//reloader, err := GetConfigReloader(entry, bc)
+	reloader, err := reloaders.New(entry)
 	if err != nil {
 		return err
 	}

@@ -76,18 +76,40 @@ help:
 	@printf "make push-$(ARTIFACTORY_REPO)-release\tPushes butler to $(ARTIFACTORY_PROD_HOST).\n"
 	@printf "make push-butler-dockerhub\tPushes butler to DockerHub (If necessary).\n"
 	@printf "make run\t\t\tRun butler on local system.\n"
+	@printf "make start-alertmanager\t\tRun a local alertmanager instance for testing.\n"
 	@printf "make start-prometheus\t\tRun a local prometheus instance for testing.\n"
+	@printf "make start-am-prom\t\tRun a local alertmanager and prometheus instance for testing.\n"
+	@printf "make stop-alertmanager\t\tStop the local test alertmanager instance.\n"
 	@printf "make stop-prometheus\t\tStop the local test prometheus instance.\n"
+	@printf "make stop-am-prom\t\tStop the local test alertmanager and prometheus instance.\n"
 	@printf "make prometheus-logs\t\tTail the logs of the test prometheus instance.\n"
+	@printf "make alertmanager-logs\t\tTail the logs of the test prometheus instance.\n"
 
 run:
-	$(GO) run butler.go -config.path woden.corp.adobe.com/butler/config/butler.toml -config.scheme http -config.retrieve-interval 10 -log.level debug
+	$(GO) run butler.go -config.path localhost/butler/config/butler.toml -config.scheme http -config.retrieve-interval 10 -log.level debug
 
 start-prometheus:
 	@docker run --rm -it --name=prometheus -d -p 9090:9090 -v /opt/prometheus:/etc/prometheus prom/prometheus -config.file=/etc/prometheus/prometheus.yml -storage.local.path=/prometheus -storage.local.memory-chunks=104857
 
+start-alertmanager:
+	@docker run --rm -it --name=alertmanager -d -p 9093:9093 -v /opt/alertmanager:/etc/alertmanager prom/alertmanager -config.file=/etc/alertmanager/alertmanager.yml
+
+start-am-prom:
+	@docker run --rm -it --name=prometheus -d -p 9090:9090 -v /opt/prometheus:/etc/prometheus prom/prometheus -config.file=/etc/prometheus/prometheus.yml -storage.local.path=/prometheus -storage.local.memory-chunks=104857
+	@docker run --rm -it --name=alertmanager -d -p 9093:9093 -v /opt/alertmanager:/etc/alertmanager prom/alertmanager -config.file=/etc/alertmanager/alertmanager.yml
+
 stop-prometheus:
 	@docker stop prometheus
 
+stop-alertmanager:
+	@docker stop alertmanager
+
+stop-am-prom:
+	@docker stop prometheus
+	@docker stop alertmanager
+
 prometheus-logs:
 	@docker logs -f prometheus
+
+alertmanager-logs:
+	@docker logs -f alertmanager

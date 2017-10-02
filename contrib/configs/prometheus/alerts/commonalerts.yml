@@ -1,0 +1,837 @@
+#butlerstart
+#  NOTE: Jira has a 255 character limit for annotations.summary. The value of the cluster label is appended first. 
+#  So no annotations.summary should exceed 230 characters. 
+
+#ALERT TestTestTest
+#  IF 1==BOOL 1
+#  LABELS {
+#    routing_info = "EthosJira",
+#    team_name = "EthosDMa",
+#    notification_source = "EthosPrometheus",
+#    service_id = "2300",
+#}
+#  ANNOTATIONS {
+#    summary = "THIS IS A TEST - IGNORE",
+#    description = "It really is a test, do nothing, seriously. Please dont phone me like last time"
+#   }
+
+ALERT PrometheusConfigHasntReloaded
+  IF prometheus_config_last_reload_successful !=1
+  FOR 35m
+  LABELS {
+    routing_info = "EthosJira",
+    team_name = "EthosDMa",
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+}
+  ANNOTATIONS {
+    summary = "Prometheus config reload failed {{ $labels.instance }}",
+    description = "35 mins ago prometheus config load failed on {{ $labels.instance }}. The configuration has not been loaded but the bad config is on disk and will result in service failure if Prometheus is restarted"
+   }
+
+ALERT PrometheusStorageEnteredRushedMode
+  IF prometheus_local_storage_rushed_mode !=0
+  FOR 15m
+  LABELS {
+    routing_info = "EthosJira",
+    team_name = "EthosDMa",
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+}
+  ANNOTATIONS {
+    summary = "Prometheus storage rushed mode {{ $labels.instance }}",
+    description = "Rushed mode indicates the server {{ $labels.instance }} is under IO pressure. Check out the Prometheus page in Grafana."
+   }
+
+
+ALERT InstanceDown
+  IF up{job!~"^(blackbox:).*"} == 0   # ignore all synthetic alerts
+  FOR 3m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosPage",
+    notification_source = "EthosPrometheus",
+    service_id = "2300"
+}
+  ANNOTATIONS {
+    summary = "Prometheus target down {{ $labels.instance }}",
+    description = "Prometheus target {{ $labels.instance }} job {{ $labels.job }} has been down for more than 3 minutes."
+  }
+
+# job!~blackbox:local:notificationrouter can be removed once all sites whitelisted. 
+ALERT InstanceDownBlackbox
+  IF up{job=~"^(blackbox:).*",job!~"^(blackbox:local:notificationrouter).*"} == 0
+  FOR 3m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosJira",
+    notification_source = "EthosPrometheus",
+    service_id = "2300"
+}
+  ANNOTATIONS {
+    summary = "Synthetic target down {{ $labels.instance }}",
+    description = "Prometheus target {{ $labels.instance }} of job {{ $labels.job }} has been down for more than 3 minutes."
+  }
+#ALERT NodeExportersNotRunningOnMasters
+#  IF absent(up{job="prometheus-node-exporter-master"}==1) or count(up{job="prometheus-node-exporter-master"}==1) <3
+#  FOR 3m
+#  LABELS {
+#    team_name = "EthosDMa",
+#    routing_info = "EthosJira",
+#    notification_source = "EthosPrometheus",
+#    service_id = "2300",
+#}
+#  ANNOTATIONS {
+#    summary = "The systemd service node_exporter isnt running on all the masters",
+#    description = "There is an ansible playbook to install this"
+#  }
+
+ALERT NodeExportersNotRunning
+  IF absent(up{job="prometheus-node-exporter-control"}) or absent(up{job="prometheus-node-exporter-worker"}) or absent(up{job="prometheus-node-exporter-proxy"})
+  FOR 3m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosPage",
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+}
+  ANNOTATIONS {
+    summary = "DCOS package prometheus-node-exporter down",
+    description = "Prometheus cannot see the dcos package prometheus-node-exporter in marathon"
+  }
+
+ALERT CadvisorExportersNotRunning
+  IF absent(up{job=~"prometheus-cadvisor-exporter.*"})
+  FOR 3m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosPage",
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+}
+  ANNOTATIONS {
+    summary = "DCOS package prometheus-cadvisor-exporter down",
+    description = "Prometheus cannot see the dcos package prometheus-cadvisor-exporter in marathon"
+  }
+
+ALERT MarathonExporterNotRunning
+  IF absent(up{job="prometheus-marathon-exporter"})
+  FOR 3m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosPage",
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+}
+  ANNOTATIONS {
+    summary = "DCOS package prometheus-marathon-exporter down",
+    description = "The dcos package prometheus-marathon-exporter isnt running"
+  }
+
+ALERT MesoMasterExporterNotRunning
+  IF absent(up{job="prometheus-mesos-exporter-master"})
+  FOR 3m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosPage",
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+}
+  ANNOTATIONS {
+    summary = "The dcos package prometheus-mesos-exporter-master isnt running",
+    description = "The dcos package prometheus-mesos-exporter-master isnt running"
+  }
+
+# TODO remove ExporterCountNotEqual if the *ExporterNotGlobal alerts work as expected
+ALERT ExporterCountNotEqual
+  IF count(up{job=~"prometheus-cadvisor-exporter.*"}) != count(up{job=~"prometheus-node-exporter-(control|proxy|worker)"}) or count(up{job=~"prometheus-cadvisor-exporter.*"}) != count(up{job="prometheus-mesos-exporter-slave"})
+  FOR 3m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosJira",
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+}
+  ANNOTATIONS {
+    summary = "Prometheus Exporter count not equal",
+    description = "The sum of node exporter targets or the sum of mesos-slave exporters is not equal to {{ $value }} cadvisor targets, check the node-exporter, mesos-slave and cadvisor-packages have been deployed to all nodes, check agent fill is working"
+  }
+
+ALERT NodeExporterNotGlobal
+  IF (count(up{job=~"prometheus-node-exporter-(control|proxy|worker)"}) !=bool sum(mesos_master_slaves_state{job="prometheus-mesos-exporter-master",connection_state="connected"})) != 0
+  FOR 3m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosJira",
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+  }
+  ANNOTATIONS {
+    summary = "Node Exporter not running on every node",
+    description = "The number of node exporter targets is less than the number of mesos agents, check the node-exporter package has been deployed to all nodes, check agent fill is working"
+  }
+
+ALERT CadvisorExporterNotGlobal
+  IF (count(up{job=~"prometheus-cadvisor-exporter.*"}) !=bool sum(mesos_master_slaves_state{job="prometheus-mesos-exporter-master",connection_state="connected"})) != 0
+  FOR 3m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosJira",
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+  }
+  ANNOTATIONS {
+    summary = "Cadvisor Exporter not running on every node",
+    description = "The number of cadvisor exporter targets is less than the number of mesos agents, check the prometheus-cadvisor-exporter package has been deployed to all nodes, check agent fill is working, check prometheus-mesos-exporter-master is working"
+  }
+
+ALERT MesosSlaveExporterNotGlobal
+  IF (count(up{job=~"prometheus-mesos-exporter-slave"}) !=bool sum(mesos_master_slaves_state{job="prometheus-mesos-exporter-master",connection_state="connected"})) != 0
+  FOR 3m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosJira",
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+  }
+  ANNOTATIONS {
+    summary = "Mesos Slave Exporter not running on every node",
+    description = "The number of mesos slave exporter targets is less than the number of mesos agents, check the prometheus-mesos-exporter-slave package has been deployed to all nodes, check agent fill is working, check prometheus-mesos-exporter-master is working"
+  }
+
+ALERT CadvisorExportersNotLabellingCorrectly
+  IF absent(container_last_seen{application=~".*[a-z].*"})
+  FOR 3m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosPage",
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+}
+  ANNOTATIONS {
+    summary = "CadvisorExportersNotLabellingCorrectly",
+    description = "Cadvisor exporter is not labelling metrics correctly. The applicaition label is missing. Most likely the cadvisor scrape does not contain container_env_marathon_app_id"
+  }
+
+ALERT AgentFillContainerCount
+  IF count(container_last_seen{application=~"agentfill.*"}) < 1 or absent(container_last_seen{application=~"agentfill.*"})
+  FOR 3m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosJira",
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+    }
+  ANNOTATIONS {
+    summary = "AgentFill Container Count reduced",
+    description = "AgentFill Container Count below 1"
+  }
+
+ALERT CapcomContainerCount
+  IF count(container_last_seen{application=~"capcom.*"}) != count(up{job="prometheus-node-exporter-proxy"}) or absent(container_last_seen{application=~"capcom.*"})
+  FOR 3m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosPage",
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+    }
+  ANNOTATIONS {
+    summary = "Capcom Container Count reduced",
+    description = "Capcom still running on following hosts: {{ range query \"container_last_seen{application=~'capcom.*'}\" }} Host:{{ .Labels.instance }}@{{ .Value }} {{ end }}"
+  }
+
+
+ALERT EthosContainerCountDropped
+  IF container_last_seen:count{application=~"(capcom|apigateway|flight-director|aqua-|etcd|booster|docker-cleanup|ethos-fluentd|agentfill).*"} < floor(avg_over_time(container_last_seen:count{application=~"(capcom|apigateway|flight-director|aqua-|etcd|booster|docker-cleanup|ethos-fluentd|agentfill).*"}[1h] offset 5m))
+  FOR 3m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosJira",   ## until its proved
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+    }
+  ANNOTATIONS {
+    summary = "Ethos Container Count dropped below recent average",
+    description = "Ethos container count currently {{ $value }}, this is smaller than the average for the last hour. Current container counts are {{ range query \"container_last_seen:count{application=~'(capcom|apigateway|flight-director|aqua-|etcd|booster|docker-cleanup|ethos-fluentd|agentfill).*'}\" }} application={{ .Labels.application }}:{{ .Value }} {{ end }}"
+  }
+
+ALERT FlightDirectorContainerCount
+  IF count(container_last_seen{application=~"flight-director.*"}) != count(up{job="prometheus-node-exporter-control"}) or absent(container_last_seen{application=~"flight-director.*"})
+  FOR 3m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosJira",
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+    }
+  ANNOTATIONS {
+    summary = "Flight Director Container Count reduced",
+    description = "Flight Director still running on the following hosts: {{ range query \"container_last_seen{application=~'flight-director.*'}\" }} Host:{{ .Labels.instance }}@{{ .Value }} {{ end }}"
+  }
+
+ALERT ApiGatewayContainerCount
+  IF count(container_last_seen{application=~"apigateway.*"}) != count(up{job="prometheus-node-exporter-proxy"}) or absent(container_last_seen{application=~"apigateway.*"})
+  FOR 3m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosPage",
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+    }
+  ANNOTATIONS {
+    summary = "API Gateway Container Count reduced",
+    description = "API Gateway still running on{{ range query \"container_last_seen{application=~'apigateway.*'}\" }} Host:{{ .Labels.instance }}@{{ .Value }} {{ end }}"
+  }
+
+ALERT EtcdContainerCount
+  IF count(container_last_seen{application=~"etcd.*"}) <1 or absent(container_last_seen{application=~"etcd.*"})
+  FOR 4m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosPage",
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+    }
+  ANNOTATIONS {
+    summary = "Etcd Container Count below 1",
+    description = "Etcd Container Count below 1"
+  }
+
+ALERT CanaryContainerCount
+  IF count(container_last_seen{application=~"canary.*"}) <1 or absent(container_last_seen{application=~"canary.*"})
+  FOR 4m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosPage",
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+    }
+  ANNOTATIONS {
+    summary = "Canary Container Count below 1",
+    description = "Canary Container Count below 1"
+  }
+
+ALERT ProbeTCPDurationHigh
+  IF (count(label_replace(1000* probe_duration_seconds{job="blackbox:local:tcp"},"host", "$1", "instance", "(.*)(:.*)") > 200) by (host)) 
+  FOR 5m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosSlack",
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+    }
+  ANNOTATIONS {
+    summary = "TCP Probe High {{ $labels.host }}",
+    description = "Count of TCP probes exceeding 200ms = {{ $value }} on host {{ $labels.host }}"
+  }
+
+ALERT ProbeICMPDurationHigh
+  IF round(1000*probe_duration_seconds{job=~"blackbox:local:icmp"}, 0.01) > 200
+  FOR 2m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosSlack",
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+    }
+  ANNOTATIONS {
+    summary = "ICMP Probe High {{ $labels.instance }}",
+    description = "ICMP Probe duration high {{ $value }} ms RTT against {{ $labels.instance }}"
+  }
+
+
+ALERT CanaryStatusCode
+  IF probe_http_status_code{instance=~"https://canary.*"} != 200 or absent(probe_http_status_code{instance=~"https://canary.*"})
+  FOR 3m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosPage",
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+    }
+  ANNOTATIONS {
+    summary = "CanaryStatusCode not 200",
+    description = "{{ $labels.instance }} returned {{ $value }}"
+  }
+ALERT ApiGatewayStatusCode
+  IF probe_http_status_code{job=~"apigateway.*"} != 200 or absent(probe_http_status_code{job=~"apigateway.*"})
+  FOR 3m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosPage",
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+    }
+  ANNOTATIONS {
+    summary = "ApiGatewayStatusCode not 200",
+    description = "{{ $labels.instance }} returned {{ $value }}"
+  }
+ALERT FlightDirectorStatusCode
+  IF probe_http_status_code{job=~"flight-director.*"} != 200 or absent(probe_http_status_code{job=~"flight-director.*"})
+  FOR 3m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosJira",
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+    }
+  ANNOTATIONS {
+    summary = "FlightDirectorStatusCode not 200",
+    description = "{{ $labels.instance }} returned {{ $value }}"
+  }
+ALERT CapcomStatusCode
+  IF probe_http_status_code{job=~"capcom.*"} != 200 or absent(probe_http_status_code{job=~"capcom.*"})
+  FOR 3m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosPage",
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+    }
+  ANNOTATIONS {
+    summary = "CapcomStatusCode not 200",
+    description = "{{ $labels.instance }} returned {{ $value }}"
+  }
+ALERT AgentFillStatusCode
+  IF probe_http_status_code{job=~"agentfill.*"} != 200 or absent(probe_http_status_code{job=~"agentfill.*"})
+  FOR 3m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosJira",
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+    }
+  ANNOTATIONS {
+    summary = "CapcomStatusCode not 200",
+    description = "{{ $labels.instance }} returned {{ $value }}"
+  }
+
+ALERT SSLCertExpiringSoon
+  IF probe_ssl_earliest_cert_expiry - time() < 86400 * 30
+  FOR 10m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosJira",
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+    }
+  ANNOTATIONS {
+    summary = "SSLCertExpiringSoon {{ $labels.instance }}",
+    description = "{{ $labels.instance }} returned {{ $value }}"
+  }
+
+ALERT ApproachingNfConnTrackLimit
+  IF node_nf_conntrack_entries{job=~"prometheus-node-exporter.*"} > node_nf_conntrack_entries_limit{job=~"prometheus-node-exporter.*"}*0.8
+  FOR 3m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosPage",
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+    }
+  ANNOTATIONS {
+    summary = "nf_conntrack_entries at 80% {{ $labels.instance }}",
+    description = "nf_conntrack_entries at {{ $value }}% of nf_conntrack_entries_limit {{$labels.role}}:{{ $labels.instance }}"
+  }
+
+
+ALERT CpuHighIowait
+  IF round(100 * avg(rate(node_cpu{mode="iowait",job=~"prometheus-node-exporter.*"}[3m])) by (instance,role),0.01) > 20
+  FOR 15m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosJira",
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+    }
+  ANNOTATIONS {
+    summary = "CPU IOWAIT was sustained over 20% for 15 mins {{ $labels.instance }}",
+    description = "Last CPU reading {{ $value }}% on {{$labels.role}}:{{ $labels.instance }}, if this is an Azure site this alert is indicative of noisy neighbour or predictive of future storage failure. Raise a ticket with Azure support"
+  }
+
+ALERT CpuHighIowaitStorageHeterogeneityNotSufficient
+  IF round(100 * avg(rate(node_cpu{mode="iowait",job=~"prometheus-node-exporter.*"}[3m])) by (role),0.01) > 10
+  FOR 10m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosJira",
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+    }
+  ANNOTATIONS {
+    summary = "Tier {{$labels.role}} CPU IOWAIT was sustained over 10% for 10 mins",
+    description = "Last average CPU reading across {{$labels.role}} tier in cluster was {{ $value }}%, contact azure and increase diversity"
+  }
+
+ALERT CpuHighIowaitPage
+  IF round(100 * avg(rate(node_cpu{mode="iowait",job=~"prometheus-node-exporter.*"}[3m])) by (instance,role),0.01) > 20
+  FOR 30m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosPage", 
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+    }
+  ANNOTATIONS {
+    summary = "CPU IOWAIT was sustained over 20% for 30 mins {{$labels.role}}:{{ $labels.instance }} ",
+    description = "Last CPU reading {{ $value }}% on {{$labels.role}}:{{ $labels.instance }}, if this is an Azure site this alert is indicative of noisy neighbour or predictive of future storage failure. Raise a ticket with Azure support"
+  }
+
+ALERT CpuHighIowaitStorageHeterogeneityNotSufficientPage
+  IF round(100 * avg(rate(node_cpu{mode="iowait",job=~"prometheus-node-exporter.*"}[3m])) by (role),0.01) > 20
+  FOR 20m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosJira",
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+    }
+  ANNOTATIONS {
+    summary = "Tier {{$labels.role}} Avg CPU IOWAIT was sustained over 20% for 20 mins",
+    description = "Last CPU reading across role was {{ $value }}%, contact azure and increase diversity"
+  }
+
+ALERT CpuHigh
+  IF node_cpu:rate:used > 80
+  FOR 3m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosJira",
+    
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+    }
+  ANNOTATIONS {
+    summary = "Total CPU was sustained over 80% for 3 mins {{$labels.role}}:{{ $labels.instance }}",
+    description = "Last CPU reading {{ $value }}% on {{$labels.role}}:{{ $labels.instance }}"
+  }
+
+ALERT CpuCritical
+  IF node_cpu:rate:used > 95
+  FOR 3m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosPage",
+    
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+    }
+  ANNOTATIONS {
+    summary = "Total CPU was sustained over 95% for 3 mins {{$labels.role}}:{{ $labels.instance }}",
+    description = "Last CPU reading {{ $value }}% on {{$labels.role}}:{{ $labels.instance }}"
+  }
+
+ALERT ClusterCpuCritical
+  IF avg(node_cpu:rate:used) > 80
+  FOR 4m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosPage",
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+    }
+  ANNOTATIONS {
+    summary = "CPU was sustained over 80% for 4 mins",
+    description = "Last cluster avg CPU reading {{ $value }}% "
+  }
+
+ALERT ClusterUnreservedCpuSharesLow
+  IF round((sum(mesos_slave_cpus_used)/sum(mesos_slave_cpus_unreserved))*100,0.01) > 85
+  FOR 5m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosJira",
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+    }
+  ANNOTATIONS {
+    summary = "Low unreserved CPU shares",
+    description = "{{ $value }}% of unreserved CPU shares used. {{ range query \"avg(mesos_slave_cpus_used) by (slave)\" }} slave:{{ .Labels.slave }} used:{{ .Value }} {{ end }}"
+  }
+ALERT NetworkInterfaceHighTx
+  IF round(rate(node_network_transmit_bytes{job=~"prometheus-node-exporter.*"}[3m])/1024/1024,0.01) > (10240*0.8)
+  FOR 2m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosJira",
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+    }
+  ANNOTATIONS {
+    summary = "High Tx over 80% on  {{$labels.role}}:{{ $labels.instance }} interface {{$labels.device}}",
+    description = "{{ $value }} MB/s on {{$labels.role}}:{{ $labels.instance }} interface {{$labels.device}}"
+  }
+ALERT NetworkInterfaceHighRx
+  IF round(rate(node_network_receive_bytes{job=~"prometheus-node-exporter.*"}[3m])/1024/1024,0.01) > (10240*0.8)
+  FOR 2m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosJira",
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+    }
+  ANNOTATIONS {
+    summary = "High Rx over 80% on  {{$labels.role}}:{{ $labels.instance }} interface {{$labels.device}}",
+    description = "{{ $value }} MB/s on {{$labels.role}}:{{ $labels.instance }} interface {{$labels.device}}"
+  }
+ALERT NetworkInterfaceHighRxDrop
+  IF round(rate(node_network_receive_drop{job=~"prometheus-node-exporter.*"}[3m]),0.01) > 10
+  FOR 2m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosJira",
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+    }
+  ANNOTATIONS {
+    summary = "High Rx drops on  {{$labels.role}}:{{ $labels.instance }} interface {{$labels.device}}",
+    description = "{{ $value }}/s on {{$labels.role}}:{{ $labels.instance }} interface {{$labels.device}}"
+  }
+
+ALERT NetworkInterfaceHighTxDrop
+  IF round(rate(node_network_transmit_drop{job=~"prometheus-node-exporter.*"}[3m]),0.01) > 10
+  FOR 2m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosJira",
+    
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+    }
+  ANNOTATIONS {
+    summary = "High Tx drops on  {{$labels.role}}:{{ $labels.instance }} interface {{$labels.device}}",
+    description = "{{ $value }}/s on {{$labels.role}}:{{ $labels.instance }} interface {{$labels.device}}"
+  }
+ALERT NetworkInterfaceHighRxErrors
+  IF round(rate(node_network_receive_errs{job=~"prometheus-node-exporter.*"}[3m]),0.01) > 10
+  FOR 2m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosJira",
+    
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+    }
+  ANNOTATIONS {
+    summary = "High Rx errs on  {{$labels.role}}:{{ $labels.instance }} interface {{$labels.device}}",
+    description = "{{ $value }}/s on {{$labels.role}}:{{ $labels.instance }} interface {{$labels.device}}"
+  }
+
+ALERT NetworkInterfaceHighTxErrors
+  IF round(rate(node_network_transmit_errs{job=~"prometheus-node-exporter.*"}[3m]),0.01) > 10
+  FOR 2m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosJira",
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+    }
+  ANNOTATIONS {
+    summary = "High Tx errs on  {{$labels.role}}:{{ $labels.instance }} interface {{$labels.device}}",
+    description = "{{ $value }}/s on {{$labels.role}}:{{ $labels.instance }} interface {{$labels.device}}"
+  }
+
+
+ALERT MemoryWarning
+  IF round(100*(node_memory_MemAvailable{job=~"prometheus-node-exporter.*"}/node_memory_MemTotal{job=~"prometheus-node-exporter.*"}),0.01) < 15
+  FOR 2m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosJira",
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+    }
+  ANNOTATIONS {
+    summary = "Available memory was less than 15% for 2 mins {{$labels.role}} {{ $labels.instance }}",
+    description = "Available memory {{ $value }}% on {{$labels.role}} {{ $labels.instance }}"
+  }
+
+ALERT LowFileDescriptors
+  IF round(100*(node_filefd_allocated{job=~"prometheus-node-exporter.*"}/node_filefd_maximum{job=~"prometheus-node-exporter.*"}),0.01) > 80
+  FOR 2m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosJira",
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+    }
+  ANNOTATIONS {
+    summary = "max file descriptors over 80% for 2 mins {{$labels.role}}:{{ $labels.instance }}",
+    description = "Last used file descriptors reading was {{ $value }}% on {{$labels.role}}:{{ $labels.instance }}"
+  }
+
+ALERT DiskSpaceWarning
+  IF 100 * round(avg(node_filesystem_avail{job=~"prometheus-node-exporter.*"} / node_filesystem_size{job=~"prometheus-node-exporter.*"}) by (device,instance), 0.01) < 20
+  FOR 5m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosJira",
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+    }
+  ANNOTATIONS {
+    summary = "Free disk space warning on {{ $labels.instance }}",
+    description = "Free disk space {{ $value }}% on host {{ $labels.instance }} {{$labels.device}}"
+  }
+  
+ALERT NodeRebooted
+  IF time() - node_boot_time < 600
+  FOR 1m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosJira",
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+    }
+  ANNOTATIONS {
+    summary = "Node Rebooted {{ $labels.instance }}",
+    description = "Node {{ $labels.instance }} with role {{ $labels.role }} has just rebooted"
+  }
+
+ALERT NodeDisappeared
+  IF count(node_load1) < count(node_load1 offset 1h) 
+  FOR 3m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosJira",
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+    }
+  ANNOTATIONS {
+    summary = "Node Disappeared",
+    description = "Monitored node count now {{ $value }} "
+  }
+
+
+
+
+ALERT MesosMastersWrongNumber
+  IF mesos_master_elected !=1 or absent(mesos_master_elected)
+  FOR 3m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosJira",
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+    }
+  ANNOTATIONS {
+    summary = "Does not have just one mesos master",
+    description = "mesos_master_elected !=1 in cluster value:{{ $value }} {{ $labels.instance }} "
+  }
+
+ALERT MesosMasterEventQueueLength
+  IF mesos_master_event_queue_length > 100 or absent(mesos_master_event_queue_length)
+  FOR 3m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "Slack",
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+    }
+  ANNOTATIONS {
+    summary = "MesosMasterEventQueueLength",
+    description = "MesosMasterEventQueueLength too large or missing value:{{ $value }} {{ $labels.instance }}"
+  }
+
+
+ALERT MesosMasterFrameworksInactive
+  IF mesos_master_frameworks_state{connection_state="disconnected"} > 0
+  FOR 3m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "Slack",
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+    }
+  ANNOTATIONS {
+    summary = "MesosMasterFrameworksInactive",
+    description = "MesosMasterFrameworksInactive value:{{ $value }} {{ $labels.instance }}"
+  }
+
+ALERT EtcdWalFsyncDurationHigh
+  IF round(histogram_quantile(0.9, rate(etcd_wal_fsync_durations_seconds_bucket[2m])) ,0.001)  > 0.12
+  FOR 3m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosJira",
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+    }
+  ANNOTATIONS {
+    summary = "Etcd WalFsyncDuration 90th percentile breach",
+    description = "Etcd WalFsyncDuration 90th percentile {{ $value }} "
+  }
+# playing around with etcd, not sure if histogram above or apdex below is way to go
+ALERT EtcdServerProposalApdexScoreLow
+  IF round((sum(rate(etcd_server_proposal_durations_seconds_bucket{le="0.256"}[5m])) by (job) + sum(rate(etcd_server_proposal_durations_seconds_bucket{le="1.024"}[5m])) by (job)) / 2 / sum(rate(etcd_server_proposal_durations_seconds_count[5m])) by (job),0.001)  < 0.9
+  FOR 3m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosJira",
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+    }
+  ANNOTATIONS {
+    summary = "Etcd Server Proposal Durations Apdex Score Low",
+    description = "Etcd Server Proposal Durations Apdex Score {{ $value }} "
+  }
+
+ALERT MarathonDown
+  IF marathon_up != 1 or absent(marathon_up)
+  FOR 5m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosPage",
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+    }
+  ANNOTATIONS {
+    summary = "{{ $labels.instance }} has a marathon instance down",
+    description = "{{ $labels.instance }} marathon_up shows {{ $value }}"
+  }
+
+ALERT MarathonAppTaskUnhealthyCountHigh
+  IF sum(marathon_app_task_unhealthy) by (instance) > 3   ### needs lots of testing
+  FOR 4m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosJira",    # needs testing and tuning.
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+    }
+  ANNOTATIONS {
+    summary = "MarathonAppTaskUnhealthyCountHigh",
+    description = "MarathonAppTaskUnhealthyCountHigh {{ $value }} on {{ $labels.instance }}"
+  }
+
+
+ALERT EtcdRafthttpMessageSentFailures
+  IF delta(etcd_rafthttp_message_sent_failed_total[10m]) >10
+  FOR 3m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosJira",  
+    notification_source = "EthosPrometheus",
+    service_id = "2300",
+    }
+  ANNOTATIONS {
+    summary = "has high etcd_rafthttp_message_sent_failed_total ",
+    description = "etcd_rafthttp_message_sent_failed_total {{ $value }} in last 10 mins"
+  }
+
+ALERT MarathonRunningTasksDecrease
+  IF marathon_service_mesosphere_marathon_task_running_count  < (avg_over_time(marathon_service_mesosphere_marathon_task_running_count[1h] offset 10m) * 0.80)
+  FOR 5m
+  LABELS {
+    team_name = "EthosDMa",
+    routing_info = "EthosJira",
+    notification_source = "EthosPrometheus",
+    service_id = "2300"
+    }
+  ANNOTATIONS {
+    summary = "Marathon {{ $labels.instance }} shows large decrease in running tasks",
+    description = "{{ $labels.instance }} marathon shows running tasks drop to {{ $value }}%"
+  }
+
+#butlerend

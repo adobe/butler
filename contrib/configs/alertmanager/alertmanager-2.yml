@@ -1,0 +1,120 @@
+#butlerstart
+inhibit_rules:
+receivers:
+- name: 'ProdExternal'
+  webhook_configs:
+  - send_resolved: true
+    url: https://moningestweb-or1-ext.localhost/api/notify/prometheus/v1
+  slack_configs:
+  - send_resolved: true
+    text: '{{ .CommonAnnotations.description }}'
+    title: '[{{  .CommonLabels.routing_info }}][{{ .CommonLabels.alertname }}][{{ .Status }}] {{ .CommonAnnotations.summary }}'
+    api_url: 'https://localhost/services/T02CAQ0B2/B0G5T4WR0/dAMU8YLZKWB3ijzSpjJ14E9r'
+    channel: '#cst-ethos-alerts'
+    username: '{{ .CommonLabels.cluster }}'
+    icon_emoji: ':exclamation:'
+- name: 'ProdInternal'
+  webhook_configs:
+  - send_resolved: true
+    url: https://moningestweb-or1.localhost/api/notify/prometheus/v1
+  slack_configs:
+  - send_resolved: true
+    text: '{{ .CommonAnnotations.description }}'
+    title: '[{{  .CommonLabels.routing_info }}][{{ .CommonLabels.alertname }}][{{ .Status }}] {{ .CommonAnnotations.summary }}'
+    api_url: 'https://localhost/services/T02CAQ0B2/B0G5T4WR0/dAMU8YLZKWB3ijzSpjJ14E9r'
+    channel: '#cst-ethos-alerts'
+    username: '{{ .CommonLabels.cluster }}'
+    icon_emoji: ':exclamation:'
+- name: 'DevExternal'
+  webhook_configs:
+  - send_resolved: true
+    url: https://moningestweb-or1-ext.localhost/api/notify/prometheus/v1
+  slack_configs:
+  - send_resolved: true
+    text: '{{ .CommonAnnotations.description }}'
+    title: '[{{  .CommonLabels.routing_info }}][{{ .CommonLabels.alertname }}][{{ .Status }}] {{ .CommonAnnotations.summary }}'
+    api_url: 'https://localhost/services/T02CAQ0B2/B0G5T4WR0/dAMU8YLZKWB3ijzSpjJ14E9r'
+    channel: '#ethos-alerts'
+    username: '{{ .CommonLabels.cluster }}'
+    icon_emoji: ':mario-question:'
+- name: 'DevInternal'
+  webhook_configs:
+  - send_resolved: true
+    url: https://moningestweb-or1.localhost/api/notify/prometheus/v1
+  slack_configs:
+  - send_resolved: true
+    text: '{{ .CommonAnnotations.description }}'
+    title: '[{{  .CommonLabels.routing_info }}][{{ .CommonLabels.alertname }}][{{ .Status }}] {{ .CommonAnnotations.summary }}'
+    api_url: 'https://localhost/services/T02CAQ0B2/B0G5T4WR0/dAMU8YLZKWB3ijzSpjJ14E9r'
+    channel: '#ethos-alerts'
+    username: '{{ .CommonLabels.cluster }}'
+    icon_emoji: ':mario-question:'
+- name: 'Dumpster'
+  slack_configs:
+  - send_resolved: true
+    text: '{{ .CommonAnnotations.description }}'
+    title: '[{{  .CommonLabels.routing_info }}][{{ .CommonLabels.alertname }}][{{ .Status }}] {{ .CommonAnnotations.summary }}'
+    api_url: 'https://localhost/services/T02CAQ0B2/B0G5T4WR0/dAMU8YLZKWB3ijzSpjJ14E9r'
+    channel: '#{{ .CommonLabels.cluster }}'
+    username: '{{ .CommonLabels.cluster }}'
+    icon_emoji: ':mario-question:'
+- name: 'TenantExternal'
+  webhook_configs:
+  - send_resolved: true
+    url: https://moningestweb-or1-ext.localhost/api/notify/prometheus/v1
+  slack_configs:
+  - send_resolved: true
+    text: '{{ .CommonAnnotations.description }}'
+    title: '[{{ .CommonLabels.alertname }}][{{ .Status }}] {{ .CommonAnnotations.summary }}'
+    api_url: 'https://localhost/services/T02CAQ0B2/B0G5T4WR0/dAMU8YLZKWB3ijzSpjJ14E9r'
+    channel: '#cst-ethos-tenant'
+    username: '{{ .CommonLabels.cluster }}'
+    icon_emoji: ':exclamation:'
+- name: 'TenantInternal'
+  webhook_configs:
+  - send_resolved: true
+    url: https://moningestweb-or1.localhost/api/notify/prometheus/v1
+  slack_configs:
+  - send_resolved: true
+    text: '{{ .CommonAnnotations.description }}'
+    title: '[{{ .CommonLabels.alertname }}][{{ .Status }}] {{ .CommonAnnotations.summary }}'
+    api_url: 'https://localhost/services/T02CAQ0B2/B0G5T4WR0/dAMU8YLZKWB3ijzSpjJ14E9r'
+    channel: '#cst-ethos-tenant'
+    username: '{{ .CommonLabels.cluster }}'
+    icon_emoji: ':exclamation:'
+- name: 'CatchAll'
+  slack_configs:
+  - send_resolved: true
+    text: '{{ .CommonAnnotations.description }}'
+    title: '[{{ .CommonLabels.alertname }}][{{ .Status }}] {{ .CommonAnnotations.summary }}'
+    api_url: 'https://localhost/services/T02CAQ0B2/B0G5T4WR0/dAMU8YLZKWB3ijzSpjJ14E9r'
+    channel: '#ethos-alerts-info'
+    username: '{{ .CommonLabels.cluster }}'
+    icon_emoji: ':exclamation:'
+- name: 'HealthcheckExternal'
+  webhook_configs:
+  - send_resolved: true
+    url: https://moningestweb-or1-ext.localhost/api/notify/prometheus/v1
+- name: 'HealthcheckInternal'
+  webhook_configs:
+  - send_resolved: true
+    url: https://moningestweb-or1.localhost/api/notify/prometheus/v1
+- name: 'ProdSlack'
+  slack_configs:
+  - send_resolved: true
+    text: '{{ .CommonAnnotations.description }}'
+    title: '[{{  .CommonLabels.routing_info }}][{{ .CommonLabels.alertname }}][{{ .Status }}] {{ .CommonAnnotations.summary }}'
+    api_url: 'https://localhost/services/T02CAQ0B2/B0G5T4WR0/dAMU8YLZKWB3ijzSpjJ14E9r'
+    channel: '#cst-ethos-alerts'
+    username: '{{ .CommonLabels.cluster }}'
+    icon_emoji: ':exclamation:'
+- name: 'DevSlack'
+  slack_configs:
+  - send_resolved: true
+    text: '{{ .CommonAnnotations.description }}'
+    title: '[{{  .CommonLabels.routing_info }}][{{ .CommonLabels.alertname }}][{{ .Status }}] {{ .CommonAnnotations.summary }}'
+    api_url: 'https://localhost/services/T02CAQ0B2/B0G5T4WR0/dAMU8YLZKWB3ijzSpjJ14E9r'
+    channel: '#ethos-alerts'
+    username: '{{ .CommonLabels.cluster }}'
+    icon_emoji: ':mario-question:'
+#butlerend

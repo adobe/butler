@@ -3,15 +3,15 @@ package config
 import (
 	"bufio"
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"strings"
-	"time"
 
+	"git.corp.adobe.com/TechOps-IAO/butler/config/methods"
+	"git.corp.adobe.com/TechOps-IAO/butler/config/reloaders"
 	"git.corp.adobe.com/TechOps-IAO/butler/stats"
 
 	"github.com/hashicorp/go-retryablehttp"
@@ -286,37 +286,6 @@ func ParseConfigManager(config []byte) (Manager, error) {
 	return Manager{}, nil
 }
 
-func GetManagerMethodOpts(entry string, method string, bc *ConfigSettings) (ManagerMethodOpts, error) {
-	var (
-		result ManagerMethodGenericOpts
-		err    error
-	)
-
-	switch method {
-	case "http", "https":
-		var httpOpts ManagerMethodHttpOpts
-		err = viper.UnmarshalKey(entry, &httpOpts)
-		if err != nil {
-			return result, err
-		}
-		httpOpts.Client = retryablehttp.NewClient()
-		httpOpts.Client.Logger.SetFlags(0)
-		httpOpts.Client.Logger.SetOutput(ioutil.Discard)
-		httpOpts.Client.Logger.SetOutput(ioutil.Discard)
-		httpOpts.Client.Logger.SetOutput(ioutil.Discard)
-		httpOpts.Client.HTTPClient.Timeout = time.Duration(httpOpts.Timeout) * time.Second
-		httpOpts.Client.RetryMax = httpOpts.Retries
-		httpOpts.Client.RetryWaitMax = time.Duration(httpOpts.RetryWaitMax) * time.Second
-		httpOpts.Client.RetryWaitMin = time.Duration(httpOpts.RetryWaitMin) * time.Second
-		return httpOpts, nil
-	default:
-		msg := fmt.Sprintf("unknown manager.method=%s opts for %s", method, entry)
-		return &result, errors.New(msg)
-	}
-	// Shouldn't get here.
-	return result, nil
-}
-
 func GetManagerOpts(entry string, bc *ConfigSettings) (*ManagerOpts, error) {
 	var (
 		err     error
@@ -347,55 +316,10 @@ func GetManagerOpts(entry string, bc *ConfigSettings) (*ManagerOpts, error) {
 	}
 
 	methodOpts := fmt.Sprintf("%s.%s", entry, MgrOpts.Method)
-	mopts, err := GetManagerMethodOpts(methodOpts, MgrOpts.Method, bc)
+	mopts, err := methods.New(MgrOpts.Method, methodOpts)
 	MgrOpts.Opts = mopts
 
 	return &MgrOpts, nil
-}
-
-func GetConfigReloader(entry string, bc *ConfigSettings) (ManagerReloader, error) {
-	var (
-		res    ManagerReloader
-		method string
-		result map[string]interface{}
-		err    error
-	)
-	key := fmt.Sprintf("%s.reloader", entry)
-
-	err = viper.UnmarshalKey(key, &result)
-	if err != nil {
-		return GenericReloader{}, err
-	}
-
-	method = result["method"].(string)
-	jsonRes, err := json.Marshal(result[method])
-	if err != nil {
-		return GenericReloader{}, err
-	}
-	log.Debugf("GetConfigReloader(): jsonRes=%s", jsonRes)
-
-	switch method {
-	case "http", "https":
-		var httpOpts ManagerReloaderHttpOpts
-		err = json.Unmarshal(jsonRes, &httpOpts)
-		if err != nil {
-			return GenericReloader{}, err
-		}
-		log.Debugf("GetConfigReloader(): httpOpts=%#v", httpOpts)
-		httpOpts.Client = retryablehttp.NewClient()
-		httpOpts.Client.Logger.SetFlags(0)
-		httpOpts.Client.Logger.SetOutput(ioutil.Discard)
-		httpOpts.Client.HTTPClient.Timeout = time.Duration(httpOpts.Timeout) * time.Second
-		httpOpts.Client.RetryMax = httpOpts.Retries
-		httpOpts.Client.RetryWaitMax = time.Duration(httpOpts.RetryWaitMax) * time.Second
-		httpOpts.Client.RetryWaitMin = time.Duration(httpOpts.RetryWaitMin) * time.Second
-		res = ManagerReloaderHttp{Method: method, Opts: httpOpts}
-		break
-	default:
-		msg := fmt.Sprintf("unknown reloader method=%s for %s", method, entry)
-		return GenericReloader{}, errors.New(msg)
-	}
-	return res, err
 }
 
 func GetConfigManager(entry string, bc *ConfigSettings) error {
@@ -433,7 +357,8 @@ func GetConfigManager(entry string, bc *ConfigSettings) error {
 		bc.Managers[entry].ManagerOpts[mopts] = opts
 	}
 
-	reloader, err := GetConfigReloader(entry, bc)
+	//reloader, err := GetConfigReloader(entry, bc)
+	reloader, err := reloaders.New(entry)
 	if err != nil {
 		return err
 	}

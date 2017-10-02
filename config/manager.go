@@ -6,50 +6,47 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"time"
 
+	"git.corp.adobe.com/TechOps-IAO/butler/config/methods"
+	"git.corp.adobe.com/TechOps-IAO/butler/config/reloaders"
 	"git.corp.adobe.com/TechOps-IAO/butler/stats"
 
 	log "github.com/sirupsen/logrus"
 )
 
 type Manager struct {
-	Name              string            `json:"name"`
-	Urls              []string          `mapstructure:"urls" json:"urls"`
-	CleanFiles        bool              `mapstructure:"clean-files" json:"clean-files"`
-	MustacheSubsArray []string          `mapstructure:"mustache-subs" json:"-"`
-	MustacheSubs      map[string]string `json:"mustache-subs"`
-	EnableCache       bool              `mapstructure:"enable-cache" json:"enable-cache"`
-	CachePath         string            `mapstructure:"cache-path" json:"cache-path"`
-	DestPath          string            `mapstructure:"dest-path" json:"dest-path"`
-	PrimaryConfigName string            `mapstructure:"primary-config-name" json:"primary-config-name"`
-	ManagerOpts       map[string]*ManagerOpts
-	Reloader          ManagerReloader `mapstructure:"-"`
-	ReloadManager     bool            `json:"-"`
+	Name              string                  `json:"name"`
+	Urls              []string                `mapstructure:"urls" json:"urls"`
+	CleanFiles        bool                    `mapstructure:"clean-files" json:"clean-files"`
+	LastRun           time.Time               `json:"last-run"`
+	MustacheSubsArray []string                `mapstructure:"mustache-subs" json:"-"`
+	MustacheSubs      map[string]string       `json:"mustache-subs"`
+	EnableCache       bool                    `mapstructure:"enable-cache" json:"enable-cache"`
+	CachePath         string                  `mapstructure:"cache-path" json:"cache-path"`
+	DestPath          string                  `mapstructure:"dest-path" json:"dest-path"`
+	PrimaryConfigName string                  `mapstructure:"primary-config-name" json:"primary-config-name"`
+	ManagerOpts       map[string]*ManagerOpts `json:"opts"`
+	Reloader          reloaders.Reloader      `mapstructure:"-" json:"reloader"`
+	ReloadManager     bool                    `json:"-"`
 }
 
 type ManagerOpts struct {
-	Method                          string   `mapstructure:"method" json:"method"`
-	UriPath                         string   `mapstructure:"uri-path" json:"uri-path"`
-	Repo                            string   `json:"repo"`
-	PrimaryConfig                   []string `mapstructure:"primary-config" json:"primary-config"`
-	AdditionalConfig                []string `mapstructure:"additional-config" json:"additional-config"`
-	PrimaryConfigsFullUrls          []string
-	AdditionalConfigsFullUrls       []string
-	PrimaryConfigsFullLocalPaths    []string
-	AdditionalConfigsFullLocalPaths []string
-	Opts                            ManagerMethodOpts
+	Method                          string         `mapstructure:"method" json:"method"`
+	UriPath                         string         `mapstructure:"uri-path" json:"uri-path"`
+	Repo                            string         `json:"repo"`
+	PrimaryConfig                   []string       `mapstructure:"primary-config" json:"primary-config"`
+	AdditionalConfig                []string       `mapstructure:"additional-config" json:"additional-config"`
+	PrimaryConfigsFullUrls          []string       `json:"-"`
+	AdditionalConfigsFullUrls       []string       `json:"-"`
+	PrimaryConfigsFullLocalPaths    []string       `json:"-"`
+	AdditionalConfigsFullLocalPaths []string       `json:"-"`
+	Opts                            methods.Method `json:"opts"`
 }
 
 func (bm *Manager) Reload() error {
 	log.Debugf("Manager::Reload(): reloading...")
-	var reloader ManagerReloader
-	switch bm.Reloader.GetMethod() {
-	case "http", "https":
-		reloader = bm.Reloader
-	default:
-		return nil
-	}
-	return reloader.Reload()
+	return bm.Reloader.Reload()
 }
 
 func (bm *Manager) DownloadPrimaryConfigFiles(c chan ChanEvent) error {

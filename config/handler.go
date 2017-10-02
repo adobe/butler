@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"git.corp.adobe.com/TechOps-IAO/butler/stats"
 
@@ -276,6 +277,7 @@ func (bc *ButlerConfig) RunCMHandler() error {
 			PrimaryChan.CleanTmpFiles()
 			AdditionalChan.CleanTmpFiles()
 		}
+		m.LastRun = time.Now()
 	}
 
 	if len(ReloadManager) == 0 {

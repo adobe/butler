@@ -33,7 +33,6 @@ var (
 	PrometheusConfigFiles   []string
 	AdditionalConfigFiles   []string
 	MustacheSubs            map[string]string
-	LastRun                 time.Time
 	HttpTimeout             int
 	HttpRetries             int
 	HttpRetryWaitMin        int
@@ -62,7 +61,6 @@ type MonitorOutput struct {
 	RetrieveInterval int                   `json:"retrieve-interval"`
 	LogLevel         log.Level             `json:"log-level"`
 	ConfigSettings   config.ConfigSettings `json:"config-settings"`
-	LastRun          time.Time             `json:"last-run"`
 	Version          string                `json:"version"`
 }
 
@@ -88,7 +86,6 @@ func (m *Monitor) MonitorHandler(w http.ResponseWriter, r *http.Request) {
 		RetrieveInterval: m.Config.Interval,
 		LogLevel:         m.Config.GetLogLevel(),
 		ConfigSettings:   *m.Config.Config,
-		LastRun:          LastRun,
 		Version:          version}
 	resp, err := json.Marshal(mOut)
 	if err != nil {

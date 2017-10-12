@@ -152,26 +152,26 @@ func (c *ConfigSettings) ParseConfig(config []byte) error {
 
 	// Let's get the path arrays dialed in
 	for _, m := range c.Managers {
-		for _, u := range m.Urls {
+		for _, u := range m.Repos {
 			log.Debugf("ConfigSettings::ParseConfig(): url=%#v", u)
 			opts := fmt.Sprintf("%s.%s", m.Name, u)
 			log.Debugf("ConfigSettings::ParseConfig(): ManagerOpts=%#v", m.ManagerOpts[opts])
-			baseUrl := fmt.Sprintf("%s://%s%s", m.ManagerOpts[opts].Method, u, m.ManagerOpts[opts].UriPath)
+			baseRemotePath := fmt.Sprintf("%s://%s%s", m.ManagerOpts[opts].Method, u, m.ManagerOpts[opts].RepoPath)
 			for _, f := range m.ManagerOpts[opts].PrimaryConfig {
-				fullUrl := fmt.Sprintf("%s/%s", baseUrl, f)
-				fullPath := fmt.Sprintf("%s/%s", m.DestPath, f)
-				log.Debugf("ConfigSettings::ParseConfig(): full url to primary config: %s", fullUrl)
-				log.Debugf("ConfigSettings::ParseConfig(): full path to primary config: %s", fullPath)
-				m.ManagerOpts[opts].AppendPrimaryConfigUrl(fullUrl)
-				m.ManagerOpts[opts].AppendPrimaryConfigFile(fullPath)
+				fullRemotePath := fmt.Sprintf("%s/%s", baseRemotePath, f)
+				fullLocalPath := fmt.Sprintf("%s/%s", m.DestPath, f)
+				log.Debugf("ConfigSettings::ParseConfig(): full remote path to primary config: %s", fullRemotePath)
+				log.Debugf("ConfigSettings::ParseConfig(): full local path to primary config: %s", fullLocalPath)
+				m.ManagerOpts[opts].AppendPrimaryConfigUrl(fullRemotePath)
+				m.ManagerOpts[opts].AppendPrimaryConfigFile(fullLocalPath)
 			}
 			for _, f := range m.ManagerOpts[opts].AdditionalConfig {
-				fullUrl := fmt.Sprintf("%s/%s", baseUrl, f)
-				fullPath := fmt.Sprintf("%s/%s", m.DestPath, f)
-				log.Debugf("ConfigSettings::ParseConfig(): full url to additional config: %s", fullUrl)
-				log.Debugf("ConfigSettings::ParseConfig(): full path to primary config: %s", fullPath)
-				m.ManagerOpts[opts].AppendAdditionalConfigUrl(fullUrl)
-				m.ManagerOpts[opts].AppendAdditionalConfigFile(fullPath)
+				fullRemotePath := fmt.Sprintf("%s/%s", baseRemotePath, f)
+				fullLocalPath := fmt.Sprintf("%s/%s", m.DestPath, f)
+				log.Debugf("ConfigSettings::ParseConfig(): full remote path to additional config: %s", fullRemotePath)
+				log.Debugf("ConfigSettings::ParseConfig(): full local path to primary config: %s", fullLocalPath)
+				m.ManagerOpts[opts].AppendAdditionalConfigUrl(fullRemotePath)
+				m.ManagerOpts[opts].AppendAdditionalConfigFile(fullLocalPath)
 			}
 		}
 	}

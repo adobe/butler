@@ -17,7 +17,7 @@ import (
 
 type Manager struct {
 	Name              string                  `json:"name"`
-	Urls              []string                `mapstructure:"urls" json:"urls"`
+	Repos             []string                `mapstructure:"repos" json:"repos"`
 	CleanFiles        bool                    `mapstructure:"clean-files" json:"clean-files"`
 	LastRun           time.Time               `json:"last-run"`
 	MustacheSubsArray []string                `mapstructure:"mustache-subs" json:"-"`
@@ -33,7 +33,7 @@ type Manager struct {
 
 type ManagerOpts struct {
 	Method                          string         `mapstructure:"method" json:"method"`
-	UriPath                         string         `mapstructure:"uri-path" json:"uri-path"`
+	RepoPath                        string         `mapstructure:"repo-path" json:"repo-path"`
 	Repo                            string         `json:"repo"`
 	PrimaryConfig                   []string       `mapstructure:"primary-config" json:"primary-config"`
 	AdditionalConfig                []string       `mapstructure:"additional-config" json:"additional-config"`

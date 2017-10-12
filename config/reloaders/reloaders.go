@@ -28,7 +28,13 @@ func New(entry string) (Reloader, error) {
 
 	err = viper.UnmarshalKey(key, &result)
 	if err != nil {
+		log.Debugf("reloaders.New(): could not Unmarshal config key: %v", key)
 		return NewGenericReloader("error", []byte(entry))
+	}
+
+	if result == nil {
+		log.Debugf("reloaders.New(): reloader nil. check butler config for reloader section")
+		return NewGenericReloader("error", []byte("reloader nil. check config for reloader"))
 	}
 
 	method := result["method"].(string)
@@ -37,7 +43,6 @@ func New(entry string) (Reloader, error) {
 		return NewGenericReloader(method, []byte(entry))
 	}
 
-	log.Debugf("reloaders.New() method=%v", method)
 	switch method {
 	case "http", "https":
 		return NewHttpReloader(method, jsonRes)

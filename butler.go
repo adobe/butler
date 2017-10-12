@@ -120,7 +120,7 @@ func main() {
 	var (
 		err                    error
 		versionFlag            = flag.Bool("version", false, "Print version information.")
-		configPath             = flag.String("config.path", "", "Full remote path to butler configuration file (eg: URI without scheme://).")
+		configPath             = flag.String("config.path", "", "Full remote path to butler configuration file (eg: full URL without scheme://).")
 		configScheme           = flag.String("config.scheme", "http", "Scheme used to download the butler configuration file. Currently supported schemes: http, https.")
 		configInterval         = flag.Int("config.retrieve-interval", 300, "The interval, in seconds, to retrieve new butler configuration files.")
 		configHttpTimeout      = flag.Int("http.timeout", 10, "The http timeout, in seconds, for GET requests to obtain the butler configuration file.")

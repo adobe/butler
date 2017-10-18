@@ -13,11 +13,9 @@ There are various ways that you can run butler. We will ultimately deploy butler
 [14:22]pts/12:16(stegen@woden):[~/git/ethos/butler]% ./butler -h
 Usage of ./butler:
   -config.path string
-    	Full remote path to butler configuration file (eg: full URL without scheme://).
+    	Full remote path to butler configuration file (eg: full URL scheme://path).
   -config.retrieve-interval int
     	The interval, in seconds, to retrieve new butler configuration files. (default 300)
-  -config.scheme string
-    	Scheme used to download the butler configuration file. Currently supported schemes: http, https. (default "http")
   -http.retries int
     	The number of http retries for GET requests to obtain the butler configuration files (default 4)
   -http.retry_wait_max int
@@ -38,7 +36,7 @@ Usage of ./butler:
 
 ### Example Command Line Usage
 ```
-[14:24]pts/12:21(stegen@woden):[~/git/ethos/butler]% ./butler -config.path localhost/butler/config/butler.toml -config.scheme http -config.retrieve-interval 10 -log.level info
+[14:24]pts/12:21(stegen@woden):[~/git/ethos/butler]% ./butler -config.path http://localhost/butler/config/butler.toml -config.retrieve-interval 10 -log.level info
 INFO[2017-10-11T14:24:29+01:00] Starting butler version v1.0.0
 ^C
 
@@ -157,8 +155,7 @@ Date: Thu, 12 Oct 2017 10:44:50 GMT
 Transfer-Encoding: chunked
 
 {
-    "config-path": "localhost/butler/config/butler.toml", 
-    "config-scheme": "http", 
+    "config-path": "http://localhost/butler/config/butler.toml", 
     "config-settings": {
         "globals": {
             "exit-on-failure": false, 

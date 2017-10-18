@@ -13,14 +13,20 @@ var (
 	ButlerConfigValid       *prometheus.GaugeVec
 	ButlerContactSuccess    *prometheus.GaugeVec
 	ButlerContactTime       *prometheus.GaugeVec
+	ButlerContactRetry      *prometheus.GaugeVec
 	ButlerKnownGoodCached   *prometheus.GaugeVec
 	ButlerKnownGoodRestored *prometheus.GaugeVec
+	ButlerReloadCount       *prometheus.GaugeVec
 	ButlerReloadSuccess     *prometheus.GaugeVec
 	ButlerReloadTime        *prometheus.GaugeVec
+	ButlerReloaderRetry     *prometheus.GaugeVec
 	ButlerRenderSuccess     *prometheus.GaugeVec
 	ButlerRenderTime        *prometheus.GaugeVec
 	ButlerWriteSuccess      *prometheus.GaugeVec
 	ButlerWriteTime         *prometheus.GaugeVec
+	ButlerRemoteRepoUp      *prometheus.GaugeVec
+	ButlerRemoteRepoSanity  *prometheus.GaugeVec
+	ButlerRepoInSync        *prometheus.GaugeVec
 	statsMutex              *sync.Mutex
 )
 
@@ -44,13 +50,20 @@ func SetButlerReloadVal(res float64, label string) {
 	// we try to initialize the same stat at the same time
 	// this will cause the prometheus client to panic
 	statsMutex.Lock()
+	if ButlerReloadCount == nil {
+		ButlerReloadCount = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "butler_localconfig_reload_count",
+			Help: "butler reload counter",
+		}, []string{"manager"})
+		prometheus.MustRegister(ButlerReloadCount)
+	}
+
 	if ButlerReloadSuccess == nil {
 		ButlerReloadSuccess = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Name: "butler_localconfig_reload_success",
 			Help: "Did butler successfully reload prometheus",
 		}, []string{"manager"})
 		prometheus.MustRegister(ButlerReloadSuccess)
-
 	}
 
 	if ButlerReloadTime == nil {
@@ -59,14 +72,15 @@ func SetButlerReloadVal(res float64, label string) {
 			Help: "Time that butler successfully reload prometheus",
 		}, []string{"manager"})
 		prometheus.MustRegister(ButlerReloadTime)
-
 	}
 	statsMutex.Unlock()
 
 	if res == SUCCESS {
+		ButlerReloadCount.With(prometheus.Labels{"manager": label}).Inc()
 		ButlerReloadSuccess.With(prometheus.Labels{"manager": label}).Set(SUCCESS)
 		ButlerReloadTime.With(prometheus.Labels{"manager": label}).SetToCurrentTime()
 	} else {
+		ButlerReloadCount.With(prometheus.Labels{"manager": label}).Inc()
 		ButlerReloadSuccess.With(prometheus.Labels{"manager": label}).Set(FAILURE)
 	}
 }
@@ -151,6 +165,7 @@ func SetButlerConfigVal(res float64, repo string, file string) {
 		ButlerConfigValid.With(prometheus.Labels{"config_file": file, "repo": repo}).Set(FAILURE)
 	}
 }
+
 func SetButlerContactVal(res float64, repo string, file string) {
 	// We don't want to have a race condition where two
 	// we try to initialize the same stat at the same time
@@ -179,6 +194,37 @@ func SetButlerContactVal(res float64, repo string, file string) {
 		ButlerContactTime.With(prometheus.Labels{"config_file": file, "repo": repo}).SetToCurrentTime()
 	} else {
 		ButlerContactSuccess.With(prometheus.Labels{"config_file": file, "repo": repo}).Set(FAILURE)
+	}
+}
+
+func SetButlerContactRetryVal(res float64, repo string, file string) {
+	// We don't want to have a race condition where two
+	// we try to initialize the same stat at the same time
+	// this will cause the prometheus client to panic
+	statsMutex.Lock()
+	if ButlerContactSuccess == nil {
+		ButlerContactSuccess = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "butler_remoterepo_contact_retry",
+			Help: "Did butler retry contact the remote repository",
+		}, []string{"config_file", "repo"})
+		prometheus.MustRegister(ButlerContactSuccess)
+
+	}
+
+	if ButlerContactTime == nil {
+		ButlerContactTime = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "butler_remoterepo_contact_retry_time",
+			Help: "Time that butler retried contact the remote repository",
+		}, []string{"config_file", "repo"})
+		prometheus.MustRegister(ButlerContactTime)
+	}
+	statsMutex.Unlock()
+
+	if res == SUCCESS {
+		ButlerContactSuccess.With(prometheus.Labels{"config_file": file, "repo": repo}).Inc()
+		ButlerContactTime.With(prometheus.Labels{"config_file": file, "repo": repo}).SetToCurrentTime()
+	} else {
+		ButlerContactSuccess.With(prometheus.Labels{"config_file": file, "repo": repo}).Inc()
 	}
 }
 
@@ -221,6 +267,88 @@ func SetButlerKnownGoodRestoredVal(res float64, label string) {
 		ButlerKnownGoodRestored.With(prometheus.Labels{"manager": label}).Set(SUCCESS)
 	} else {
 		ButlerKnownGoodRestored.With(prometheus.Labels{"manager": label}).Set(FAILURE)
+	}
+}
+
+func SetButlerContactRetry(res float64, repo string, file string) {
+	statsMutex.Lock()
+	if ButlerContactRetry == nil {
+		ButlerContactRetry = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "butler_remoterepo_contact_retry",
+			Help: "How many retries has butler attempted to retrieve file",
+		}, []string{"config_file", "repo"})
+		prometheus.MustRegister(ButlerContactRetry)
+	}
+	statsMutex.Unlock()
+
+	ButlerContactRetry.With(prometheus.Labels{"config_file": file, "repo": repo}).Inc()
+}
+
+func SetButlerReloaderRetry(res float64, manager string) {
+	statsMutex.Lock()
+	if ButlerReloaderRetry == nil {
+		ButlerReloaderRetry = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "butler_manager_reload_retry",
+			Help: "How many retries has butler attempted to reload manager",
+		}, []string{"manager"})
+		prometheus.MustRegister(ButlerReloaderRetry)
+	}
+	statsMutex.Unlock()
+
+	ButlerReloaderRetry.With(prometheus.Labels{"manager": manager}).Inc()
+}
+
+func SetButlerRemoteRepoUp(res float64, manager string) {
+	statsMutex.Lock()
+	if ButlerRemoteRepoUp == nil {
+		ButlerRemoteRepoUp = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "butler_remoterepo_up",
+			Help: "Have all the files been downloaded by butler",
+		}, []string{"manager"})
+		prometheus.MustRegister(ButlerRemoteRepoUp)
+	}
+	statsMutex.Unlock()
+
+	if res == SUCCESS {
+		ButlerRemoteRepoUp.With(prometheus.Labels{"manager": manager}).Set(SUCCESS)
+	} else {
+		ButlerRemoteRepoUp.With(prometheus.Labels{"manager": manager}).Set(FAILURE)
+	}
+}
+
+func SetButlerRemoteRepoSanity(res float64, manager string) {
+	statsMutex.Lock()
+	if ButlerRemoteRepoSanity == nil {
+		ButlerRemoteRepoSanity = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "butler_remoterepo_sanity",
+			Help: "Did all butler managed files pass the sanity checking",
+		}, []string{"manager"})
+		prometheus.MustRegister(ButlerRemoteRepoSanity)
+	}
+	statsMutex.Unlock()
+
+	if res == SUCCESS {
+		ButlerRemoteRepoSanity.With(prometheus.Labels{"manager": manager}).Set(SUCCESS)
+	} else {
+		ButlerRemoteRepoSanity.With(prometheus.Labels{"manager": manager}).Set(FAILURE)
+	}
+}
+
+func SetButlerRepoInSync(res float64, manager string) {
+	statsMutex.Lock()
+	if ButlerRepoInSync == nil {
+		ButlerRepoInSync = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "butler_local_remote_insync",
+			Help: "Are the remote and local repo files the same",
+		}, []string{"manager"})
+		prometheus.MustRegister(ButlerRepoInSync)
+	}
+	statsMutex.Unlock()
+
+	if res == SUCCESS {
+		ButlerRepoInSync.With(prometheus.Labels{"manager": manager}).Set(SUCCESS)
+	} else {
+		ButlerRepoInSync.With(prometheus.Labels{"manager": manager}).Set(FAILURE)
 	}
 }
 

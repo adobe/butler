@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-func NewGenericMethod(entry string) (Method, error) {
+func NewGenericMethod(manager string, entry string) (Method, error) {
 	return GenericMethod{}, errors.New("Generic method handler is not very useful")
 }
 

@@ -272,8 +272,11 @@ func (bc *ButlerConfig) RunCMHandler() error {
 			}
 			PrimaryChan.CleanTmpFiles()
 			AdditionalChan.CleanTmpFiles()
+                        stats.SetButlerRemoteRepoUp(stats.SUCCESS, m.Name)
+                        stats.SetButlerRemoteRepoSanity(stats.SUCCESS, m.Name)
 		} else {
 			log.Debugf("Config::RunCMHandler(): cannot copy files. cleaning up...")
+			// Failure statistics for RemoteRepoUp and RemoteRepoSanity
 			PrimaryChan.CleanTmpFiles()
 			AdditionalChan.CleanTmpFiles()
 		}

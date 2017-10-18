@@ -9,11 +9,13 @@ import (
 	"strings"
 	"time"
 
+	"git.corp.adobe.com/TechOps-IAO/butler/stats"
+
 	"github.com/hashicorp/go-retryablehttp"
 	log "github.com/sirupsen/logrus"
 )
 
-func NewHttpReloader(method string, entry []byte) (Reloader, error) {
+func NewHttpReloader(manager string, method string, entry []byte) (Reloader, error) {
 	var (
 		err    error
 		result HttpReloader
@@ -34,12 +36,14 @@ func NewHttpReloader(method string, entry []byte) (Reloader, error) {
 	opts.Client.RetryWaitMin = time.Duration(opts.RetryWaitMin) * time.Second
 	result.Method = method
 	result.Opts = opts
+	result.Manager = manager
 	return result, err
 }
 
 type HttpReloader struct {
-	Method string           `mapstructure:"method" json:"method"`
-	Opts   HttpReloaderOpts `json:"opts"`
+	Manager string           `json:"-"`
+	Method  string           `mapstructure:"method" json:"method"`
+	Opts    HttpReloaderOpts `json:"opts"`
 }
 
 type HttpReloaderOpts struct {
@@ -99,10 +103,13 @@ func (h HttpReloader) Reload() error {
 
 }
 
-func (r HttpReloader) ReloaderRetryPolicy(resp *http.Response, err error) (bool, error) {
+func (h HttpReloader) ReloaderRetryPolicy(resp *http.Response, err error) (bool, error) {
 	if err != nil {
 		return true, err
 	}
+
+	// Let's set our reloader stats
+	stats.SetButlerReloaderRetry(stats.SUCCESS, h.Manager)
 
 	// Here is our policy override. By default it looks for
 	// res.StatusCode >= 500 ...
@@ -112,14 +119,14 @@ func (r HttpReloader) ReloaderRetryPolicy(resp *http.Response, err error) (bool,
 	return false, nil
 }
 
-func (r HttpReloader) GetMethod() string {
-	return r.Method
+func (h HttpReloader) GetMethod() string {
+	return h.Method
 }
-func (r HttpReloader) GetOpts() ReloaderOpts {
-	return r.Opts
+func (h HttpReloader) GetOpts() ReloaderOpts {
+	return h.Opts
 }
 
-func (r HttpReloader) SetOpts(opts ReloaderOpts) bool {
-	r.Opts = opts.(HttpReloaderOpts)
+func (h HttpReloader) SetOpts(opts ReloaderOpts) bool {
+	h.Opts = opts.(HttpReloaderOpts)
 	return true
 }

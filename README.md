@@ -1,35 +1,50 @@
 # butler
 
-## Prometheus Configuration Management System (PCMS) Overview
-The butler tool is designed to grab Prometheus configuration files from a remote location/repository via http and side load them onto another locally running Prometheus container.
+## Butler Configuration Management System (BCMS) Overview
+The butler tool is designed to grab any configuration files, defined in its configuration file, from a remote location/repository via http(s) and side load them onto another locally running container.
+
+The butler configuration file is a [TOML](https://github.com/toml-lang/toml) formatted file. You can store the file locally (using a mounted filesystem), or on a remote server. The proper formatting for the config file can be found [here](https://git.corp.adobe.com/TechOps-IAO/butler/tree/master/contrib)
 
 ## Usage
-There are various ways that you can run butler. We will ultimately deploy butler via DCOS, you can run this on your local machine to do some testing.
+There are various ways that you can run butler. We will ultimately deploy butler via DCOS, and you can run this on your local machine to do some testing.
+
 ### Command Line Usage
 ```
-[12:51]pts/11:11(stegen@woden):[~/git/ethos/butler]% go run butler.go -help
-Usage of /tmp/go-build176186906/command-line-arguments/_obj/exe/butler:
-  -config.additional-config string
-    	The prometheus configuration files to grab in comma separated format. (default "alerts/commonalerts.yml,alerts/tenant.yml")
-  -config.http-timeout-host int
-    	The http timeout, in seconds, for GET requests to gather the configuration files (default 10)
-  -config.mustache-subs string
-    	prometheus.yml Mustache Substitutions.
-  -config.prometheus-config string
-    	The prometheus configuration file. (default "prometheus.yml")
-  -config.prometheus-host string
-    	The prometheus host to reload.
-  -config.scheduler-interval int
-    	The interval, in seconds, to run the scheduler. (default 300)
-  -config.url string
-    	The base url to grab prometheus configuration files
+[14:22]pts/12:16(stegen@woden):[~/git/ethos/butler]% ./butler -h
+Usage of ./butler:
+  -config.path string
+    	Full remote path to butler configuration file (eg: full URL scheme://path).
+  -config.retrieve-interval int
+    	The interval, in seconds, to retrieve new butler configuration files. (default 300)
+  -http.retries int
+    	The number of http retries for GET requests to obtain the butler configuration files (default 4)
+  -http.retry_wait_max int
+    	The maximum amount of time to wait before attemping to retry the http config get operation. (default 10)
+  -http.retry_wait_min int
+    	The minimum amount of time to wait before attemping to retry the http config get operation. (default 5)
+  -http.timeout int
+    	The http timeout, in seconds, for GET requests to obtain the butler configuration file. (default 10)
+  -log.level string
+    	The butler log level. Log levels are: debug, info, warn, error, fatal, panic. (default "info")
   -version
     	Print version information.
-exit status 2
 
 [master]
-[12:51]pts/11:12(stegen@woden):[~/git/ethos/butler]% 
+[14:22]pts/12:17(stegen@woden):[~/git/ethos/butler]%
+
 ```
+
+### Example Command Line Usage
+```
+[14:24]pts/12:21(stegen@woden):[~/git/ethos/butler]% ./butler -config.path http://localhost/butler/config/butler.toml -config.retrieve-interval 10 -log.level info
+INFO[2017-10-11T14:24:29+01:00] Starting butler version v1.0.0
+^C
+
+[master]
+[14:24]pts/12:22(stegen@woden):[~/git/ethos/butler]%
+```
+When you execute butler with the above arguments, you are asking butler to grab its configuration file from http://localhost/butler/config/butler.toml, and try to re-retrieve and refresh it every 10 seconds. It will also use the default log level of INFO. If you need more verbosity to your output, specify `debug` as the logging level argument.
+
 ### DCOS Deployment JSON
 ```
 {
@@ -37,16 +52,8 @@ exit status 2
   "id": "/prometheus-server-butler2",
   "cmd": null,
   "args": [
-    "-config.url",
-    "http://10.14.210.14/cgit/adobe-platform/ethos-monitoring/plain/oncluster/",
-    "-config.mustache-subs",
-    "ethos-cluster-id=ethos01-dev-or1",
-    "-config.additional-config",
-    "alerts/commonalerts.yml,alerts/tenant.yml",
-    "-config.prometheus-config",
-    "prometheus.yml",
-    "-config.scheduler-interval",
-    "300"
+    "-config.path",
+    "http://10.14.210.14/cgit/adobe-platform/ethos-monitoring/plain/oncluster/butler.toml"
   ],
   "user": null,
   "env": null,
@@ -123,13 +130,14 @@ exit status 2
       "port": 10057,
       "protocol": "tcp",
       "labels": {
-        
       }
     }
   ],
   "requirePorts": false
 }
 ```
+
+## Butler Configuration File
 
 ## Building
 ## Pushing
@@ -140,27 +148,160 @@ butler provides DCOS health checks by exposing an http service with a /health-ch
 ```
 [12:54]pts/11:13(stegen@woden):[~/git/ethos/butler]% http get localhost:8080/health-check
 HTTP/1.1 200 OK
-Content-Length: 405
 Content-Type: application/json
-Date: Wed, 26 Jul 2017 12:02:15 GMT
+Date: Thu, 12 Oct 2017 10:44:50 GMT
+Transfer-Encoding: chunked
 
 {
-    "additional_config": [
-        "prometheus.yml", 
-        "alerts/commonalerts.yml", 
-        "alerts/tenant.yml"
-    ], 
-    "cluster_id": "ethos01-dev-or1", 
-    "config_url": "http://git1.dev.or1.adobe.net/cgit/adobe-platform/ethos-monitoring/plain/oncluster", 
-    "last_run": "2017-07-26T13:02:10.439967492+01:00", 
-    "mustache_subs": {
-        "ethos-cluster-id": "ethos01-dev-or1"
+    "config-path": "http://localhost/butler/config/butler.toml", 
+    "config-settings": {
+        "globals": {
+            "exit-on-failure": false, 
+            "scheduler-interval": 10
+        }, 
+        "managers": {
+            "alertmanager": {
+                "cache-path": "/opt/cache/alertmanager", 
+                "clean-files": true, 
+                "dest-path": "/opt/alertmanager", 
+                "enable-cache": true, 
+                "last-run": "2017-10-12T11:44:50.29930327+01:00", 
+                "mustache-subs": {
+                    "endpoint": "external", 
+                    "ethos-cluster-id": "ethos01-dev-or1"
+                }, 
+                "name": "alertmanager", 
+                "opts": {
+                    "alertmanager.repo3.domain.com": {
+                        "additional-config": null, 
+                        "method": "http", 
+                        "opts": {
+                            "retries": 5, 
+                            "retry-wait-max": 10, 
+                            "retry-wait-min": 5, 
+                            "timeout": 10
+                        }, 
+                        "primary-config": [
+                            "alertmanager.yml"
+                        ], 
+                        "repo": "repo3.domain.com", 
+                        "uri-path": "/butler/configs/alertmanager"
+                    }, 
+                    "alertmanager.repo4.domain.com": {
+                        "additional-config": null, 
+                        "method": "http", 
+                        "opts": {
+                            "retries": 5, 
+                            "retry-wait-max": 10, 
+                            "retry-wait-min": 5, 
+                            "timeout": 10
+                        }, 
+                        "primary-config": [
+                            "alertmanager-2.yml"
+                        ], 
+                        "repo": "repo4.domain.com", 
+                        "uri-path": "/butler/configs/alertmanager"
+                    }
+                }, 
+                "primary-config-name": "alertmanager.yml", 
+                "reloader": {
+                    "method": "http", 
+                    "opts": {
+                        "content-type": "application/json", 
+                        "host": "localhost", 
+                        "method": "post", 
+                        "payload": "{}", 
+                        "port": 9093, 
+                        "retries": 5, 
+                        "retry-wait-max": 10, 
+                        "retry-wait-min": 5, 
+                        "timeout": 10, 
+                        "uri": "/-/reload"
+                    }
+                }, 
+                "urls": [
+                    "repo3.domain.com", 
+                    "repo4.domain.com"
+                ]
+            }, 
+            "prometheus": {
+                "cache-path": "/opt/cache/prometheus", 
+                "clean-files": true, 
+                "dest-path": "/opt/prometheus", 
+                "enable-cache": true, 
+                "last-run": "2017-10-12T11:44:50.29659399+01:00", 
+                "mustache-subs": {
+                    "endpoint": "external", 
+                    "ethos-cluster-id": "ethos01-dev-or1"
+                }, 
+                "name": "prometheus", 
+                "opts": {
+                    "prometheus.repo1.domain.com": {
+                        "additional-config": [
+                            "alerts/commonalerts.yml", 
+                            "butler/butler.yml"
+                        ], 
+                        "method": "http", 
+                        "opts": {
+                            "retries": 5, 
+                            "retry-wait-max": 10, 
+                            "retry-wait-min": 5, 
+                            "timeout": 10
+                        }, 
+                        "primary-config": [
+                            "prometheus.yml", 
+                            "prometheus-other.yml"
+                        ], 
+                        "repo": "repo1.domain.com", 
+                        "uri-path": "/butler/configs/prometheus"
+                    }, 
+                    "prometheus.repo2.domain.com": {
+                        "additional-config": [
+                            "alerts/tenant.yml", 
+                            "butler/butler-repo2.yml"
+                        ], 
+                        "method": "http", 
+                        "opts": {
+                            "retries": 5, 
+                            "retry-wait-max": 10, 
+                            "retry-wait-min": 5, 
+                            "timeout": 10
+                        }, 
+                        "primary-config": [
+                            "prometheus-repo2.yml", 
+                            "prometheus-repo2-other.yml"
+                        ], 
+                        "repo": "repo2.domain.com", 
+                        "uri-path": "/butler/configs/prometheus"
+                    }
+                }, 
+                "primary-config-name": "prometheus.yml", 
+                "reloader": {
+                    "method": "http", 
+                    "opts": {
+                        "content-type": "application/json", 
+                        "host": "localhost", 
+                        "method": "post", 
+                        "payload": "{}", 
+                        "port": 9090, 
+                        "retries": 5, 
+                        "retry-wait-max": 10, 
+                        "retry-wait-min": 5, 
+                        "timeout": 10, 
+                        "uri": "/-/reload"
+                    }
+                }, 
+                "urls": [
+                    "repo1.domain.com", 
+                    "repo2.domain.com"
+                ]
+            }
+        }
     }, 
-    "prometheus_config": "prometheus.yml", 
-    "prometheus_host": "localhost", 
-    "version": "v0.5.2"
+    "log-level": 5, 
+    "retrieve-interval": 10, 
+    "version": "v1.0.0"
 }
-
 
 [master]
 [13:02]pts/11:14(stegen@woden):[~/git/ethos/butler]% 

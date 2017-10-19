@@ -28,20 +28,20 @@ func New(entry string) (Reloader, error) {
 
 	err = viper.UnmarshalKey(key, &result)
 	if err != nil {
-		return NewGenericReloader("error", []byte(entry))
+		return NewGenericReloader(entry, "error", []byte(entry))
 	}
 
 	method := result["method"].(string)
 	jsonRes, err := json.Marshal(result[method])
 	if err != nil {
-		return NewGenericReloader(method, []byte(entry))
+		return NewGenericReloader(entry, method, []byte(entry))
 	}
 
 	log.Debugf("reloaders.New() method=%v", method)
 	switch method {
 	case "http", "https":
-		return NewHttpReloader(method, jsonRes)
+		return NewHttpReloader(entry, method, jsonRes)
 	default:
-		return NewGenericReloader(method, jsonRes)
+		return NewGenericReloader(entry, method, jsonRes)
 	}
 }

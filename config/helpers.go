@@ -304,8 +304,8 @@ func GetManagerOpts(entry string, bc *ConfigSettings) (*ManagerOpts, error) {
 		return &ManagerOpts{}, errors.New(msg)
 	}
 
-	if MgrOpts.UriPath == "" {
-		return &ManagerOpts{}, errors.New("no manager.uri-path defined")
+	if MgrOpts.RepoPath == "" {
+		return &ManagerOpts{}, errors.New("no manager.repo-path defined")
 	}
 
 	repoSplit := strings.Split(entry, ".")
@@ -315,8 +315,17 @@ func GetManagerOpts(entry string, bc *ConfigSettings) (*ManagerOpts, error) {
 		return &ManagerOpts{}, errors.New("no manager.primary-config defined")
 	}
 
+	managerNameSlice := strings.Split(entry, ".")
+	var managerName string
+	if len(managerNameSlice) >= 1 {
+		managerName = managerNameSlice[0]
+
+	} else {
+		// shouldn't get this, but hey.
+		managerName = "unconfigured"
+	}
 	methodOpts := fmt.Sprintf("%s.%s", entry, MgrOpts.Method)
-	mopts, err := methods.New(MgrOpts.Method, methodOpts)
+	mopts, err := methods.New(managerName, MgrOpts.Method, methodOpts)
 	MgrOpts.Opts = mopts
 
 	return &MgrOpts, nil
@@ -336,8 +345,8 @@ func GetConfigManager(entry string, bc *ConfigSettings) error {
 		return err
 	}
 
-	if len(Manager.Urls) < 1 {
-		msg := fmt.Sprintf("No urls configured for manager %s", entry)
+	if len(Manager.Repos) < 1 {
+		msg := fmt.Sprintf("No repos configured for manager %s", entry)
 		return errors.New(msg)
 	}
 
@@ -347,7 +356,7 @@ func GetConfigManager(entry string, bc *ConfigSettings) error {
 	}
 
 	Manager.ManagerOpts = make(map[string]*ManagerOpts)
-	for _, m := range Manager.Urls {
+	for _, m := range Manager.Repos {
 		bc.Managers[entry] = &Manager
 		mopts := fmt.Sprintf("%s.%s", entry, m)
 		opts, err := GetManagerOpts(mopts, bc)
@@ -357,7 +366,6 @@ func GetConfigManager(entry string, bc *ConfigSettings) error {
 		bc.Managers[entry].ManagerOpts[mopts] = opts
 	}
 
-	//reloader, err := GetConfigReloader(entry, bc)
 	reloader, err := reloaders.New(entry)
 	if err != nil {
 		return err

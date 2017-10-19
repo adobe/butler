@@ -258,7 +258,7 @@ func (bc *ButlerConfig) RunCMHandler() error {
 
 	bc.CheckPaths()
 
-	for _, m := range bc.Config.Managers {
+	for _, m := range bc.GetManagers() {
 		go m.DownloadPrimaryConfigFiles(c1)
 		go m.DownloadAdditionalConfigFiles(c2)
 		PrimaryChan, AdditionalChan := <-c1, <-c2
@@ -272,8 +272,12 @@ func (bc *ButlerConfig) RunCMHandler() error {
 			}
 			PrimaryChan.CleanTmpFiles()
 			AdditionalChan.CleanTmpFiles()
+			stats.SetButlerRemoteRepoUp(stats.SUCCESS, m.Name)
+			stats.SetButlerRemoteRepoSanity(stats.SUCCESS, m.Name)
 		} else {
 			log.Debugf("Config::RunCMHandler(): cannot copy files. cleaning up...")
+			// Failure statistics for RemoteRepoUp and RemoteRepoSanity
+			// happen in DownloadPrimaryConfigFiles // DownloadAdditionalConfigFiles
 			PrimaryChan.CleanTmpFiles()
 			AdditionalChan.CleanTmpFiles()
 		}
@@ -282,19 +286,58 @@ func (bc *ButlerConfig) RunCMHandler() error {
 
 	if len(ReloadManager) == 0 {
 		log.Debugf("Config::RunCMHandler(): CM files unchanged... continuing.")
+		// We are going to run through the managers and ensure that the status file
+		// is in an OK state for the manager. If it is not, then we will attempt a reload
+		for _, m := range bc.GetManagers() {
+			stats.SetButlerRepoInSync(stats.SUCCESS, m.Name)
+			if !GetManagerStatus(bc.GetStatusFile(), m.Name) {
+				log.Debugf("Config::RunCMHandler(): Could not find manager status. Going to reload to get in sync.")
+				err := m.Reload()
+				log.Debugf("Config::RunCMHandler(): err=%#v", err)
+				if err != nil {
+					err := SetManagerStatus(bc.GetStatusFile(), m.Name, false)
+					if err != nil {
+						log.Fatalf("Config::RunCMHandler(): could not write to %v err=%v", bc.GetStatusFile(), err.Error())
+					}
+					stats.SetButlerReloadVal(stats.FAILURE, m.Name)
+					if m.EnableCache {
+						RestoreCachedConfigs(m.Name, bc.Config.GetAllConfigLocalPaths())
+					}
+				} else {
+					err := SetManagerStatus(bc.GetStatusFile(), m.Name, true)
+					if err != nil {
+						log.Fatalf("Config::RunCMHandler(): could not write to %v err=%v", bc.GetStatusFile(), err.Error())
+					}
+					stats.SetButlerReloadVal(stats.SUCCESS, m.Name)
+					if m.EnableCache {
+						CacheConfigs(m.Name, bc.Config.GetAllConfigLocalPaths())
+					}
+				}
+			}
+		}
 	} else {
+		log.Debugf("Config::RunCMHandler(): CM files changed... reloading.")
 		for _, m := range ReloadManager {
 			log.Debugf("Config::RunCMHandler(): m=%#v", m)
-			err := bc.Config.Managers[m].Reload()
+			mgr := bc.GetManager(m)
+			err := mgr.Reload()
 			log.Debugf("Config::RunCMHandler(): err=%#v", err)
 			if err != nil {
+				err := SetManagerStatus(bc.GetStatusFile(), m, false)
+				if err != nil {
+					log.Fatalf("Config::RunCMHandler(): could not write to %v err=%v", bc.GetStatusFile(), err.Error())
+				}
 				stats.SetButlerReloadVal(stats.FAILURE, m)
-				if bc.Config.Managers[m].EnableCache {
+				if mgr.EnableCache {
 					RestoreCachedConfigs(m, bc.Config.GetAllConfigLocalPaths())
 				}
 			} else {
+				err := SetManagerStatus(bc.GetStatusFile(), m, true)
+				if err != nil {
+					log.Fatalf("Config::RunCMHandler(): could not write to %v err=%v", bc.GetStatusFile(), err.Error())
+				}
 				stats.SetButlerReloadVal(stats.SUCCESS, m)
-				if bc.Config.Managers[m].EnableCache {
+				if mgr.EnableCache {
 					CacheConfigs(m, bc.Config.GetAllConfigLocalPaths())
 				}
 			}
@@ -302,6 +345,18 @@ func (bc *ButlerConfig) RunCMHandler() error {
 	}
 
 	return nil
+}
+
+func (bc *ButlerConfig) GetManagers() map[string]*Manager {
+	return bc.Config.Managers
+}
+
+func (bc *ButlerConfig) GetManager(m string) *Manager {
+	return bc.Config.Managers[m]
+}
+
+func (bc *ButlerConfig) GetStatusFile() string {
+	return bc.Config.Globals.StatusFile
 }
 
 func (bc *ButlerConfig) CheckPaths() error {

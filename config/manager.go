@@ -79,7 +79,7 @@ func (bm *Manager) DownloadPrimaryConfigFiles(c chan ChanEvent) error {
 
 				// Set this stats global as failure here, since we aren't sure whether or not it was a parse error or
 				// download error in RunCMHandler()
-                                stats.SetButlerRemoteRepoUp(stats.FAILURE, bm.Name)
+				stats.SetButlerRemoteRepoUp(stats.FAILURE, bm.Name)
 
 				log.Debugf("Manager::DownloadPrimaryConfigFiles(): download for %s is nil.", u)
 				Chan.SetFailure(opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i], errors.New("could not download file"))
@@ -150,6 +150,11 @@ func (bm *Manager) DownloadAdditionalConfigFiles(c chan ChanEvent) error {
 			if f == nil {
 				log.Debugf("Manager::DownloadAdditionalConfigFiles(): download for %s is nil.", u)
 				stats.SetButlerContactVal(stats.FAILURE, opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i])
+
+				// Set this stats global as failure here, since we aren't sure whether or not it was a parse error or
+				// download error in RunCMHandler()
+				stats.SetButlerRemoteRepoUp(stats.FAILURE, bm.Name)
+
 				Chan.SetFailure(opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i], errors.New("could not download file"))
 				continue
 			} else {
@@ -164,6 +169,11 @@ func (bm *Manager) DownloadAdditionalConfigFiles(c chan ChanEvent) error {
 			// issue with the upstream
 			if err := ValidateConfig(f); err != nil {
 				stats.SetButlerConfigVal(stats.FAILURE, opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i])
+
+				// Set this stats global as failure here, since we aren't sure whether or not it was a parse error or
+				// download error in RunCMHandler()
+				stats.SetButlerRemoteRepoSanity(stats.FAILURE, bm.Name)
+
 				Chan.SetFailure(opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i], errors.New("could not validate file"))
 				continue
 			} else {

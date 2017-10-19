@@ -53,9 +53,7 @@ When you execute butler with the above arguments, you are asking butler to grab 
   "cmd": null,
   "args": [
     "-config.path",
-    "10.14.210.14/cgit/adobe-platform/ethos-monitoring/plain/oncluster/butler.toml",
-    "-config.scheme",
-    "http"
+    "http://10.14.210.14/cgit/adobe-platform/ethos-monitoring/plain/oncluster/butler.toml"
   ],
   "user": null,
   "env": null,

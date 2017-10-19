@@ -3,11 +3,13 @@ package methods
 import (
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"time"
 
 	"git.corp.adobe.com/TechOps-IAO/butler/stats"
 
 	"github.com/hashicorp/go-retryablehttp"
+	//log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -47,21 +49,21 @@ func (h HttpMethod) Get(file string) (*http.Response, error) {
 	return res, err
 }
 
-func (h HttpMethod) MethodRetryPolicy(resp *http.Response, err error) (bool, error) {
+func (h *HttpMethod) MethodRetryPolicy(resp *http.Response, err error) (bool, error) {
 	// This is actually the default RetryPolicy from the go-retryablehttp library. The only
 	// change is the stats monitor. We want to keep track of all the reload failures.
 	if err != nil {
+		opErr := err.(*url.Error)
+		stats.SetButlerContactRetryVal(stats.SUCCESS, h.Manager, stats.GetStatsLabel(opErr.URL))
 		return true, err
 	}
-
-	// Let's set our reloader stats
-	stats.SetButlerContactRetryVal(stats.SUCCESS, h.Manager, stats.GetStatsLabel(resp.Request.RequestURI))
 
 	// Check the response code. We retry on 500-range responses to allow
 	// the server time to recover, as 500's are typically not permanent
 	// errors and may relate to outages on the server side. This will catch
 	// invalid response codes as well, like 0 and 999.
 	if resp.StatusCode == 0 || resp.StatusCode >= 500 {
+		stats.SetButlerContactRetryVal(stats.SUCCESS, h.Manager, stats.GetStatsLabel(resp.Request.RequestURI))
 		return true, nil
 	}
 

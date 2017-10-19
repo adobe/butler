@@ -14,6 +14,7 @@ var (
 	ButlerContactSuccess    *prometheus.GaugeVec
 	ButlerContactTime       *prometheus.GaugeVec
 	ButlerContactRetry      *prometheus.GaugeVec
+	ButlerContactRetryTime  *prometheus.GaugeVec
 	ButlerKnownGoodCached   *prometheus.GaugeVec
 	ButlerKnownGoodRestored *prometheus.GaugeVec
 	ButlerReloadCount       *prometheus.GaugeVec
@@ -198,34 +199,36 @@ func SetButlerContactVal(res float64, repo string, file string) {
 }
 
 func SetButlerContactRetryVal(res float64, repo string, file string) {
+	// If there are no legit labels, then we don't want to log anything
+	// this is a bit hokey, but for some reason it's getting triggered
+	if (repo == "") || (file == "") {
+		return
+	}
+
 	// We don't want to have a race condition where two
 	// we try to initialize the same stat at the same time
 	// this will cause the prometheus client to panic
 	statsMutex.Lock()
-	if ButlerContactSuccess == nil {
-		ButlerContactSuccess = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	if ButlerContactRetry == nil {
+		ButlerContactRetry = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Name: "butler_remoterepo_contact_retry",
 			Help: "Did butler retry contact the remote repository",
 		}, []string{"config_file", "repo"})
-		prometheus.MustRegister(ButlerContactSuccess)
+		prometheus.MustRegister(ButlerContactRetry)
 
 	}
 
-	if ButlerContactTime == nil {
-		ButlerContactTime = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	if ButlerContactRetryTime == nil {
+		ButlerContactRetryTime = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Name: "butler_remoterepo_contact_retry_time",
 			Help: "Time that butler retried contact the remote repository",
 		}, []string{"config_file", "repo"})
-		prometheus.MustRegister(ButlerContactTime)
+		prometheus.MustRegister(ButlerContactRetryTime)
 	}
 	statsMutex.Unlock()
 
-	if res == SUCCESS {
-		ButlerContactSuccess.With(prometheus.Labels{"config_file": file, "repo": repo}).Inc()
-		ButlerContactTime.With(prometheus.Labels{"config_file": file, "repo": repo}).SetToCurrentTime()
-	} else {
-		ButlerContactSuccess.With(prometheus.Labels{"config_file": file, "repo": repo}).Inc()
-	}
+	ButlerContactRetry.With(prometheus.Labels{"config_file": file, "repo": repo}).Inc()
+	ButlerContactRetryTime.With(prometheus.Labels{"config_file": file, "repo": repo}).SetToCurrentTime()
 }
 
 func SetButlerKnownGoodCachedVal(res float64, label string) {
@@ -268,20 +271,6 @@ func SetButlerKnownGoodRestoredVal(res float64, label string) {
 	} else {
 		ButlerKnownGoodRestored.With(prometheus.Labels{"manager": label}).Set(FAILURE)
 	}
-}
-
-func SetButlerContactRetry(res float64, repo string, file string) {
-	statsMutex.Lock()
-	if ButlerContactRetry == nil {
-		ButlerContactRetry = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-			Name: "butler_remoterepo_contact_retry",
-			Help: "How many retries has butler attempted to retrieve file",
-		}, []string{"config_file", "repo"})
-		prometheus.MustRegister(ButlerContactRetry)
-	}
-	statsMutex.Unlock()
-
-	ButlerContactRetry.With(prometheus.Labels{"config_file": file, "repo": repo}).Inc()
 }
 
 func SetButlerReloaderRetry(res float64, manager string) {

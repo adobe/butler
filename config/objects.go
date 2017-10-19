@@ -63,4 +63,5 @@ type ConfigGlobals struct {
 	Managers          []string `mapstructure:"config-managers" json:"-"`
 	SchedulerInterval int      `mapstructure:"scheduler-interval" json:"scheduler-interval"`
 	ExitOnFailure     bool     `mapstructure:"exit-on-config-failure" json:"exit-on-failure"`
+	StatusFile        string   `mapstructure:"status-file" json:"status-file"`
 }

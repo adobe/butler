@@ -103,17 +103,16 @@ func (h HttpReloader) Reload() error {
 
 }
 
-func (h HttpReloader) ReloaderRetryPolicy(resp *http.Response, err error) (bool, error) {
+func (h *HttpReloader) ReloaderRetryPolicy(resp *http.Response, err error) (bool, error) {
 	if err != nil {
+		stats.SetButlerReloaderRetry(stats.SUCCESS, h.Manager)
 		return true, err
 	}
-
-	// Let's set our reloader stats
-	stats.SetButlerReloaderRetry(stats.SUCCESS, h.Manager)
 
 	// Here is our policy override. By default it looks for
 	// res.StatusCode >= 500 ...
 	if resp.StatusCode == 0 || resp.StatusCode >= 600 {
+		stats.SetButlerReloaderRetry(stats.SUCCESS, h.Manager)
 		return true, nil
 	}
 	return false, nil

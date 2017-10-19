@@ -317,9 +317,9 @@ func GetManagerOpts(entry string, bc *ConfigSettings) (*ManagerOpts, error) {
 
 	managerNameSlice := strings.Split(entry, ".")
 	var managerName string
-	if len(managerName) >= 1 {
+	if len(managerNameSlice) >= 1 {
 		managerName = managerNameSlice[0]
-	
+
 	} else {
 		// shouldn't get this, but hey.
 		managerName = "unconfigured"
@@ -366,7 +366,6 @@ func GetConfigManager(entry string, bc *ConfigSettings) error {
 		bc.Managers[entry].ManagerOpts[mopts] = opts
 	}
 
-	//reloader, err := GetConfigReloader(entry, bc)
 	reloader, err := reloaders.New(entry)
 	if err != nil {
 		return err

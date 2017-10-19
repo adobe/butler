@@ -4,7 +4,7 @@ import (
 	"errors"
 )
 
-func NewGenericReloader(method string, entry []byte) (Reloader, error) {
+func NewGenericReloader(manager string, method string, entry []byte) (Reloader, error) {
 	return GenericReloader{}, errors.New("Generic reloader is not very useful")
 }
 

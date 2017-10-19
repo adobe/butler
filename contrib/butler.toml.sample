@@ -14,6 +14,9 @@ title = "Butler Configuration"
   ## Default: false
   exit-on-config-failure = false
 
+  ## Path to status file where butler should store some internal status information
+  status-file = "/var/tmp/butler.status"
+
 ## This is the definition for the prometheus configuration handler
 [prometheus]
   repos = ["repo1.domain.com", "repo2.domain.com"]

@@ -86,7 +86,7 @@ help:
 	@printf "make alertmanager-logs\t\tTail the logs of the test prometheus instance.\n"
 
 run:
-	$(GO) run butler.go -config.path localhost/butler/config/butler.toml -config.scheme http -config.retrieve-interval 10 -log.level debug
+	$(GO) run butler.go -config.path http://localhost/butler/config/butler.toml -config.retrieve-interval 10 -log.level debug
 
 start-prometheus:
 	@docker run --rm -it --name=prometheus -d -p 9090:9090 -v /opt/prometheus:/etc/prometheus prom/prometheus -config.file=/etc/prometheus/prometheus.yml -storage.local.path=/prometheus -storage.local.memory-chunks=104857

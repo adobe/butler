@@ -315,8 +315,17 @@ func GetManagerOpts(entry string, bc *ConfigSettings) (*ManagerOpts, error) {
 		return &ManagerOpts{}, errors.New("no manager.primary-config defined")
 	}
 
+	managerNameSlice := strings.Split(entry, ".")
+	var managerName string
+	if len(managerNameSlice) >= 1 {
+		managerName = managerNameSlice[0]
+
+	} else {
+		// shouldn't get this, but hey.
+		managerName = "unconfigured"
+	}
 	methodOpts := fmt.Sprintf("%s.%s", entry, MgrOpts.Method)
-	mopts, err := methods.New(MgrOpts.Method, methodOpts)
+	mopts, err := methods.New(managerName, MgrOpts.Method, methodOpts)
 	MgrOpts.Opts = mopts
 
 	return &MgrOpts, nil
@@ -357,7 +366,6 @@ func GetConfigManager(entry string, bc *ConfigSettings) error {
 		bc.Managers[entry].ManagerOpts[mopts] = opts
 	}
 
-	//reloader, err := GetConfigReloader(entry, bc)
 	reloader, err := reloaders.New(entry)
 	if err != nil {
 		return err

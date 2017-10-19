@@ -107,6 +107,10 @@ func (c *ConfigSettings) ParseConfig(config []byte) error {
 		Config.Globals.SchedulerInterval = ConfigSchedulerInterval
 	}
 
+	if Config.Globals.StatusFile == "" {
+		Config.Globals.StatusFile = "/var/tmp/butler.status"
+	}
+
 	log.Debugf("ConfigSettings::ParseConfig(): globals.config-managers=%#v", Config.Globals.Managers)
 	log.Debugf("ConfigSettings::ParseConfig(): len(globals.config-managers)=%v", len(Config.Globals.Managers))
 

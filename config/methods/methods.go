@@ -11,13 +11,13 @@ type Method interface {
 	Get(string) (*http.Response, error)
 }
 
-func New(method string, entry string) (Method, error) {
+func New(manager string, method string, entry string) (Method, error) {
 	method = strings.ToLower(method)
-	log.Debugf("methods.New() method=%v entry=%v", method, entry)
+	log.Debugf("methods.New() manager=%v method=%v entry=%v", manager, method, entry)
 	switch method {
 	case "http", "https":
-		return NewHttpMethod(entry)
+		return NewHttpMethod(manager, entry)
 	default:
-		return NewGenericMethod(entry)
+		return NewGenericMethod(manager, entry)
 	}
 }

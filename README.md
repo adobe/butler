@@ -153,7 +153,7 @@ Date: Thu, 12 Oct 2017 10:44:50 GMT
 Transfer-Encoding: chunked
 
 {
-    "config-path": "http://localhost/butler/config/butler.toml",
+    "config-path": "http://localhost/butler/config/butler.toml", 
     "config-settings": {
         "globals": {
             "exit-on-failure": false, 

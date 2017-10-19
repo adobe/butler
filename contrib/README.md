@@ -27,11 +27,12 @@ Let's dive into each section in more detail.
 
 All the globals variables must go under the section which is labeled `[globals]` at the top level of the configuration file.
 
-There are three options that must be configured in the globals section. These options are:
+There are four options that must be configured in the globals section. These options are:
 
 1. config-managers
 1. scheduler-interval
 1. exit-on-config-failure
+1. status-file
 
 ### config-manager
 The `config-manager` option is an array of managers for butler to handle configuration for. The manager name can be an arbitrary name, but you have to maintain consistency in the name while configuring the manager sub sections. What is more important is how you configure the the Handler and Reloader options of hte manager.
@@ -64,6 +65,15 @@ false
 #### Example
 `exit-on-config-failure = true`
 
+### status-file
+The `status-file` option is a string path to the location where butler should store some internal status information to.
+It should be readable and writable by the user that butler runs as.
+
+#### Default Value
+/var/tmp/butler.status
+
+#### Example
+`status-file = "/var/tmp/butler.status`
 
 ## Managers / Manager Globals
 Each manager should go into it's own `[<managers>]` section at the top level of the configuration file. For each manager defined under the `config-manager` global setting, there must be a top level manager configuration of the same name. The goal of the manager is to be what butler uses to manage a specific set of configuration files for a configured tool.
@@ -169,10 +179,40 @@ There are 4 options that can be configured under the Repository Handler configur
 1. additional-config
 
 ### method
-### repo-path
-### primary-config
-### additional-config
+The `method` option defines what method to use for the retrieval of configuration files. Currently this option is only http or https. In the future there will be added support for the following formats: file (local filesystem), s3 (AWS S3), blob (Azure Blob Storage)
 
+#### Default Value
+None
+
+#### Example
+`method = "https"`
+
+### repo-path
+The `repo-path` option is the URI path to the configuration file on the local or remote filesystem. It should not be a relative path, and should not include any host information.
+
+#### Default Value
+None
+
+#### Example
+`repo-path = "/butler/configs/prometheus"`
+
+### primary-config
+The `primary-config` option is an array of strings, that are configuration files which will get merged into the single configuration file referenced by `primary-config-name` under the Manager Globals section. You can include paths in the configuration file name, and the paths will be retrieved relative to the `repo-path` that was defined previously. If the file is `additional/config2.yml`, then it will be retrieved from `<repo url>/butler/configs/prometheus/additional/config2.yml`
+
+#### Default Value
+[]
+
+#### Example
+`primary-config = ["config1.yml", "additional/config2.yml"]`
+
+### additional-config
+The `additional-config` option is an array strings, which are additional configuration files which will be put on the filesystem under `dest-path` as they are defined within the option. They will be retrieved relative to the `repo-path`. If the file is called `additional/config2.yml`, then it will be retrieverd from `<repo url>/butler/configs/prometheus/additional/config2.yml` and placed on the filesystem as `<dest-path>/additional/config2.yml`
+
+#### Default Value
+[]
+
+#### Example
+`additional-config = ["alerts/alerts1.yml", "extras/alertmanager.yml"]`
 
 ## Repository Handler Retrieval Options
 The Repository Handler Retrieval Options must be defined under the Repository Handler using the name of the defined method.
@@ -209,7 +249,7 @@ There is only one option that can be configured under the Manager Reloader Optio
 1. method
 
 ### method
-The `method` option defines what method to use to handle the reloading of the manager which butler is managing configuration files for. Currently this option is only http or https. This means that the application which butler is managing configurations for must have the ability to be reloaded by HTTP. In the future, we'll be adding the mechanism to reload via a command line method.
+The `method` option defines what method to use to handle the reloading of the manager which butler is managing configuration files for. Currently this option is only http or https. This means that the application which butler is managing configurations for must have the ability to be reloaded by HTTP. In the future, there will be added the mechanism to reload via a command line method.
 
 ## Manager Reloader Options
 The Manager Reloader Options option defines which options need to be used in order to reload the manager successfully.
@@ -240,5 +280,34 @@ Currently http/https are the only reloader options that are supported. The optio
 1. retry-wait-min
 1. retry-wait-max
 1. timeout
+
+#### host
+The `host` option is the host that the http connection will utilise.
+
+#### port
+The `port` option is what port you want the http connection to use. This is a required option.
+
+#### uri
+The `uri`
+#### method
+The `method` option is the HTTP method to use when handling the reload operation.
+
+#### payload
+The `payload` option is what you will be PUT/POSTed to the server in the reload operation.
+
+#### content-type
+The `content-type` option is the http content type header to use if your method is PUT/POST.
+
+#### retries
+The `retries` option defines how many retries the reloader should take when attempting to reload the service. There is no default value, and this must be set.
+
+#### retry-wait-min
+The `retry-wait-min` option is the minimum amount of time, in seconds, to HOLD OFF in seconds before attempting the retry.
+
+#### retry-wait-max
+The `retry-wait-max` option is the maximum amount of time, in seconds, to HOLD OFF in seconds before attempting the retry.
+
+#### timeout
+The `timeout` option is the amount of time, in seconds, until the http connection times out.
 
 

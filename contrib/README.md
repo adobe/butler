@@ -27,11 +27,12 @@ Let's dive into each section in more detail.
 
 All the globals variables must go under the section which is labeled `[globals]` at the top level of the configuration file.
 
-There are three options that must be configured in the globals section. These options are:
+There are four options that must be configured in the globals section. These options are:
 
 1. config-managers
 1. scheduler-interval
 1. exit-on-config-failure
+1. status-file
 
 ### config-manager
 The `config-manager` option is an array of managers for butler to handle configuration for. The manager name can be an arbitrary name, but you have to maintain consistency in the name while configuring the manager sub sections. What is more important is how you configure the the Handler and Reloader options of hte manager.
@@ -64,6 +65,15 @@ false
 #### Example
 `exit-on-config-failure = true`
 
+### status-file
+The `status-file` option is a string path to the location where butler should store some internal status information to.
+It should be readable and writable by the user that butler runs as.
+
+#### Default Value
+/var/tmp/butler.status
+
+#### Example
+`status-file = "/var/tmp/butler.status`
 
 ## Managers / Manager Globals
 Each manager should go into it's own `[<managers>]` section at the top level of the configuration file. For each manager defined under the `config-manager` global setting, there must be a top level manager configuration of the same name. The goal of the manager is to be what butler uses to manage a specific set of configuration files for a configured tool.

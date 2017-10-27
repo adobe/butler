@@ -17,6 +17,8 @@ func New(manager string, method string, entry string) (Method, error) {
 	switch method {
 	case "http", "https":
 		return NewHttpMethod(manager, entry)
+	case "S3", "s3":
+		return NewS3Method(manager, entry)
 	default:
 		return NewGenericMethod(manager, entry)
 	}

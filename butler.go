@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"git.corp.adobe.com/copernicus/butler/config"
+	"git.corp.adobe.com/TechOps-IAO/butler/config"
 
 	"github.com/jasonlvhit/gocron"
 	log "github.com/sirupsen/logrus"

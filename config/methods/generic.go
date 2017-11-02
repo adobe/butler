@@ -2,7 +2,7 @@ package methods
 
 import (
 	"errors"
-	"net/http"
+	//"net/http"
 )
 
 func NewGenericMethod(manager string, entry string) (Method, error) {

@@ -352,9 +352,11 @@ func (bmo *ManagerOpts) DownloadConfigFile(file string) *os.File {
 
 		downloader := s3manager.NewDownloader(sess)
 
+		x := bmo.Opts.(methods.S3Method)
+		log.Debugf("ManagerOpts::DownloadConfigFile(): bmo.Opts=%v", x.Bucket)
 		_, err = downloader.Download(tmpFile,
 			&s3.GetObjectInput{
-				Bucket: aws.String(),
+				Bucket: aws.String("test"),
 				Key:    aws.String(file),
 			})
 

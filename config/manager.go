@@ -323,7 +323,7 @@ func (bmo *ManagerOpts) DownloadConfigFile(file string) *os.File {
 		if response.GetResponseStatusCode() != 200 {
 			tmpFile.Close()
 			os.Remove(tmpFile.Name())
-			log.Infof("ManagerOpts::DownloadConfigFile(): Did not receive 200 response code for %s. code=%v", file, response.StatusCode)
+			log.Infof("ManagerOpts::DownloadConfigFile(): Did not receive 200 response code for %s. code=%v", file, response.GetResponseStatusCode())
 			tmpFile = nil
 			return tmpFile
 		}

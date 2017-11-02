@@ -62,10 +62,9 @@ title = "Butler Configuration"
 
     ## These are repo specific http get options
     [prometheus.ourbucket.s3]
-      retries = 5
-      retry-wait-min = 5
-      retry-wait-max = 10
-      timeout = 10
+      bucket = "foo"
+      item = "bar"
+      region = "baz"
 
   ## These are the options for reloading the alertmanager config-handler
   [prometheus.reloader]

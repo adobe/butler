@@ -14,7 +14,7 @@ import (
 
 var (
 	ConfigSchedulerInterval = 300
-	ValidSchemes            = []string{"http", "https"}
+	ValidSchemes            = []string{"http", "https", "s3", "S3"}
 )
 
 // butlerHeader and butlerFooter represent the strings that need to be matched

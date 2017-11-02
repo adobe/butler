@@ -47,7 +47,7 @@ title = "Butler Configuration"
   ## These are the definitions for the first repo which is defined for prometheus
   [prometheus.repo1.domain.com]
     ## Method can be http or https. In the future it may support Amazon s3 or Azure blob
-    method = "http"
+    method = "s3"
 
     ## Path is the URI / Path to the configuration files on the repo
     repo-path = "/butler/configs/prometheus"
@@ -60,11 +60,10 @@ title = "Butler Configuration"
     additional-config = ["alerts/commonalerts.yml", "butler/butler.yml"]
 
     ## These are repo specific http get options
-    [prometheus.repo1.domain.com.http]
-      retries = 5
-      retry-wait-min = 5
-      retry-wait-max = 10
-      timeout = 10
+    [prometheus.repo1.domain.com.s3]
+      region = "us-west-1"
+      bucket = ""
+      item = ""
 
   ## This will be processed second (and appended / replaced depending)
   [prometheus.repo2.domain.com]

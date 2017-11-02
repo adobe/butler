@@ -297,7 +297,7 @@ func GetManagerOpts(entry string, bc *ConfigSettings) (*ManagerOpts, error) {
 	}
 
 	switch MgrOpts.Method {
-	case "http", "https":
+	case "http", "https", "s3", "S3":
 		break
 	default:
 		msg := fmt.Sprintf("unknown manager.method=%v", MgrOpts.Method)

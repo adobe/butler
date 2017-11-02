@@ -44,9 +44,12 @@ type HttpMethod struct {
 	Timeout      int                   `mapstructure:"timeout" json:"timeout"`
 }
 
-func (h HttpMethod) Get(file string) (*http.Response, error) {
-	res, err := h.Client.Get(file)
-	return res, err
+func (h HttpMethod) Get(file string) (*Response, error) {
+	var res Response
+	r, err := h.Client.Get(file)
+	res.body = r.Body
+	res.statusCode = r.StatusCode
+	return &res, err
 }
 
 func (h *HttpMethod) MethodRetryPolicy(resp *http.Response, err error) (bool, error) {

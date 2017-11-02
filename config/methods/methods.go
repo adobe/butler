@@ -1,14 +1,26 @@
 package methods
 
 import (
-	"net/http"
 	"strings"
-
 	log "github.com/sirupsen/logrus"
+	"io"
 )
 
 type Method interface {
-	Get(string) (*http.Response, error)
+	Get(string) (*Response, error)
+}
+
+type Response struct {
+	body io.ReadCloser
+	statusCode int
+}
+
+func (r Response) GetResponseBody() (io.ReadCloser) {
+	return r.body
+}
+
+func (r Response) GetResponseStatusCode() (int) {
+	return r.statusCode
 }
 
 func New(manager string, method string, entry string) (Method, error) {

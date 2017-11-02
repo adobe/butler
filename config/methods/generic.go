@@ -12,9 +12,9 @@ func NewGenericMethod(manager string, entry string) (Method, error) {
 type GenericMethod struct {
 }
 
-func (m GenericMethod) Get(file string) (*http.Response, error) {
+func (m GenericMethod) Get(file string) (*Response, error) {
 	var (
-		result *http.Response
+		result *Response
 	)
 	return result, errors.New("Generic method handler is not very useful")
 }

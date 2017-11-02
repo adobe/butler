@@ -2,22 +2,18 @@ package methods
 
 import (
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/spf13/viper"
-	"net/http"
-	"os"
+	//"net/http"
 	"fmt"
 	"github.com/prometheus/common/log"
+	"os"
 )
 
 type S3Method struct {
-	Bucket     string `json:"bucket-name"`
-	Item       string `json:"file-name"`
-	Region     string `json:"region"`
-	Sess       *session.Session
-	Downloader *s3manager.Downloader
+	Manager string
+	Bucket  string `mapstructure:"bucket-name" json:"bucket-name"`
+	Region  string `mapstructure:"region" json:"region"`
 }
 
 func NewS3Method(manager string, entry string) (Method, error) {
@@ -31,28 +27,39 @@ func NewS3Method(manager string, entry string) (Method, error) {
 		return result, err
 	}
 
-	result.Sess = session.Must(session.NewSession())
-	result.Downloader = s3manager.NewDownloader(result.Sess)
-
-
+	result.Manager = manager
 
 	return result, err
 }
 
-func (s S3Method) Get(file string) (*http.Response, error) {
+func (s S3Method) GetBucket() (string){
+	return s.Bucket
+}
+
+func (s S3Method) GetRegion() (string){
+	return s.Region
+}
+
+func (s S3Method) Get(file string) (*Response, error) {
 
 	f, err := os.Create(file)
 
 	if err != nil {
 		msg := fmt.Sprintf("Unable to open file. err=%v", err)
-		log.Fatal(msg)
+		log.Error(msg)
 		return nil, err
 	}
 	_, err = s.Downloader.Download(f,
-	&s3.GetObjectInput{
-		Bucket: aws.String(s.Bucket),
-		Key:    aws.String(s.Item),
-	})
-	return &http.Response{}, nil
+		&s3.GetObjectInput{
+			Bucket: aws.String(s.Bucket),
+			Key:    aws.String(file),
+		})
+
+	if err != nil {
+		msg := fmt.Sprintf("unable to download item %q, %v", file, err)
+		log.Error(msg)
+		return nil, err
+	}
+	return &Response{}, nil
 
 }

@@ -13,6 +13,11 @@ import (
 	"git.corp.adobe.com/TechOps-IAO/butler/stats"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/aws/aws-sdk-go/service/s3"
+
 )
 
 type Manager struct {
@@ -312,10 +317,10 @@ func (bmo *ManagerOpts) DownloadConfigFile(file string) *os.File {
 			tmpFile = nil
 			return tmpFile
 		}
-		defer response.Body.Close()
+		defer response.GetResponseBody().Close()
 		defer tmpFile.Close()
 
-		if response.StatusCode != 200 {
+		if response.GetResponseStatusCode() != 200 {
 			tmpFile.Close()
 			os.Remove(tmpFile.Name())
 			log.Infof("ManagerOpts::DownloadConfigFile(): Did not receive 200 response code for %s. code=%v", file, response.StatusCode)
@@ -323,11 +328,40 @@ func (bmo *ManagerOpts) DownloadConfigFile(file string) *os.File {
 			return tmpFile
 		}
 
-		_, err = io.Copy(tmpFile, response.Body)
+		_, err = io.Copy(tmpFile, response.GetResponseBody())
 		if err != nil {
 			tmpFile.Close()
 			os.Remove(tmpFile.Name())
 			log.Infof("ManagerOpts::DownloadConfigFile(): Could not copy to %s, err=%s", file, err.Error())
+			tmpFile = nil
+			return tmpFile
+		}
+		return tmpFile
+	case "s3", "S3":
+		sess, err := session.NewSession(&aws.Config{
+			Region: aws.String("us-west-2")},
+		)
+
+		tmpFile, err := ioutil.TempFile("/tmp", "pcmsfile")
+		if err != nil {
+			msg := fmt.Sprintf("ManagerOpts::DownloadConfigFile(): could not create temporary file. err=%v", err)
+			log.Fatal(msg)
+		}
+
+		defer tmpFile.Close()
+
+		downloader := s3manager.NewDownloader(sess)
+
+		_, err = downloader.Download(tmpFile,
+			&s3.GetObjectInput{
+				Bucket: aws.String(),
+				Key:    aws.String(file),
+			})
+
+		if err != nil {
+			tmpFile.Close()
+			os.Remove(tmpFile.Name())
+			log.Infof("ManagerOpts::DownloadConfigFile(): Could not download file %s, err=%s", file, err.Error())
 			tmpFile = nil
 			return tmpFile
 		}

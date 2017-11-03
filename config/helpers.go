@@ -476,6 +476,8 @@ func NewConfigClient(scheme string) (*ConfigClient, error) {
 		c.HttpClient = retryablehttp.NewClient()
 		c.HttpClient.Logger.SetFlags(0)
 		c.HttpClient.Logger.SetOutput(ioutil.Discard)
+	case "s3", "S3":
+		c.Scheme = "s3"
 	default:
 		errMsg := fmt.Sprintf("Unsupported butler config scheme: %s", scheme)
 		return &ConfigClient{}, errors.New(errMsg)

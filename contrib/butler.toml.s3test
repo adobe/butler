@@ -63,7 +63,6 @@ title = "Butler Configuration"
     ## These are repo specific http get options
     [prometheus.ourbucket.s3]
       bucket = "foo"
-      item = "bar"
       region = "baz"
 
   ## These are the options for reloading the alertmanager config-handler

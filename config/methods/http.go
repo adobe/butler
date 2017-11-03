@@ -44,7 +44,7 @@ type HttpMethod struct {
 	Timeout      int                   `mapstructure:"timeout" json:"timeout"`
 }
 
-func (h HttpMethod) Get(file string) (*Response, error) {
+func (h HttpMethod) Get(file string, args ...interface{}) (*Response, error) {
 	var res Response
 	r, err := h.Client.Get(file)
 	res.body = r.Body

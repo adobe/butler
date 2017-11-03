@@ -12,12 +12,13 @@ import (
 	"git.corp.adobe.com/TechOps-IAO/butler/config/reloaders"
 	"git.corp.adobe.com/TechOps-IAO/butler/stats"
 
+	/*
+		"github.com/aws/aws-sdk-go/aws"
+		"github.com/aws/aws-sdk-go/aws/session"
+		"github.com/aws/aws-sdk-go/service/s3"
+		"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	*/
 	log "github.com/sirupsen/logrus"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/s3/s3manager"
-	"github.com/aws/aws-sdk-go/service/s3"
-
 )
 
 type Manager struct {
@@ -338,10 +339,6 @@ func (bmo *ManagerOpts) DownloadConfigFile(file string) *os.File {
 		}
 		return tmpFile
 	case "s3", "S3":
-		sess, err := session.NewSession(&aws.Config{
-			Region: aws.String("us-west-2")},
-		)
-
 		tmpFile, err := ioutil.TempFile("/tmp", "pcmsfile")
 		if err != nil {
 			msg := fmt.Sprintf("ManagerOpts::DownloadConfigFile(): could not create temporary file. err=%v", err)
@@ -350,15 +347,10 @@ func (bmo *ManagerOpts) DownloadConfigFile(file string) *os.File {
 
 		defer tmpFile.Close()
 
-		downloader := s3manager.NewDownloader(sess)
-
-		x := bmo.Opts.(methods.S3Method)
-		log.Debugf("ManagerOpts::DownloadConfigFile(): bmo.Opts=%v", x.Bucket)
-		_, err = downloader.Download(tmpFile,
-			&s3.GetObjectInput{
-				Bucket: aws.String("test"),
-				Key:    aws.String(file),
-			})
+		log.Debugf("ManagerOpts::DownloadConfigFile(): file=%v", file)
+		response, err := bmo.Opts.Get(file, tmpFile)
+		_ = response
+		// Perhaps there are things that we want to do here
 
 		if err != nil {
 			tmpFile.Close()

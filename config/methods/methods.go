@@ -1,25 +1,25 @@
 package methods
 
 import (
-	"strings"
 	log "github.com/sirupsen/logrus"
 	"io"
+	"strings"
 )
 
 type Method interface {
-	Get(string) (*Response, error)
+	Get(string, ...interface{}) (*Response, error)
 }
 
 type Response struct {
-	body io.ReadCloser
+	body       io.ReadCloser
 	statusCode int
 }
 
-func (r Response) GetResponseBody() (io.ReadCloser) {
+func (r Response) GetResponseBody() io.ReadCloser {
 	return r.body
 }
 
-func (r Response) GetResponseStatusCode() (int) {
+func (r Response) GetResponseStatusCode() int {
 	return r.statusCode
 }
 

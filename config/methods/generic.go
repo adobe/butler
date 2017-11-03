@@ -12,7 +12,7 @@ func NewGenericMethod(manager string, entry string) (Method, error) {
 type GenericMethod struct {
 }
 
-func (m GenericMethod) Get(file string) (*Response, error) {
+func (m GenericMethod) Get(file string, args ...interface{}) (*Response, error) {
 	var (
 		result *Response
 	)

@@ -63,7 +63,7 @@ title = "Butler Configuration"
     [prometheus.repo1.domain.com.http]
       retries = 5
       retry-wait-min = 5
-      retry-wait-max = 5
+      retry-wait-max = 10
       timeout = 10
 
   ## This will be processed second (and appended / replaced depending)

@@ -20,7 +20,7 @@ title = "Butler Configuration"
 
 ## This is the definition for the prometheus configuration handler
 [prometheus]
-  repos = ["prom.yml"]
+  repos = ["ourbucket"]
 
   ## !!! IMPORTANT !!! Do you want butler to clean up any NON BUTLER MANAGED files under dest-path?
   ## Butler would prefer to manage all the files under the configuration path. This is so that no

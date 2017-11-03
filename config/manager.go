@@ -13,6 +13,7 @@ import (
 	"git.corp.adobe.com/TechOps-IAO/butler/stats"
 
 	log "github.com/sirupsen/logrus"
+	"strings"
 )
 
 type Manager struct {
@@ -341,8 +342,11 @@ func (bmo *ManagerOpts) DownloadConfigFile(file string) *os.File {
 
 		defer tmpFile.Close()
 
+		prefix := bmo.Method + "://"
+		file = strings.TrimPrefix(file, prefix)
+
 		log.Debugf("ManagerOpts::DownloadConfigFile(): file=%v", file)
-		response, err := bmo.Opts.Get(file, tmpFile)
+		response, err := bmo.Opts.Get(file, &tmpFile)
 		_ = response
 		// Perhaps there are things that we want to do here
 

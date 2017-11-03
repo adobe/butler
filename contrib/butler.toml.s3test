@@ -20,7 +20,7 @@ title = "Butler Configuration"
 
 ## This is the definition for the prometheus configuration handler
 [prometheus]
-  repos = ["ourbucket"]
+  repos = ["prom.yml"]
 
   ## !!! IMPORTANT !!! Do you want butler to clean up any NON BUTLER MANAGED files under dest-path?
   ## Butler would prefer to manage all the files under the configuration path. This is so that no
@@ -51,7 +51,7 @@ title = "Butler Configuration"
     method = "s3"
 
     ## Path is the URI / Path to the configuration files on the repo
-    repo-path = "/butler/configs/prometheus"
+    repo-path = ""
 
     ## This is a list of the primary configuration files which get MERGED together
     primary-config = ["prometheus.yml", "prometheus-other.yml"]
@@ -62,8 +62,8 @@ title = "Butler Configuration"
 
     ## These are repo specific http get options
     [prometheus.ourbucket.s3]
-      bucket = "foo"
-      region = "baz"
+      bucket = "butler-test-1"
+      region = "us-west-2"
 
   ## These are the options for reloading the alertmanager config-handler
   [prometheus.reloader]

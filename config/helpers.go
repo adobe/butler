@@ -304,10 +304,6 @@ func GetManagerOpts(entry string, bc *ConfigSettings) (*ManagerOpts, error) {
 		return &ManagerOpts{}, errors.New(msg)
 	}
 
-	if MgrOpts.RepoPath == "" {
-		return &ManagerOpts{}, errors.New("no manager.repo-path defined")
-	}
-
 	repoSplit := strings.Split(entry, ".")
 	MgrOpts.Repo = strings.Join(repoSplit[1:len(repoSplit)], ".")
 

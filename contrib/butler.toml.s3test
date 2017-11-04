@@ -20,7 +20,7 @@ title = "Butler Configuration"
 
 ## This is the definition for the prometheus configuration handler
 [prometheus]
-  repos = ["ourbucket"]
+  repos = ["prom.yml"]
 
   ## !!! IMPORTANT !!! Do you want butler to clean up any NON BUTLER MANAGED files under dest-path?
   ## Butler would prefer to manage all the files under the configuration path. This is so that no
@@ -46,7 +46,7 @@ title = "Butler Configuration"
   primary-config-name = "prometheus.yml"
 
   ## These are the definitions for the first repo which is defined for prometheus
-  [prometheus.ourbucket]
+  [prometheus.prom.yml]
     ## Method can be http or https. In the future it may support Amazon s3 or Azure blob
     method = "s3"
 
@@ -61,7 +61,7 @@ title = "Butler Configuration"
     additional-config = ["alerts/commonalerts.yml", "butler/butler.yml"]
 
     ## These are repo specific http get options
-    [prometheus.ourbucket.s3]
+    [prometheus.prom.yml.s3]
       bucket = "butler-test-1"
       region = "us-west-2"
 

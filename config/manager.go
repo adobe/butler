@@ -346,7 +346,7 @@ func (bmo *ManagerOpts) DownloadConfigFile(file string) *os.File {
 		file = strings.TrimPrefix(file, prefix)
 
 		log.Debugf("ManagerOpts::DownloadConfigFile(): file=%v", file)
-		response, err := bmo.Opts.Get(file, &tmpFile)
+		response, err := bmo.Opts.Get(file, tmpFile)
 		_ = response
 		// Perhaps there are things that we want to do here
 

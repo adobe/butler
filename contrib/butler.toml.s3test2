@@ -46,7 +46,7 @@ title = "Butler Configuration"
   primary-config-name = "prometheus.yml"
 
   ## These are the definitions for the first repo which is defined for prometheus
-  [prometheus.prom.yml]
+  [prometheus.prom]
     ## Method can be http or https. In the future it may support Amazon s3 or Azure blob
     method = "s3"
 
@@ -61,7 +61,7 @@ title = "Butler Configuration"
     additional-config = []
 
     ## These are repo specific http get options
-    [prometheus.prom.yml.s3]
+    [prometheus.prom.s3]
       bucket = "butler-test-1"
       region = "us-west-2"
 

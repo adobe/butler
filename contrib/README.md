@@ -1,4 +1,4 @@
-#Butler Configuration
+# Butler Configuration
 ## Overview
 The butler configuration file is a TOML based configuration file. It was felt that TOML is a simpler format to syntactically support, versus YAML or JSON. It is similar to the windows INI format, and you can read more about it at the [TOML](https://github.com/toml-lang/toml) website.
 
@@ -157,7 +157,7 @@ Empty String
 The `primary-config-name` configuration option tells butler where all the files defined under a manager configuration's `primary-config` configuration option should be stored. One of the initial goals of butler was to take a bunch of files from one a repo, and merge them into one primary configuration file. This option tells butler what that configuration file should be.
 
 ## Repository Handler
-Each Repository Handler configuration must be under the config Manager section, and must be one of the options which are defined under the `repos` option within the Manager defintion.
+Each Repository Handler configuration must be under the config Manager section, and must be one of the options which are defined under the `repos` option within the Manager definition.
 
 For example, look at the following (incomplete) definition:
 ```
@@ -179,16 +179,17 @@ There are 4 options that can be configured under the Repository Handler configur
 1. additional-config
 
 ### method
-The `method` option defines what method to use for the retrieval of configuration files. Currently this option is only http or https. In the future there will be added support for the following formats: file (local filesystem), s3 (AWS S3), blob (Azure Blob Storage)
+The `method` option defines what method to use for the retrieval of configuration files. Currently this option is only http/https and S3. In the future there will be added support for the following formats: file (local filesystem), blob (Azure Blob Storage)
 
 #### Default Value
 None
 
 #### Example
-`method = "https"`
+1. `method = "https"`
+1. `method = "S3"`
 
 ### repo-path
-The `repo-path` option is the URI path to the configuration file on the local or remote filesystem. It should not be a relative path, and should not include any host information.
+The `repo-path` option is the URI path to the configuration file on the local or remote filesystem. It should not be a relative path, and should not include any host information. In case of S3 this will be relative the folder names defined under `repos` and can be left blank.
 
 #### Default Value
 None

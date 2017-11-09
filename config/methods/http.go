@@ -13,15 +13,17 @@ import (
 	"github.com/spf13/viper"
 )
 
-func NewHttpMethod(manager string, entry string) (Method, error) {
+func NewHttpMethod(manager *string, entry *string) (Method, error) {
 	var (
 		err    error
 		result HttpMethod
 	)
 
-	err = viper.UnmarshalKey(entry, &result)
-	if err != nil {
-		return result, err
+	if (manager != nil) && (entry != nil) {
+		err = viper.UnmarshalKey(*entry, &result)
+		if err != nil {
+			return result, err
+		}
 	}
 	result.Client = retryablehttp.NewClient()
 	result.Client.Logger.SetFlags(0)
@@ -37,14 +39,14 @@ func NewHttpMethod(manager string, entry string) (Method, error) {
 
 type HttpMethod struct {
 	Client       *retryablehttp.Client `json:"-"`
-	Manager      string                `json:"-"`
+	Manager      *string               `json:"-"`
 	Retries      int                   `mapstructure:"retries" json:"retries"`
 	RetryWaitMax int                   `mapstructure:"retry-wait-max" json:"retry-wait-max"`
 	RetryWaitMin int                   `mapstructure:"retry-wait-min" json:"retry-wait-min"`
 	Timeout      int                   `mapstructure:"timeout" json:"timeout"`
 }
 
-func (h HttpMethod) Get(file string, args ...interface{}) (*Response, error) {
+func (h HttpMethod) Get(file string) (*Response, error) {
 	var res Response
 	r, err := h.Client.Get(file)
 	res.body = r.Body
@@ -55,9 +57,9 @@ func (h HttpMethod) Get(file string, args ...interface{}) (*Response, error) {
 func (h *HttpMethod) MethodRetryPolicy(resp *http.Response, err error) (bool, error) {
 	// This is actually the default RetryPolicy from the go-retryablehttp library. The only
 	// change is the stats monitor. We want to keep track of all the reload failures.
-	if err != nil {
+	if (err != nil) && (h.Manager != nil) {
 		opErr := err.(*url.Error)
-		stats.SetButlerContactRetryVal(stats.SUCCESS, h.Manager, stats.GetStatsLabel(opErr.URL))
+		stats.SetButlerContactRetryVal(stats.SUCCESS, *h.Manager, stats.GetStatsLabel(opErr.URL))
 		return true, err
 	}
 
@@ -66,7 +68,9 @@ func (h *HttpMethod) MethodRetryPolicy(resp *http.Response, err error) (bool, er
 	// errors and may relate to outages on the server side. This will catch
 	// invalid response codes as well, like 0 and 999.
 	if resp.StatusCode == 0 || resp.StatusCode >= 500 {
-		stats.SetButlerContactRetryVal(stats.SUCCESS, h.Manager, stats.GetStatsLabel(resp.Request.RequestURI))
+		if h.Manager != nil {
+			stats.SetButlerContactRetryVal(stats.SUCCESS, *h.Manager, stats.GetStatsLabel(resp.Request.RequestURI))
+		}
 		return true, nil
 	}
 

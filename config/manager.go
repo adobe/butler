@@ -297,13 +297,17 @@ func (bmo *ManagerOpts) GetAdditionalRemoteConfigFiles() []string {
 // Really need to come up with a better method for this.
 func (bmo *ManagerOpts) DownloadConfigFile(file string) *os.File {
 	switch bmo.Method {
-	case "http", "https":
+	case "http", "https", "s3", "S3":
 		tmpFile, err := ioutil.TempFile("/tmp", "pcmsfile")
 		if err != nil {
 			msg := fmt.Sprintf("ManagerOpts::DownloadConfigFile(): could not create temporary file. err=%v", err)
 			log.Fatal(msg)
 		}
 
+		if (bmo.Method == "s3") || (bmo.Method == "S3") {
+			prefix := bmo.Method + "://"
+			file = strings.TrimPrefix(file, prefix)
+		}
 		response, err := bmo.Opts.Get(file)
 
 		if err != nil {
@@ -329,31 +333,6 @@ func (bmo *ManagerOpts) DownloadConfigFile(file string) *os.File {
 			tmpFile.Close()
 			os.Remove(tmpFile.Name())
 			log.Infof("ManagerOpts::DownloadConfigFile(): Could not copy to %s, err=%s", file, err.Error())
-			tmpFile = nil
-			return tmpFile
-		}
-		return tmpFile
-	case "s3", "S3":
-		tmpFile, err := ioutil.TempFile("/tmp", "pcmsfile")
-		if err != nil {
-			msg := fmt.Sprintf("ManagerOpts::DownloadConfigFile(): could not create temporary file. err=%v", err)
-			log.Fatal(msg)
-		}
-
-		defer tmpFile.Close()
-
-		prefix := bmo.Method + "://"
-		file = strings.TrimPrefix(file, prefix)
-
-		log.Debugf("ManagerOpts::DownloadConfigFile(): file=%v", file)
-		response, err := bmo.Opts.Get(file, tmpFile)
-		_ = response
-		// Perhaps there are things that we want to do here
-
-		if err != nil {
-			tmpFile.Close()
-			os.Remove(tmpFile.Name())
-			log.Infof("ManagerOpts::DownloadConfigFile(): Could not download file %s, err=%s", file, err.Error())
 			tmpFile = nil
 			return tmpFile
 		}

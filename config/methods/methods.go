@@ -7,7 +7,7 @@ import (
 )
 
 type Method interface {
-	Get(string, ...interface{}) (*Response, error)
+	Get(string) (*Response, error)
 }
 
 type Response struct {
@@ -23,7 +23,7 @@ func (r Response) GetResponseStatusCode() int {
 	return r.statusCode
 }
 
-func New(manager string, method string, entry string) (Method, error) {
+func New(manager *string, method string, entry *string) (Method, error) {
 	method = strings.ToLower(method)
 	log.Debugf("methods.New() manager=%v method=%v entry=%v", manager, method, entry)
 	switch method {

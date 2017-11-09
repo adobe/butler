@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"net/http"
 	"time"
+
+	"git.corp.adobe.com/TechOps-IAO/butler/config/methods"
 
 	"github.com/hashicorp/go-retryablehttp"
 	log "github.com/sirupsen/logrus"
@@ -28,6 +29,7 @@ const (
 
 type ConfigClient struct {
 	Scheme     string
+	Method     methods.Method
 	HttpClient *retryablehttp.Client
 }
 
@@ -59,16 +61,20 @@ func (c *ConfigClient) SetRetryWaitMax(val int) {
 	}
 }
 
-func (c *ConfigClient) Get(val string) (*http.Response, error) {
+func (c *ConfigClient) Get(val string) (*methods.Response, error) {
 	var (
-		response *http.Response
+		response *methods.Response
 		err      error
 	)
 	switch c.Scheme {
-	case "http", "https":
-		response, err = c.HttpClient.Get(val)
+	case "http", "https", "s3", "S3":
+		response, err = c.Method.Get(val)
+	/*
+		case "s3", "S3":
+			response, err = c.Method.Get(val)
+	*/
 	default:
-		response = &http.Response{}
+		response = &methods.Response{}
 		err = errors.New("unsupported scheme")
 	}
 	return response, err

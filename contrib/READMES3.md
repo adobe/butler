@@ -4,6 +4,19 @@ The butler configuration file is similar to that explained in the README.md file
 
 Only the Butler configuration fields that will be different for S3 are explained here. Everything else remains the same.
 
+## AWS Credentials
+
+### From IAM Roles
+If you are running Butler on Amazon EC2, you can leverage EC2's IAM roles functionality in order to have credentials automatically provided to the instance.
+
+If you have configured your instance to use IAM roles, Butler will automatically select these credentials for use in your application, and you do not need to manually provide credentials in any other format.
+
+### From Environment Variables
+By default, Butler will automatically detect AWS credentials set in your environment and use them for requests.
+The keys that the SDK looks for are as follows:
+
+```AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN```
+
 ## Managers / Manager Globals
 
 ### repos

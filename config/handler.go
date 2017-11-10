@@ -187,7 +187,7 @@ func (bc *ButlerConfig) Init() error {
 		bc.Client.SetRetryMax(bc.Retries)
 		bc.Client.SetRetryWaitMin(bc.RetryWaitMin)
 		bc.Client.SetRetryWaitMax(bc.RetryWaitMax)
-	case "s3":
+	case "s3", "S3":
 		pathSplit := strings.Split(bc.Path, "/")
 		bucket := pathSplit[0]
 		path := strings.Join(pathSplit[1:len(pathSplit)], "/")

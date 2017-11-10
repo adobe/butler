@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"git.corp.adobe.com/TechOps-IAO/butler/config/methods"
 	"git.corp.adobe.com/TechOps-IAO/butler/stats"
 
 	"github.com/jasonlvhit/gocron"
@@ -33,6 +34,9 @@ type ButlerConfig struct {
 	RetryWaitMin            int
 	RetryWaitMax            int
 	Scheduler               *gocron.Scheduler
+	// some s3 specific stuff
+	S3Region string
+	S3Bucket string
 }
 
 func (bc *ButlerConfig) SetScheme(s string) error {
@@ -93,6 +97,29 @@ func (bc *ButlerConfig) SetTimeout(t int) error {
 	return nil
 }
 
+func (bc *ButlerConfig) SetRegion(r string) error {
+	bc.S3Region = r
+	return nil
+}
+
+func (bc *ButlerConfig) SetRegionAndBucket(r string, b string) error {
+	if bc.Client != nil {
+		method, err := methods.NewS3MethodWithRegionAndBucket(r, b)
+		if err != nil {
+			return err
+		}
+		log.Debugf("ButlerConfig::SetRegionAndBucket(): method=%#v", method)
+		bc.Client.Method = method
+
+	} else {
+		return errors.New("ButlerConfig::SetRegionAndBucket(): bc.Client does not exist")
+	}
+
+	bc.S3Region = r
+	bc.S3Bucket = b
+	return nil
+}
+
 func (bc *ButlerConfig) SetRetries(t int) error {
 	log.Debugf("Config::SetRetries(): setting bc.Retries=%v", t)
 	bc.Retries = t
@@ -132,26 +159,43 @@ func (bc *ButlerConfig) Init() error {
 	log.Debugf("Config::Init(): initializing butler config.")
 	var err error
 
-	if bc.Url == "" {
-		ConfigUrl := fmt.Sprintf("%s://%s", bc.Scheme, bc.Path)
-		if _, err = url.ParseRequestURI(ConfigUrl); err != nil {
-			log.Debugf("Config::Init(): could not initialize butler config. err=%s", err.Error())
-			return err
-		}
-		bc.Url = ConfigUrl
-	}
-
-	c, err := NewConfigClient(bc.Scheme)
+	method, err := methods.New(nil, bc.Scheme, nil)
 	if err != nil {
 		log.Debugf("Config::Init(): could not initialize butler config. err=%s", err.Error())
 		return err
 	}
 
-	bc.Client = c
-	bc.Client.SetTimeout(bc.Timeout)
-	bc.Client.SetRetryMax(bc.Retries)
-	bc.Client.SetRetryWaitMin(bc.RetryWaitMin)
-	bc.Client.SetRetryWaitMax(bc.RetryWaitMax)
+	bc.Client, err = NewConfigClient(bc.Scheme)
+	if err != nil {
+		log.Debugf("Config::Init(): could not initialize butler config. err=%s", err.Error())
+		return err
+	}
+	bc.Client.Method = method
+
+	switch bc.Scheme {
+	case "http", "https":
+		if bc.Url == "" {
+			ConfigUrl := fmt.Sprintf("%s://%s", bc.Scheme, bc.Path)
+			if _, err = url.ParseRequestURI(ConfigUrl); err != nil {
+				log.Debugf("Config::Init(): could not initialize butler config. err=%s", err.Error())
+				return err
+			}
+			bc.Url = ConfigUrl
+		}
+
+		bc.Client.SetTimeout(bc.Timeout)
+		bc.Client.SetRetryMax(bc.Retries)
+		bc.Client.SetRetryWaitMin(bc.RetryWaitMin)
+		bc.Client.SetRetryWaitMax(bc.RetryWaitMax)
+	case "s3", "S3":
+		pathSplit := strings.Split(bc.Path, "/")
+		bucket := pathSplit[0]
+		path := strings.Join(pathSplit[1:len(pathSplit)], "/")
+
+		bc.Url = path
+		bc.SetRegionAndBucket(bc.S3Region, bucket)
+	}
+	log.Debugf("Config::Init(): bc.Client.Method=%#v", bc.Client.Method)
 
 	bc.Config = NewConfigSettings()
 
@@ -165,14 +209,14 @@ func (bc *ButlerConfig) Handler() error {
 	if err != nil {
 		return err
 	}
-	defer response.Body.Close()
+	defer response.GetResponseBody().Close()
 
-	if response.StatusCode != 200 {
-		errMsg := fmt.Sprintf("Did not receive 200 response code for %s. code=%d", bc.Url, response.StatusCode)
+	if response.GetResponseStatusCode() != 200 {
+		errMsg := fmt.Sprintf("Did not receive 200 response code for %s. code=%d", bc.Url, response.GetResponseStatusCode())
 		return errors.New(errMsg)
 	}
 
-	body, err := ioutil.ReadAll(response.Body)
+	body, err := ioutil.ReadAll(response.GetResponseBody())
 	if err != nil {
 		errMsg := fmt.Sprintf("Could not read response body for %s. err=%s", bc.Url, err)
 		return errors.New(errMsg)

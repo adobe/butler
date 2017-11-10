@@ -126,6 +126,7 @@ func main() {
 		configHttpRetries      = flag.Int("http.retries", 4, "The number of http retries for GET requests to obtain the butler configuration files")
 		configHttpRetryWaitMin = flag.Int("http.retry_wait_min", 5, "The minimum amount of time to wait before attemping to retry the http config get operation.")
 		configHttpRetryWaitMax = flag.Int("http.retry_wait_max", 10, "The maximum amount of time to wait before attemping to retry the http config get operation.")
+		configS3Region         = flag.String("s3.region", "", "The S3 Region that the config file resides.")
 		configLogLevel         = flag.String("log.level", "info", "The butler log level. Log levels are: debug, info, warn, error, fatal, panic.")
 	)
 	flag.Parse()
@@ -147,24 +148,35 @@ func main() {
 	if len(pathSplit) != 2 {
 		log.Fatalf("Cannot properly parse -config.path. -config.path must be in URL form. -config.path=%v", *configPath)
 	}
+	scheme := strings.ToLower(pathSplit[0])
+	path := pathSplit[1]
 
 	bc := config.NewButlerConfig()
 	bc.SetLogLevel(SetLogLevel(*configLogLevel))
-	bc.SetScheme(pathSplit[0])
-	bc.SetPath(pathSplit[1])
+	bc.SetScheme(scheme)
+	bc.SetPath(path)
 
-	// Set the HTTP Timeout
-	log.Debugf("main(): setting HttpTimeout to %d", *configHttpTimeout)
-	bc.SetTimeout(*configHttpTimeout)
+	switch scheme {
+	case "http", "https":
+		// Set the HTTP Timeout
+		log.Debugf("main(): setting HttpTimeout to %d", *configHttpTimeout)
+		bc.SetTimeout(*configHttpTimeout)
 
-	// Set the HTTP Retries Counter
-	log.Debugf("main(): setting HttpRetries to %d", *configHttpRetries)
-	bc.SetRetries(*configHttpRetries)
+		// Set the HTTP Retries Counter
+		log.Debugf("main(): setting HttpRetries to %d", *configHttpRetries)
+		bc.SetRetries(*configHttpRetries)
 
-	// Set the HTTP Holdoff Values
-	log.Debugf("main(): setting RetryWaitMin[%d] and RetryWaitMax[%d]", *configHttpRetryWaitMin, *configHttpRetryWaitMax)
-	bc.SetRetryWaitMin(*configHttpRetryWaitMin)
-	bc.SetRetryWaitMax(*configHttpRetryWaitMax)
+		// Set the HTTP Holdoff Values
+		log.Debugf("main(): setting RetryWaitMin[%d] and RetryWaitMax[%d]", *configHttpRetryWaitMin, *configHttpRetryWaitMax)
+		bc.SetRetryWaitMin(*configHttpRetryWaitMin)
+		bc.SetRetryWaitMax(*configHttpRetryWaitMax)
+	case "s3", "S3":
+		if *configS3Region == "" {
+			log.Fatalf("You must provide a -s3.region for use with the s3 downloader.")
+		}
+		log.Debugf("main(): setting s3 region=%v", *configS3Region)
+		bc.SetRegion(*configS3Region)
+	}
 
 	// Set the butler configuration retrieval interval
 	log.Debugf("main(): setting ConfigInterval to %d", *configInterval)

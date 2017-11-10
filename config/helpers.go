@@ -297,15 +297,11 @@ func GetManagerOpts(entry string, bc *ConfigSettings) (*ManagerOpts, error) {
 	}
 
 	switch MgrOpts.Method {
-	case "http", "https":
+	case "http", "https", "s3", "S3":
 		break
 	default:
 		msg := fmt.Sprintf("unknown manager.method=%v", MgrOpts.Method)
 		return &ManagerOpts{}, errors.New(msg)
-	}
-
-	if MgrOpts.RepoPath == "" {
-		return &ManagerOpts{}, errors.New("no manager.repo-path defined")
 	}
 
 	repoSplit := strings.Split(entry, ".")
@@ -325,7 +321,7 @@ func GetManagerOpts(entry string, bc *ConfigSettings) (*ManagerOpts, error) {
 		managerName = "unconfigured"
 	}
 	methodOpts := fmt.Sprintf("%s.%s", entry, MgrOpts.Method)
-	mopts, err := methods.New(managerName, MgrOpts.Method, methodOpts)
+	mopts, err := methods.New(&managerName, MgrOpts.Method, &methodOpts)
 	MgrOpts.Opts = mopts
 
 	return &MgrOpts, nil
@@ -476,6 +472,8 @@ func NewConfigClient(scheme string) (*ConfigClient, error) {
 		c.HttpClient = retryablehttp.NewClient()
 		c.HttpClient.Logger.SetFlags(0)
 		c.HttpClient.Logger.SetOutput(ioutil.Discard)
+	case "s3", "S3":
+		c.Scheme = "s3"
 	default:
 		errMsg := fmt.Sprintf("Unsupported butler config scheme: %s", scheme)
 		return &ConfigClient{}, errors.New(errMsg)

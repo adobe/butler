@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"net/http"
 	"time"
+
+	"git.corp.adobe.com/TechOps-IAO/butler/config/methods"
 
 	"github.com/hashicorp/go-retryablehttp"
 	log "github.com/sirupsen/logrus"
@@ -14,7 +15,7 @@ import (
 
 var (
 	ConfigSchedulerInterval = 300
-	ValidSchemes            = []string{"http", "https"}
+	ValidSchemes            = []string{"http", "https", "s3", "S3"}
 )
 
 // butlerHeader and butlerFooter represent the strings that need to be matched
@@ -28,6 +29,7 @@ const (
 
 type ConfigClient struct {
 	Scheme     string
+	Method     methods.Method
 	HttpClient *retryablehttp.Client
 }
 
@@ -59,16 +61,16 @@ func (c *ConfigClient) SetRetryWaitMax(val int) {
 	}
 }
 
-func (c *ConfigClient) Get(val string) (*http.Response, error) {
+func (c *ConfigClient) Get(val string) (*methods.Response, error) {
 	var (
-		response *http.Response
+		response *methods.Response
 		err      error
 	)
 	switch c.Scheme {
-	case "http", "https":
-		response, err = c.HttpClient.Get(val)
+	case "http", "https", "s3", "S3":
+		response, err = c.Method.Get(val)
 	default:
-		response = &http.Response{}
+		response = &methods.Response{}
 		err = errors.New("unsupported scheme")
 	}
 	return response, err
@@ -76,7 +78,6 @@ func (c *ConfigClient) Get(val string) (*http.Response, error) {
 
 func (c *ConfigSettings) ParseConfig(config []byte) error {
 	var (
-		//handlers []string
 		Config  ConfigSettings
 		Globals ConfigGlobals
 	)

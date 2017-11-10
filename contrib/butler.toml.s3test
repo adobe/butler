@@ -1,0 +1,84 @@
+#butlerstart
+title = "Butler Configuration"
+
+[globals]
+  ## The Config managers are where we define which sections we want to support
+  ## for butler configuration management
+  config-managers = ["prometheus"]
+
+  ## Scheduler Interval is how often we try to grab configurations from repo
+  ## Default: 300
+  scheduler-interval = 10
+
+  ## Do we want to exit from butler if there are butler configuration load issues
+  ## Default: false
+  exit-on-config-failure = false
+
+  ## Path to status file where butler should store some internal status information
+  ## Default: /var/tmp/butler.status
+  status-file = "/var/tmp/butler.status"
+
+## This is the definition for the prometheus configuration handler
+[prometheus]
+  repos = ["prom.yml"]
+
+  ## !!! IMPORTANT !!! Do you want butler to clean up any NON BUTLER MANAGED files under dest-path?
+  ## Butler would prefer to manage all the files under the configuration path. This is so that no
+  ## new files get snuck in, which could affect the monitoring of the system.
+  ## !!! THIS WILL CAUSE UNANTICIPATED DATA LOSS !!!
+  ## Default: false
+  clean-files = true
+
+  ## These are the mustache substitutions that we'll attempt to make on the merged prometheus.yml
+  mustache-subs = ["ethos-cluster-id=ethos01-dev-or1", "endpoint=external"]
+
+  ## Should config caching be used
+  enable-cache = true
+
+  ## Destination path to install cached configuration files to
+  cache-path = "/opt/cache/prometheus"
+
+  ## Destination path to install the managed configuration files to
+  dest-path = "/opt/prometheus"
+
+  ## Since there is a primary configuration (merged), and additional configurations (unmerged),
+  ## we need a name for the merged configuration file. It will be put under dest-path
+  primary-config-name = "prometheus.yml"
+
+  ## These are the definitions for the first repo which is defined for prometheus
+  [prometheus.prom.yml]
+    ## Method can be http or https. In the future it may support Amazon s3 or Azure blob
+    method = "s3"
+
+    ## Path is the URI / Path to the configuration files on the repo
+    repo-path = ""
+
+    ## This is a list of the primary configuration files which get MERGED together
+    primary-config = ["prometheus.yml", "prometheus-other.yml"]
+
+    ## This is a list of additional configuration files which will get thrown onto the filesystem.
+    ## If there are duplicates, then the last file will be taken.
+    additional-config = ["alerts/commonalerts.yml", "butler/butler.yml"]
+
+    ## These are repo specific http get options
+    [prometheus.prom.yml.s3]
+      bucket = "butler-test-1"
+      region = "us-west-2"
+
+  ## These are the options for reloading the alertmanager config-handler
+  [prometheus.reloader]
+    method = "http"
+
+    [prometheus.reloader.http]
+      host = "localhost"
+      port = 9090
+      uri = "/-/reload"
+      method = "post"
+      payload = "{}"
+      content-type = "application/json"
+      # retry info and timeouts
+      retries = 5
+      retry-wait-min = 5
+      retry-wait-max = 10
+      timeout = 10
+#butlerend

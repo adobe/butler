@@ -13,6 +13,7 @@ import (
 	"git.corp.adobe.com/TechOps-IAO/butler/stats"
 
 	log "github.com/sirupsen/logrus"
+	"strings"
 )
 
 type Manager struct {
@@ -296,13 +297,17 @@ func (bmo *ManagerOpts) GetAdditionalRemoteConfigFiles() []string {
 // Really need to come up with a better method for this.
 func (bmo *ManagerOpts) DownloadConfigFile(file string) *os.File {
 	switch bmo.Method {
-	case "http", "https":
+	case "http", "https", "s3", "S3":
 		tmpFile, err := ioutil.TempFile("/tmp", "pcmsfile")
 		if err != nil {
 			msg := fmt.Sprintf("ManagerOpts::DownloadConfigFile(): could not create temporary file. err=%v", err)
 			log.Fatal(msg)
 		}
 
+		if (bmo.Method == "s3") || (bmo.Method == "S3") {
+			prefix := bmo.Method + "://"
+			file = strings.TrimPrefix(file, prefix)
+		}
 		response, err := bmo.Opts.Get(file)
 
 		if err != nil {
@@ -312,18 +317,18 @@ func (bmo *ManagerOpts) DownloadConfigFile(file string) *os.File {
 			tmpFile = nil
 			return tmpFile
 		}
-		defer response.Body.Close()
+		defer response.GetResponseBody().Close()
 		defer tmpFile.Close()
 
-		if response.StatusCode != 200 {
+		if response.GetResponseStatusCode() != 200 {
 			tmpFile.Close()
 			os.Remove(tmpFile.Name())
-			log.Infof("ManagerOpts::DownloadConfigFile(): Did not receive 200 response code for %s. code=%v", file, response.StatusCode)
+			log.Infof("ManagerOpts::DownloadConfigFile(): Did not receive 200 response code for %s. code=%v", file, response.GetResponseStatusCode())
 			tmpFile = nil
 			return tmpFile
 		}
 
-		_, err = io.Copy(tmpFile, response.Body)
+		_, err = io.Copy(tmpFile, response.GetResponseBody())
 		if err != nil {
 			tmpFile.Close()
 			os.Remove(tmpFile.Name())

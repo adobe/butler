@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
@@ -54,7 +55,7 @@ func NewS3Method(manager *string, entry *string) (Method, error) {
 	return result, err
 }
 
-func  NewS3MethodWithRegionAndBucket(region string, bucket string) (Method, error) {
+func NewS3MethodWithRegionAndBucket(region string, bucket string) (Method, error) {
 	var result S3Method
 
 	sess, err := session.NewSession(&aws.Config{Region: aws.String(region)})
@@ -72,33 +73,44 @@ func  NewS3MethodWithRegionAndBucket(region string, bucket string) (Method, erro
 
 func (s S3Method) Get(file string) (*Response, error) {
 	var (
-		response *Response
+		response Response
 	)
 
 	tmpFile, err := ioutil.TempFile("/tmp", "s3pcmsfile")
-	if err !=  nil {
+	if err != nil {
 		return &Response{}, errors.New(fmt.Sprintf("S3Method::Get(): could not create temp file err=%v", err))
 	}
 
 	log.Debugf("S3Method::Get(): going to download s3 region=%v, bucket=%v, key=%v", s.Region, s.Bucket, file)
-	n, err := s.Downloader.Download(tmpFile,
+	_, err = s.Downloader.Download(tmpFile,
 		&s3.GetObjectInput{
 			Bucket: aws.String(s.Bucket),
 			Key:    aws.String(file),
 		})
 	if err != nil {
+		//e := err.(awserr.RequestFailure)
+		var code int
+		if e, ok := err.(awserr.RequestFailure); ok {
+			code = e.StatusCode()
+		}
+		if e, ok := err.(awserr.Error); ok {
+			err = e.OrigErr()
+			// actually couldn't fulfill the reqeust since the host
+			// probably doesn't exist. code = 504 is probably wrong but
+			// whatever... gateway timeout will have to be good enough ;)
+			code = 504
+		}
 		tmpFile.Close()
 		os.Remove(tmpFile.Name())
-		return &Response{}, errors.New(fmt.Sprintf("S3Method::Get(): caught error for download err=%v", err.Error()))
+		//return &Response{statusCode: e.StatusCode()}, errors.New(fmt.Sprintf("S3Method::Get(): caught error for download err=%v", err.Error()))
+		return &Response{statusCode: code}, errors.New(fmt.Sprintf("S3Method::Get(): caught error for download err=%v", err.Error()))
 	}
-	// do we care about n??
-	_ = n
 
 	fileData, err := ioutil.ReadFile(tmpFile.Name())
 	if err != nil {
 		tmpFile.Close()
 		os.Remove(tmpFile.Name())
-		return &Response{}, errors.New(fmt.Sprintf("S3Method::Get(): caught error read file err=%v", err.Error()))
+		return &Response{statusCode: 500}, errors.New(fmt.Sprintf("S3Method::Get(): caught error read file err=%v", err.Error()))
 	}
 
 	// Clean up the tmpfile
@@ -109,5 +121,5 @@ func (s S3Method) Get(file string) (*Response, error) {
 	response.body = ioutil.NopCloser(bytes.NewReader(fileData))
 
 	// Perhaps we need to do more stuff here
-	return response, nil
+	return &response, nil
 }

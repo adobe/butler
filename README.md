@@ -26,6 +26,8 @@ Usage of ./butler:
     	The http timeout, in seconds, for GET requests to obtain the butler configuration file. (default 10)
   -log.level string
     	The butler log level. Log levels are: debug, info, warn, error, fatal, panic. (default "info")
+  -s3.region string
+    	The S3 Region that the config file resides.
   -version
     	Print version information.
 
@@ -35,6 +37,7 @@ Usage of ./butler:
 ```
 
 ### Example Command Line Usage
+#### HTTP/HTTPS CLI
 ```
 [14:24]pts/12:21(stegen@woden):[~/git/ethos/butler]% ./butler -config.path http://localhost/butler/config/butler.toml -config.retrieve-interval 10 -log.level info
 INFO[2017-10-11T14:24:29+01:00] Starting butler version v1.0.0
@@ -44,6 +47,17 @@ INFO[2017-10-11T14:24:29+01:00] Starting butler version v1.0.0
 [14:24]pts/12:22(stegen@woden):[~/git/ethos/butler]%
 ```
 When you execute butler with the above arguments, you are asking butler to grab its configuration file from http://localhost/butler/config/butler.toml, and try to re-retrieve and refresh it every 10 seconds. It will also use the default log level of INFO. If you need more verbosity to your output, specify `debug` as the logging level argument.
+
+#### S3 CLI
+```
+[14:24]pts/12:21(stegen@woden):[~/git/ethos/butler]% ./butler -config.path s3://s3-bucket/config/butler.toml -config.retrieve-interval 10 -log.level info -s3.region <aws-region>
+INFO[2017-10-11T14:24:29+01:00] Starting butler version v1.0.0
+^C
+
+[master]
+[14:24]pts/12:22(stegen@woden):[~/git/ethos/butler]%
+```
+When you execute butler with the above arguments, you are asking butler to grab its configuration file from S3 storage using bucket `s3-bucket`, file key `config/butler.toml` and the aws-region as specified by `s3.region`, and try to re-retrieve and refresh it every 10 seconds. It will also use the default log level of INFO. If you need more verbosity to your output, specify `debug` as the logging level argument.
 
 ### DCOS Deployment JSON
 ```

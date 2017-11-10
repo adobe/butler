@@ -152,6 +152,7 @@ When you execute butler with the above arguments, you are asking butler to grab 
 ```
 
 ## Butler Configuration File
+Refer to the contrib/ directory for more information about the butler.toml configuration file, and all its features.
 
 ## Building
 ## Pushing

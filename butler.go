@@ -171,6 +171,9 @@ func main() {
 		bc.SetRetryWaitMin(*configHttpRetryWaitMin)
 		bc.SetRetryWaitMax(*configHttpRetryWaitMax)
 	case "s3", "S3":
+		if *configS3Region == "" {
+			log.Fatalf("You must provide a -s3.region for use with the s3 downloader.")
+		}
 		log.Debugf("main(): setting s3 region=%v", *configS3Region)
 		bc.SetRegion(*configS3Region)
 	}

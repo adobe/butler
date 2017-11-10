@@ -69,10 +69,6 @@ func (c *ConfigClient) Get(val string) (*methods.Response, error) {
 	switch c.Scheme {
 	case "http", "https", "s3", "S3":
 		response, err = c.Method.Get(val)
-	/*
-		case "s3", "S3":
-			response, err = c.Method.Get(val)
-	*/
 	default:
 		response = &methods.Response{}
 		err = errors.New("unsupported scheme")
@@ -82,7 +78,6 @@ func (c *ConfigClient) Get(val string) (*methods.Response, error) {
 
 func (c *ConfigSettings) ParseConfig(config []byte) error {
 	var (
-		//handlers []string
 		Config  ConfigSettings
 		Globals ConfigGlobals
 	)

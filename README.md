@@ -5,6 +5,14 @@ The butler tool is designed to grab any configuration files, defined in its conf
 
 The butler configuration file is a [TOML](https://github.com/toml-lang/toml) formatted file. You can store the file locally (using a mounted filesystem), or on a remote server. The proper formatting for the config file can be found [here](https://git.corp.adobe.com/TechOps-IAO/butler/tree/master/contrib)
 
+### Butler at 30,000 feet
+Here is a quick diagram that contains all the elements of what butler does, and how it is intended to interact with other systems.
+![Butler Elements][elements-diagram]
+
+### Butler Workflow
+To help understand more of how butler functions, here is a work flow diagram showing, in more detail, the work butler does.
+![Butler Workflow][workflow-diagram]
+
 ## Usage
 There are various ways that you can run butler. We will ultimately deploy butler via DCOS, and you can run this on your local machine to do some testing.
 
@@ -462,3 +470,5 @@ process_virtual_memory_bytes 2.39341568e+08
 [master]
 [13:04]pts/11:16(stegen@woden):[~/git/ethos/butler]% 
 ```
+[workflow-diagram]: https://git.corp.adobe.com/TechOps-IAO/butler/raw/more_docs/contrib/diagrams/png/Butler%20Workflow.png
+[elements-diagram]: https://git.corp.adobe.com/TechOps-IAO/butler/raw/more_docs/contrib/diagrams/png/Butler%20Elements.png

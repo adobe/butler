@@ -7,10 +7,12 @@ The butler configuration file is a [TOML](https://github.com/toml-lang/toml) for
 
 ### Butler at 30,000 feet
 Here is a quick diagram that contains all the elements of what butler does, and how it is intended to interact with other systems.
+
 ![Butler Elements][elements-diagram]
 
 ### Butler Workflow
 To help understand more of how butler functions, here is a work flow diagram showing, in more detail, the work butler does.
+
 ![Butler Workflow][workflow-diagram]
 
 ## Usage

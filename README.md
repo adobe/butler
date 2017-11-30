@@ -472,5 +472,5 @@ process_virtual_memory_bytes 2.39341568e+08
 [master]
 [13:04]pts/11:16(stegen@woden):[~/git/ethos/butler]% 
 ```
-[workflow-diagram]: https://git.corp.adobe.com/TechOps-IAO/butler/raw/main/contrib/diagrams/png/Butler%20Workflow.png
-[elements-diagram]: https://git.corp.adobe.com/TechOps-IAO/butler/raw/main/contrib/diagrams/png/Butler%20Elements.png
+[workflow-diagram]: https://git.corp.adobe.com/TechOps-IAO/butler/raw/master/contrib/diagrams/png/Butler%20Workflow.png
+[elements-diagram]: https://git.corp.adobe.com/TechOps-IAO/butler/raw/master/contrib/diagrams/png/Butler%20Elements.png

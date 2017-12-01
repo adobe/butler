@@ -19,7 +19,6 @@ ci: build
 	@echo "Success"
 
 build:
-	@$(GO) fmt $(pkgs)
 	@docker build -t $(BUILDER_TAG) -f Dockerfile-build .
 	@docker run -v m2:/root/.m2 -v `pwd`:/build $(BUILDER_TAG) cp /root/butler/butler /build
 	@docker build -t $(IMAGE_TAG) .

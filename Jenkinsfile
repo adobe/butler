@@ -1,5 +1,4 @@
 node {
-    slsSetEnv('go', '1.6')
 
     def name = "copernicus/butler"
     def registry = 'http://docker-ethos-core-univ-release.dr-uw2.adobeitc.com'
@@ -33,8 +32,7 @@ node {
             }
             released = true
         } catch(exc) {
-            docker.build("butler-builder:${version}", '-f Dockerfile-build .')
-            sh '''docker run -v m2:/root/.m2 -v `pwd`:/build butler-builder:${version} cp /root/butler/butler /build'''
+            sh "make build"
             image = docker.build("${name}:${version}", '.')
 
             released = false

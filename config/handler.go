@@ -210,22 +210,26 @@ func (bc *ButlerConfig) Handler() error {
 		return err
 	}
 	defer response.GetResponseBody().Close()
+	log.Debugf("Config::Handler(): test 1")
 
 	if response.GetResponseStatusCode() != 200 {
 		errMsg := fmt.Sprintf("Did not receive 200 response code for %s. code=%d", bc.Url, response.GetResponseStatusCode())
 		return errors.New(errMsg)
 	}
+	log.Debugf("Config::Handler(): test 2")
 
 	body, err := ioutil.ReadAll(response.GetResponseBody())
 	if err != nil {
 		errMsg := fmt.Sprintf("Could not read response body for %s. err=%s", bc.Url, err)
 		return errors.New(errMsg)
 	}
+	log.Debugf("Config::Handler(): test 3")
 
 	err = ValidateConfig(body)
 	if err != nil {
 		return err
 	}
+	log.Debugf("Config::Handler(): test 4")
 
 	if bc.RawConfig == nil {
 		err := bc.Config.ParseConfig(body)
@@ -240,10 +244,12 @@ func (bc *ButlerConfig) Handler() error {
 			bc.RawConfig = body
 		}
 	}
+	log.Debugf("Config::Handler(): test 5")
 
 	if !bytes.Equal(bc.RawConfig, body) {
 		err := bc.Config.ParseConfig(body)
 		if err != nil {
+			log.Debugf("Config::Handler(): test bc.Config.Globals=%#v", bc.Config.Globals)
 			if bc.Config.Globals.ExitOnFailure {
 				log.Fatal(err)
 			} else {
@@ -256,6 +262,7 @@ func (bc *ButlerConfig) Handler() error {
 	} else {
 		log.Debugf("Config::Handler(): butler config unchanged.")
 	}
+	log.Debugf("Config::Handler(): test 6")
 
 	// We don't want to handle the scheduler stuff on the first run. The scheduler doesn't yet exist
 	log.Debugf("Config::Handler(): CM PrevSchedulerInterval=%v SchedulerInterval=%v", bc.GetCMPrevInterval(), bc.GetCMInterval())

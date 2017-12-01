@@ -1,12 +1,12 @@
 package stats
 
 import (
-	"time"
+	//"time"
 
 	. "gopkg.in/check.v1"
 	"testing"
 	//log "github.com/sirupsen/logrus"
-	"github.com/prometheus/client_model/go"
+	//"github.com/prometheus/client_model/go"
 )
 
 func Test(t *testing.T) { TestingT(t) }
@@ -26,6 +26,12 @@ func (s *ButlerStatsTestSuite) TestPrometheusEnums(c *C) {
 	c.Assert(SUCCESS, Equals, 1.0)
 }
 
+/*
+	ripping out these tests for now. there's a different pr where i
+	am re-adding the proper prometheus metric testing
+*/
+
+/*
 func (s *ButlerStatsTestSuite) TestSetButlerReloadVal(c *C) {
 	metric_success := io_prometheus_client.Metric{}
 	metric_success_ts := io_prometheus_client.Metric{}
@@ -71,3 +77,4 @@ func (s *ButlerStatsTestSuite) TestSetButlerReloadVal(c *C) {
 	// The timestamps should be the same since (within a second)
 	c.Assert(ts_metric.Truncate(time.Second), Equals, ts_now.Truncate(time.Second))
 }
+*/

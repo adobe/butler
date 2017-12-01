@@ -19,7 +19,7 @@ var TestHttpCase = 0
 
 type ConfigTestSuite struct {
 	TestServer *httptest.Server
-	Config     *Config
+	Config     *ButlerConfig
 }
 
 type TestHttpHandler struct {
@@ -147,7 +147,7 @@ var TestManagerOptsFail4 = []byte(`[testing.localhost]
 
 func (s *ConfigTestSuite) SetUpSuite(c *C) {
 	s.TestServer = httptest.NewServer(&TestHttpHandler{})
-	s.Config = NewConfig()
+	s.Config = NewButlerConfig()
 	log.SetLevel(log.DebugLevel)
 }
 
@@ -179,10 +179,12 @@ func (s *ConfigTestSuite) TestConfigConfigHandler_InternalServerError(c *C) {
 	var err error
 	TestHttpCase = 0
 	urlSplit := strings.Split(s.TestServer.URL, "://")
+	log.Debugf("TestConfigConfigHandler_InternalServerError(): urlSplit=%#v", urlSplit)
 	s.Config.SetScheme(urlSplit[0])
 	s.Config.SetPath(urlSplit[1])
 	s.Config.SetUrl(s.TestServer.URL)
 	s.Config.Init()
+	log.Debugf("TestConfigConfigHandler_InternalServerError(): s.Config.Config=%#v", s.Config.Config)
 	err = s.Config.Handler()
 	//log.Infof("err=%#v\n", err.Error())
 	c.Assert(err, NotNil)
@@ -292,7 +294,7 @@ func (s *ConfigTestSuite) TestGetConfigManagerNoUrls(c *C) {
 	c.Assert(err, NotNil)
 	err = GetConfigManager("testing", &ConfigSettings{})
 	c.Assert(err, NotNil)
-	c.Assert(err.Error(), Matches, "No urls configured for manager testing.*")
+	c.Assert(err.Error(), Matches, "No repos configured for manager testing.*")
 }
 
 func (s *ConfigTestSuite) TestGetConfigManagerUrls(c *C) {
@@ -308,24 +310,32 @@ func (s *ConfigTestSuite) TestGetConfigManagerUrls(c *C) {
 }
 
 func (s *ConfigTestSuite) TestGetManagerOptsNoConfig(c *C) {
-	var err error
+	var (
+		err error
+		opts *ManagerOpts
+	)
 
 	// Load the config initially
 	err = ParseConfig(TestManagerOptsEmpty)
 	c.Assert(err, NotNil)
-	err = GetManagerOpts("testing.localhost", &ConfigSettings{})
+	opts, err = GetManagerOpts("testing.localhost", &ConfigSettings{})
+	log.Debugf("TestGetManagerOptsNoConfig(): opts=%#v", opts)
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Matches, "unknown manager.method.*")
 }
 
 func (s *ConfigTestSuite) TestGetManagerOptsFullCheck(c *C) {
-	var err error
+	var (
+		err error
+		opts *ManagerOpts
+	)
 
 	// Load the config initially
 	err = ParseConfig(TestManagerOptsFail1)
 	c.Assert(err, NotNil)
-	err = GetManagerOpts("testing.localhost", &ConfigSettings{})
+	opts, err = GetManagerOpts("testing.localhost", &ConfigSettings{})
+	log.Debugf("TestGetManagerOptsNoConfig(): opts=%#v", opts)
 	c.Assert(err, NotNil)
 	// stegen
-	c.Assert(err.Error(), Matches, "unknown manager.method.*")
+	c.Assert(err.Error(), Matches, "no manager.primary-config defined")
 }

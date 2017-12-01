@@ -13,14 +13,24 @@ mkdir -p $BUTLER_GO_PATH
 cd $BUTLER_GO_PATH
 #rm -v /root/butler/vendor/vendor.json
 #mv /root/butler/vendor/* /root/go/src
+mv /root/butler/vendor .
 mv /root/butler/*.go .
 
-## Stats dir
+## stats dir
 mkdir stats
 mv /root/butler/stats/*.go stats
 
+## config dir
 mkdir config
 mv /root/butler/config/*.go config
+
+## config/methods
+mkdir config/methods
+mv /root/butler/config/methods/*.go config/methods
+
+## config/reloaders
+mkdir config/reloaders
+mv /root/butler/config/reloaders/*.go config/reloaders
 
 go test -check.vv -coverprofile=/tmp/coverage-main.out
 ret=$?
@@ -31,6 +41,22 @@ fi
 
 cd $BUTLER_GO_PATH/config
 go test -check.vv -coverprofile=/tmp/coverage-config.out
+ret=$?
+
+if [ $ret -ne 0 ]; then
+    exit $ret
+fi
+
+cd $BUTLER_GO_PATH/config/methods
+go test -check.vv -coverprofile=/tmp/coverage-config-methods.out
+ret=$?
+
+if [ $ret -ne 0 ]; then
+    exit $ret
+fi
+
+cd $BUTLER_GO_PATH/config/reloaders
+go test -check.vv -coverprofile=/tmp/coverage-config-reloaders.out
 ret=$?
 
 if [ $ret -ne 0 ]; then
@@ -49,4 +75,9 @@ go tool cover -func /tmp/coverage-main.out
 echo
 go tool cover -func /tmp/coverage-config.out
 echo
+go tool cover -func /tmp/coverage-config-methods.out
+echo
+go tool cover -func /tmp/coverage-config-reloaders.out
+echo
 go tool cover -func /tmp/coverage-stats.out
+echo

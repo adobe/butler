@@ -1,4 +1,5 @@
 node {
+    slsSetEnv('go', '1.6')
 
     def name = "copernicus/butler"
     def registry = 'http://docker-ethos-core-univ-release.dr-uw2.adobeitc.com'

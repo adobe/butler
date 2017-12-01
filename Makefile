@@ -34,7 +34,7 @@ post-deploy-build:
 
 test:
 	@docker build -t $(TESTER_TAG) -f Dockerfile-test .
-	@docker run -it $(TESTER_TAG)
+	@docker run -i $(TESTER_TAG)
 
 enter-test:
 	@./files/enter_test_container.sh

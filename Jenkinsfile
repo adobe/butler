@@ -32,7 +32,8 @@ node {
             }
             released = true
         } catch(exc) {
-            sh 'make build'
+            docker.build("butler-builder:${version}", '-f Dockerfile-build .')
+            sh '''docker run -v m2:/root/.m2 -v `pwd`:/build butler-builder:${version} cp /root/butler/butler /build'''
             image = docker.build("${name}:${version}", '.')
 
             released = false

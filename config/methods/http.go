@@ -49,8 +49,10 @@ type HttpMethod struct {
 func (h HttpMethod) Get(file string) (*Response, error) {
 	var res Response
 	r, err := h.Client.Get(file)
-	res.body = r.Body
-	res.statusCode = r.StatusCode
+	if err == nil {
+		res.body = r.Body
+		res.statusCode = r.StatusCode
+	}
 	return &res, err
 }
 

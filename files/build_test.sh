@@ -71,13 +71,27 @@ if [ $ret -ne 0 ]; then
     exit $ret
 fi
 
-go tool cover -func /tmp/coverage-main.out
-echo
-go tool cover -func /tmp/coverage-config.out
-echo
-go tool cover -func /tmp/coverage-config-methods.out
-echo
-go tool cover -func /tmp/coverage-config-reloaders.out
-echo
-go tool cover -func /tmp/coverage-stats.out
-echo
+if [ -f /tmp/coverage-main.out ]; then
+    go tool cover -func /tmp/coverage-main.out
+    echo
+fi
+
+if [ -f /tmp/coverage-config.out ]; then
+    go tool cover -func /tmp/coverage-config.out
+    echo
+fi
+
+if [ -f /tmp/coverage-config-methods.out ]; then
+    go tool cover -func /tmp/coverage-config-methods.out
+    echo
+fi
+
+if [ -f /tmp/coverage-config-reloaders.out ]; then
+    go tool cover -func /tmp/coverage-config-reloaders.out
+    echo
+fi
+
+if [ -f /tmp/coverage-stats.out ]; then
+    go tool cover -func /tmp/coverage-stats.out
+    echo
+fi

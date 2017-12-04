@@ -1,6 +1,6 @@
 node {
 
-    def name = "TechOps-IAO/butler"
+    def name = "Techops-iao/butler"
     def registry = 'http://docker-ethos-core-univ-release.dr-uw2.adobeitc.com'
     def repo = 'git@git.corp.adobe.com:TechOps-IAO/butler.git'
     def image

@@ -5,8 +5,11 @@ import (
 	. "gopkg.in/check.v1"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
+
+	"git.corp.adobe.com/TechOps-IAO/butler/config/reloaders"
 
 	"github.com/bouk/monkey"
 	log "github.com/sirupsen/logrus"
@@ -51,9 +54,16 @@ clean-files = true
 
 var TestConfigNoHandlersExit = []byte(`[globals]
 scheduler-interval = 300
+exit-on-config-failure = "true"
+clean-files = true
+`)
+
+var TestConfigNoHandlersNoExit = []byte(`[globals]
+scheduler-interval = 300
 exit-on-config-failure = true
 clean-files = true
 `)
+
 var TestConfigEmptyHandlers = []byte(`[globals]
 config-managers = []
 scheduler-interval = 300
@@ -109,6 +119,46 @@ clean-files = true
   urls = ["localhost", "localhost"]
 
 [test-handler2]
+`)
+
+// stegen finish this test
+var TestConfigCompleteEnvironment = []byte(`[globals]
+  config-managers = ["test-handler"]
+  scheduler-interval = 300
+  exit-on-config-failure = "false"
+  status-file = "/var/tmp/butler.status"
+  [test-handler]
+    repos = ["localhost"]
+    clean-files = "true"
+    mustache-subs = ["foo=env:MSUB"]
+    enable-cache = "false"
+    cache-path = "/opt/cache/prometheus"
+    dest-path = "/opt/prometheus"
+    primary-config-name = "prometheus.yml"
+    [test-handler.localhost]
+      method = "http"
+      repo-path = "/butler/configs"
+      primary-config = ["test.yml"]
+      additional-config = ["test-add.yml"]
+      [test-handler.localhost.http]
+        retries = "5"
+        retry-wait-min = "5"
+        retry-wait-max = "10"
+        timeout = "10"
+    [test-handler.reloader]
+      method = "http"
+      [test-handler.reloader.http]
+        host = "env:RELOADER_HOST"
+        port = "9090"
+        uri = "/-/reload"
+        method = "post"
+        payload = "{}"
+        content-type = "application/json"
+        # retry info and timeouts
+        retries = "5"
+        retry-wait-min = "5"
+        retry-wait-max = "10"
+        timeout = "10"
 `)
 
 var TestManagerNoUrls = []byte(`[testing]
@@ -231,8 +281,22 @@ func (s *ConfigTestSuite) TestParseConfigBrokenNoHandlersExit(c *C) {
 	})
 	defer patch.Unpatch()
 	err = ParseConfig(TestConfigNoHandlersExit)
-	c.Assert(err, IsNil)
-	c.Assert(ExitTest, Equals, 5)
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Matches, "globals.config-managers has no entries.*")
+	c.Assert(ExitTest, Equals, 0)
+}
+
+func (s *ConfigTestSuite) TestParseConfigBrokenNoHandlersNoExit2(c *C) {
+	var err error
+	var ExitTest = 0
+	patch := monkey.Patch(log.Fatalf, func(string, ...interface{}) {
+		ExitTest = 5
+	})
+	defer patch.Unpatch()
+	err = ParseConfig(TestConfigNoHandlersNoExit)
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Matches, "globals.config-managers has no entries.*")
+	c.Assert(ExitTest, Equals, 0)
 }
 
 func (s *ConfigTestSuite) TestParseConfigBrokenEmptyHandlersNoExit(c *C) {
@@ -247,12 +311,12 @@ func (s *ConfigTestSuite) TestParseConfigBrokenEmptyHandlersExit(c *C) {
 	var err error
 	var ExitTest = 0
 	patch := monkey.Patch(log.Fatalf, func(string, ...interface{}) {
-		ExitTest = 5
+		ExitTest = 0
 	})
 	defer patch.Unpatch()
 	err = ParseConfig(TestConfigEmptyHandlersExit)
-	c.Assert(err, IsNil)
-	c.Assert(ExitTest, Equals, 5)
+	c.Assert(err, NotNil)
+	c.Assert(ExitTest, Equals, 0)
 }
 
 func (s *ConfigTestSuite) TestParseConfigBrokenIncompleteHandlerNoExit(c *C) {
@@ -272,8 +336,9 @@ func (s *ConfigTestSuite) TestParseConfigBrokenIncompleteHandlerExit(c *C) {
 	})
 	defer patch.Unpatch()
 	err = ParseConfig(TestConfigBrokenIncompleteHandlerExit)
-	c.Assert(err, IsNil)
-	c.Assert(ExitTest, Equals, 5)
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Matches, "could not retrieve config options for test-handler.*")
+	c.Assert(ExitTest, Equals, 0)
 }
 
 /*
@@ -311,7 +376,7 @@ func (s *ConfigTestSuite) TestGetConfigManagerUrls(c *C) {
 
 func (s *ConfigTestSuite) TestGetManagerOptsNoConfig(c *C) {
 	var (
-		err error
+		err  error
 		opts *ManagerOpts
 	)
 
@@ -326,7 +391,7 @@ func (s *ConfigTestSuite) TestGetManagerOptsNoConfig(c *C) {
 
 func (s *ConfigTestSuite) TestGetManagerOptsFullCheck(c *C) {
 	var (
-		err error
+		err  error
 		opts *ManagerOpts
 	)
 
@@ -338,4 +403,37 @@ func (s *ConfigTestSuite) TestGetManagerOptsFullCheck(c *C) {
 	c.Assert(err, NotNil)
 	// stegen
 	c.Assert(err.Error(), Matches, "no manager.primary-config defined")
+}
+
+func (s *ConfigTestSuite) TestConfigCompleteEnvironment(c *C) {
+	var (
+		err  error
+		config ConfigSettings
+	)
+
+	// setup some environment
+	reloaderHost := "testing.com"
+	mustacheSub := "holla"
+	os.Setenv("RELOADER_HOST", reloaderHost)
+	os.Setenv("MSUB", mustacheSub)
+
+	// Load the config initially
+	err = ParseConfig(TestConfigCompleteEnvironment)
+	c.Assert(err, IsNil)
+
+	// Get the configuration
+	err = GetConfigManager("test-handler", &config)
+	c.Assert(err, IsNil)
+
+	// Let's spot test some entries from the config
+	mgr := config.Managers["test-handler"]
+	c.Assert(mgr.CleanFiles, Equals, true)
+	c.Assert(mgr.EnableCache, Equals, false)
+	c.Assert(mgr.MustacheSubs["foo"], Equals, mustacheSub)
+	mgrReloaderOpts := config.Managers["test-handler"].Reloader.(reloaders.HttpReloader)
+	c.Assert(mgrReloaderOpts.Opts.Host, Equals, reloaderHost)
+
+	// Cleanup env
+	os.Unsetenv("RELOADER_HOST")
+	os.Unsetenv("MSUB")
 }

@@ -46,6 +46,21 @@ Usage of ./butler:
 
 ```
 
+### Use of Environment Variables
+Butler supports the usre of environment variables. Any field that is prefixed with `env:` will be looked up in the environment. This will work for all command line options, and MOST configuration file options.
+
+There are only a few places in the configuration file where environment variables will not be used. Any value that is used which defines a new section/nest for the butler configuration will not look up any environment variables. This is due to how the configuration file is nested.
+
+For example, the following settings will not do environment variable lookups.
+1. In the `config-managers` section of the `butler.toml` where configuration managers are defined.
+1. As the definition for the configuration manager.
+1. In the `repos` section in the configuration manager section.
+1. As the definition for the configuration manager repository.
+1. As the `method` in the configuration manager repository.
+1. As the definition for the configuration manager repository.
+
+You should get the gist at this point. Refer to the butler.toml.sample configuration for additional examples.
+
 ### Example Command Line Usage
 #### HTTP/HTTPS CLI
 ```

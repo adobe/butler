@@ -7,13 +7,13 @@ COPY ./files/build_test.sh /root/build.sh
 ### required for test
 
 ### required to build
-RUN mkdir -p /root/butler/stats /root/butler/config /root/butler/config/methods /root/butler/config/reloaders /root/butler/utils
+RUN mkdir -p /root/butler/stats /root/butler/config /root/butler/config/methods /root/butler/config/reloaders /root/butler/environment
 COPY butler.go /root/butler/butler.go
 COPY ./config/*.go /root/butler/config/
 COPY ./config/methods/*.go /root/butler/config/methods/
 COPY ./config/reloaders/*.go /root/butler/config/reloaders/
 COPY ./stats/*.go /root/butler/stats/
-#COPY ./utils/*.go /root/butler/utils
+COPY ./environment/*.go /root/butler/environment
 COPY ./vendor /root/butler/vendor
 ### required to build
 

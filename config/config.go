@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"git.corp.adobe.com/TechOps-IAO/butler/config/methods"
+	"git.corp.adobe.com/TechOps-IAO/butler/environment"
 
 	"github.com/hashicorp/go-retryablehttp"
 	log "github.com/sirupsen/logrus"
@@ -36,14 +39,19 @@ type ConfigClient struct {
 func (c *ConfigClient) SetTimeout(val int) {
 	switch c.Scheme {
 	case "http", "https":
+		log.Debugf("ConfigClient::SetTimeout(): setting timeout to %v", val)
+		log.Debugf("ConfigClient::SetTimeout(): c=%#v", c)
 		c.HttpClient.HTTPClient.Timeout = time.Duration(val) * time.Second
+		//c.Method.SetTimeout(val)
 	}
 }
 
 func (c *ConfigClient) SetRetryMax(val int) {
 	switch c.Scheme {
 	case "http", "https":
+		log.Debugf("ConfigClient::SetRetryMax(): setting retry max to %v", val)
 		c.HttpClient.RetryMax = val
+		//c.Client.Manager.Retries = val
 	}
 }
 
@@ -51,6 +59,7 @@ func (c *ConfigClient) SetRetryWaitMin(val int) {
 	switch c.Scheme {
 	case "http", "https":
 		c.HttpClient.RetryWaitMin = time.Duration(val) * time.Second
+		//c.Client.Manager.RetryWaitMin = val
 	}
 }
 
@@ -58,6 +67,7 @@ func (c *ConfigClient) SetRetryWaitMax(val int) {
 	switch c.Scheme {
 	case "http", "https":
 		c.HttpClient.RetryWaitMax = time.Duration(val) * time.Second
+		//c.Client.Manager.RetryWaitMax = val
 	}
 }
 
@@ -100,14 +110,27 @@ func (c *ConfigSettings) ParseConfig(config []byte) error {
 	if err != nil {
 		log.Fatalf("Unable to decode into struct, %v", err)
 	}
-	log.Debugf("ConfigSettings::ParseConfig(): Globals=%#v", Globals)
 	Config.Globals = Globals
 
 	// Let's grab some of the global settings
-	if Config.Globals.SchedulerInterval == 0 {
-		Config.Globals.SchedulerInterval = ConfigSchedulerInterval
+	envExitOnFailure := strings.ToLower(environment.GetVar(Config.Globals.CfgExitOnFailure))
+	if envExitOnFailure == "true" {
+		Config.Globals.ExitOnFailure = true
+	} else if envExitOnFailure == "false" {
+		Config.Globals.ExitOnFailure = false
+	} else {
+		Config.Globals.ExitOnFailure = false
 	}
 
+	envSchedulerInterval, _ := strconv.Atoi(environment.GetVar(Config.Globals.CfgSchedulerInterval))
+	if envSchedulerInterval == 0 {
+		log.Warnf("ConfigSettings::ParseConfig() could not convert %v to integer for scheduler-interval, defaulting to 0. This is probably undesired", Config.Globals.CfgSchedulerInterval)
+		Config.Globals.SchedulerInterval = ConfigSchedulerInterval
+	} else {
+		Config.Globals.SchedulerInterval = envSchedulerInterval
+	}
+
+	Config.Globals.StatusFile = environment.GetVar(Config.Globals.CfgStatusFile)
 	if Config.Globals.StatusFile == "" {
 		Config.Globals.StatusFile = "/var/tmp/butler.status"
 	}

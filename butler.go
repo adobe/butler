@@ -8,10 +8,12 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
 	"git.corp.adobe.com/TechOps-IAO/butler/config"
+	"git.corp.adobe.com/TechOps-IAO/butler/environment"
 
 	"github.com/jasonlvhit/gocron"
 	log "github.com/sirupsen/logrus"
@@ -20,23 +22,23 @@ import (
 )
 
 var (
-	version                 = "v1.0.0"
+	version                 = "v1.1.0"
 	PrometheusConfig        = "prometheus.yml"
 	PrometheusConfigStatic  = "prometheus.yml"
 	AdditionalConfig        = "alerts/commonalerts.yml,alerts/tenant.yml"
 	PrometheusRootDirectory = "/opt/prometheus"
 	PrometheusHost          string
-	ButlerConfigInterval    int
+	ButlerConfigInterval    = 300
 	ButlerConfigUrl         string
 	ConfigCache             map[string][]byte
 	AllConfigFiles          []string
 	PrometheusConfigFiles   []string
 	AdditionalConfigFiles   []string
 	MustacheSubs            map[string]string
-	HttpTimeout             int
-	HttpRetries             int
-	HttpRetryWaitMin        int
-	HttpRetryWaitMax        int
+	HttpTimeout             = 10
+	HttpRetries             = 4
+	HttpRetryWaitMin        = 5
+	HttpRetryWaitMax        = 10
 )
 
 // Monitor is the empty structure to be used for starting up the monitor
@@ -121,16 +123,17 @@ func main() {
 		err                    error
 		versionFlag            = flag.Bool("version", false, "Print version information.")
 		configPath             = flag.String("config.path", "", "Full remote path to butler configuration file (eg: full URL scheme://path).")
-		configInterval         = flag.Int("config.retrieve-interval", 300, "The interval, in seconds, to retrieve new butler configuration files.")
-		configHttpTimeout      = flag.Int("http.timeout", 10, "The http timeout, in seconds, for GET requests to obtain the butler configuration file.")
-		configHttpRetries      = flag.Int("http.retries", 4, "The number of http retries for GET requests to obtain the butler configuration files")
-		configHttpRetryWaitMin = flag.Int("http.retry_wait_min", 5, "The minimum amount of time to wait before attemping to retry the http config get operation.")
-		configHttpRetryWaitMax = flag.Int("http.retry_wait_max", 10, "The maximum amount of time to wait before attemping to retry the http config get operation.")
+		configInterval         = flag.String("config.retrieve-interval", fmt.Sprintf("%v", ButlerConfigInterval), "The interval, in seconds, to retrieve new butler configuration files.")
+		configHttpTimeout      = flag.String("http.timeout", fmt.Sprintf("%v", HttpTimeout), "The http timeout, in seconds, for GET requests to obtain the butler configuration file.")
+		configHttpRetries      = flag.String("http.retries", fmt.Sprintf("%v", HttpRetries), "The number of http retries for GET requests to obtain the butler configuration files")
+		configHttpRetryWaitMin = flag.String("http.retry_wait_min", fmt.Sprintf("%v", HttpRetryWaitMin), "The minimum amount of time to wait before attemping to retry the http config get operation.")
+		configHttpRetryWaitMax = flag.String("http.retry_wait_max", fmt.Sprintf("%v", HttpRetryWaitMax), "The maximum amount of time to wait before attemping to retry the http config get operation.")
 		configS3Region         = flag.String("s3.region", "", "The S3 Region that the config file resides.")
 		configLogLevel         = flag.String("log.level", "info", "The butler log level. Log levels are: debug, info, warn, error, fatal, panic.")
 	)
 	flag.Parse()
-	log.SetLevel(SetLogLevel(*configLogLevel))
+	newConfigLogLevel := environment.GetVar(*configLogLevel)
+	log.SetLevel(SetLogLevel(newConfigLogLevel))
 	log.SetFormatter(&log.TextFormatter{FullTimestamp: true})
 
 	if *versionFlag {
@@ -144,43 +147,66 @@ func main() {
 
 	log.Infof("Starting butler version %s", version)
 
-	pathSplit := strings.Split(*configPath, "://")
+	newConfigPath := environment.GetVar(*configPath)
+	pathSplit := strings.Split(newConfigPath, "://")
 	if len(pathSplit) != 2 {
-		log.Fatalf("Cannot properly parse -config.path. -config.path must be in URL form. -config.path=%v", *configPath)
+		log.Fatalf("Cannot properly parse -config.path. -config.path must be in URL form. -config.path=%v", newConfigPath)
 	}
 	scheme := strings.ToLower(pathSplit[0])
 	path := pathSplit[1]
 
 	bc := config.NewButlerConfig()
-	bc.SetLogLevel(SetLogLevel(*configLogLevel))
+	bc.SetLogLevel(SetLogLevel(newConfigLogLevel))
 	bc.SetScheme(scheme)
 	bc.SetPath(path)
 
 	switch scheme {
 	case "http", "https":
 		// Set the HTTP Timeout
-		log.Debugf("main(): setting HttpTimeout to %d", *configHttpTimeout)
-		bc.SetTimeout(*configHttpTimeout)
+		newConfigHttpTimeout, _ := strconv.Atoi(environment.GetVar(*configHttpTimeout))
+		if newConfigHttpTimeout == 0 {
+			newConfigHttpTimeout = HttpTimeout
+		}
+		log.Debugf("main(): setting HttpTimeout to %d", newConfigHttpTimeout)
+		bc.SetTimeout(newConfigHttpTimeout)
 
 		// Set the HTTP Retries Counter
-		log.Debugf("main(): setting HttpRetries to %d", *configHttpRetries)
-		bc.SetRetries(*configHttpRetries)
+		newConfigHttpRetries, _ := strconv.Atoi(environment.GetVar(*configHttpRetries))
+		if newConfigHttpRetries == 0 {
+			newConfigHttpRetries = HttpRetries
+		}
+		log.Debugf("main(): setting HttpRetries to %d", newConfigHttpRetries)
+		bc.SetRetries(newConfigHttpRetries)
 
 		// Set the HTTP Holdoff Values
-		log.Debugf("main(): setting RetryWaitMin[%d] and RetryWaitMax[%d]", *configHttpRetryWaitMin, *configHttpRetryWaitMax)
-		bc.SetRetryWaitMin(*configHttpRetryWaitMin)
-		bc.SetRetryWaitMax(*configHttpRetryWaitMax)
+		newConfigHttpRetryWaitMin, _ := strconv.Atoi(environment.GetVar(*configHttpRetryWaitMin))
+		if newConfigHttpRetryWaitMin == 0 {
+			newConfigHttpRetryWaitMin = HttpRetryWaitMin
+		}
+		newConfigHttpRetryWaitMax, _ := strconv.Atoi(environment.GetVar(*configHttpRetryWaitMax))
+		if newConfigHttpRetryWaitMax == 0 {
+			newConfigHttpRetryWaitMax = HttpRetryWaitMax
+		}
+		log.Debugf("main(): setting RetryWaitMin[%d] and RetryWaitMax[%d]", newConfigHttpRetryWaitMin, newConfigHttpRetryWaitMax)
+		bc.SetRetryWaitMin(newConfigHttpRetryWaitMin)
+		bc.SetRetryWaitMax(newConfigHttpRetryWaitMax)
 	case "s3", "S3":
 		if *configS3Region == "" {
 			log.Fatalf("You must provide a -s3.region for use with the s3 downloader.")
 		}
-		log.Debugf("main(): setting s3 region=%v", *configS3Region)
-		bc.SetRegion(*configS3Region)
+		newConfigS3Region := environment.GetVar(*configS3Region)
+		log.Debugf("main(): setting s3 region=%v", newConfigS3Region)
+		bc.SetRegion(newConfigS3Region)
 	}
 
 	// Set the butler configuration retrieval interval
-	log.Debugf("main(): setting ConfigInterval to %d", *configInterval)
-	bc.SetInterval(*configInterval)
+	newConfigInterval, _ := strconv.Atoi(environment.GetVar(*configInterval))
+	if newConfigInterval == 0 {
+		newConfigInterval = ButlerConfigInterval
+	}
+	log.Debugf("main(): setting ConfigInterval to %d", newConfigInterval)
+
+	bc.SetInterval(newConfigInterval)
 
 	if err = bc.Init(); err != nil {
 		log.Fatalf("Cannot initialize butler config. err=%s", err.Error())

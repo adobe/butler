@@ -7,14 +7,15 @@ title = "Butler Configuration"
   config-managers = ["prometheus", "alertmanager"]
 
   ## Scheduler Interval is how often we try to grab configurations from repo
-  ## Default: 300
-  scheduler-interval = 300
+  ## Default: "300"
+  scheduler-interval = "300"
 
   ## Do we want to exit from butler if there are butler configuration load issues
-  ## Default: false
-  exit-on-config-failure = false
+  ## Default: "false"
+  exit-on-config-failure = "false"
 
   ## Path to status file where butler should store some internal status information
+  ## Default: /var/tmp/butler.status
   status-file = "/var/tmp/butler.status"
 
 ## This is the definition for the prometheus configuration handler
@@ -26,13 +27,13 @@ title = "Butler Configuration"
   ## new files get snuck in, which could affect the monitoring of the system.
   ## !!! THIS WILL CAUSE UNANTICIPATED DATA LOSS !!!
   ## Default: false
-  clean-files = true
+  clean-files = "true"
 
   ## These are the mustache substitutions that we'll attempt to make on the merged configuration files
-  mustache-subs = ["ethos-cluster-id=ethos01-dev-or1", "endpoint=external"]
+  mustache-subs = ["ethos-cluster-id=ethos01-dev-or1", "endpoint=external", "envvar=env:ENVIRONMENT_VAR"]
 
   ## Should config caching be used
-  enable-cache = true
+  enable-cache = "true"
 
   ## Destination path to install cached configuration files to
   cache-path = "/opt/cache/prometheus"
@@ -61,10 +62,10 @@ title = "Butler Configuration"
 
     ## These are repo specific http get options
     [prometheus.repo1.domain.com.http]
-      retries = 5
-      retry-wait-min = 5
-      retry-wait-max = 10
-      timeout = 10
+      retries = "env:HTTP_RETRIES"
+      retry-wait-min = "5"
+      retry-wait-max = "10"
+      timeout = "10"
 
   ## This will be processed second (and appended / replaced depending)
   [prometheus.repo2.domain.com]
@@ -83,27 +84,27 @@ title = "Butler Configuration"
 
     ## These are repo specific http get options
     [prometheus.repo2.domain.com.http]
-      retries = 5
-      retry-wait-min = 5
-      retry-wait-max = 10
-      timeout = 10
+      retries = "5"
+      retry-wait-min = "5"
+      retry-wait-max = "10"
+      timeout = "10"
 
   ## These are the options for reloading the prometheus config-handler
   [prometheus.reloader]
     method = "http"
 
     [prometheus.reloader.http]
-      host = "localhost"
-      port = 9090
+      host = "env:PROM_RELOADER_HOST"
+      port = "9090"
       uri = "/-/reload"
       method = "post"
       payload = "{}"
       content-type = "application/json"
       # retry info and timeouts
-      retries = 5
-      retry-wait-min = 5
-      retry-wait-max = 10
-      timeout = 10
+      retries = "5"
+      retry-wait-min = "5"
+      retry-wait-max = "10"
+      timeout = "10"
 
 ## This is the definition for the alertmanager configuration handler
 [alertmanager]
@@ -114,13 +115,13 @@ title = "Butler Configuration"
   ## new files get snuck in, which could affect the monitoring of the system.
   ## !!! THIS WILL CAUSE UNANTICIPATED DATA LOSS !!!
   ## Default: false
-  clean-files = true
+  clean-files = "true"
 
   ## These are the mustache substitutions that we'll attempt to make on the merged configuration files
   mustache-subs = ["ethos-cluster-id=ethos01-dev-or1", "endpoint=external"]
 
   ## Should config caching be used
-  enable-cache = true
+  enable-cache = "true"
 
   ## Destination path to install cached configuration files to
   cache-path = "/opt/cache/alertmanager"
@@ -148,10 +149,10 @@ title = "Butler Configuration"
 
     ## These are repo specific http get options
     [alertmanager.repo3.domain.com.http]
-      retries = 5
-      retry-wait-min = 5
-      retry-wait-max = 10
-      timeout = 10
+      retries = "5"
+      retry-wait-min = "5"
+      retry-wait-max = "10"
+      timeout = "10"
 
   ## This will be processed second (and appended / replaced depending)
   [alertmanager.repo4.domain.com]
@@ -169,25 +170,25 @@ title = "Butler Configuration"
 
     ## These are repo specific http get options
     [alertmanager.repo4.domain.com.http]
-      retries = 5
-      retry-wait-min = 5
-      retry-wait-max = 10
-      timeout = 10
+      retries = "5"
+      retry-wait-min = "5"
+      retry-wait-max = "10"
+      timeout = "10"
 
   ## These are the options for reloading the alertmanager config-handler
   [alertmanager.reloader]
     method = "http"
 
     [alertmanager.reloader.http]
-      host = "localhost"
-      port = 9093
+      host = "env:AM_RELOADER_HOST"
+      port = "9093"
       uri = "/-/reload"
       method = "post"
       payload = "{}"
       content-type = "application/json"
       # retry info and timeouts
-      retries = 5
-      retry-wait-min = 5
-      retry-wait-max = 10
-      timeout = 10
+      retries = "5"
+      retry-wait-min = "5"
+      retry-wait-max = "10"
+      timeout = "10"
 #butlerend

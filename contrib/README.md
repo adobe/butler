@@ -46,24 +46,24 @@ None
 `config-manager = ["prometheus", "alertmanager"]`
 
 ### scheduler-interval
-The `scheduler-interval` option is how often you want butler to process the configuration files which it has been configured to grab and handle for this manager. The `scheduler-interval` is an integer value in seconds.
+The `scheduler-interval` option is how often you want butler to process the configuration files which it has been configured to grab and handle for this manager. The `scheduler-interval` is an string based integer value in seconds.
 
 #### Default Value
-300 (5 minutes)
+"300" (5 minutes)
 
 #### Example
-`scheduler-interval = 300`
+`scheduler-interval = "300"`
 
 ### exit-on-config-failure
-The `exit-on-config-failure` option is a boolean option specifying whether or not you want butler to quit completely, on butler configuration errors.
+The `exit-on-config-failure` option is a stringed boolean option (eg: "true" or "false")specifying whether or not you want butler to quit completely, on butler configuration errors.
 
 If this option is not specified, butler will continue to try and retrieve the configuration and try to reload it.
 
 #### Default Value
-false
+"false"
 
 #### Example
-`exit-on-config-failure = true`
+`exit-on-config-failure = "true"`
 
 ### status-file
 The `status-file` option is a string path to the location where butler should store some internal status information to.
@@ -73,7 +73,7 @@ It should be readable and writable by the user that butler runs as.
 /var/tmp/butler.status
 
 #### Example
-`status-file = "/var/tmp/butler.status`
+`status-file = "/var/tmp/butler.status"`
 
 ## Managers / Manager Globals
 Each manager should go into it's own `[<managers>]` section at the top level of the configuration file. For each manager defined under the `config-manager` global setting, there must be a top level manager configuration of the same name. The goal of the manager is to be what butler uses to manage a specific set of configuration files for a configured tool.
@@ -112,10 +112,10 @@ Empty Array
 The `clean-files` configuration option either enables or disables butler from deleting files within the `dest-path` defined directory. From butler's perspective it should be the sole authority of what files it should manage. In the event that certain configuration files were inadvertently placed in the directory, and the tool gets reloaded, which then loads up the configuration file that shouldn't be there, then there could be unanticipated consequences. If you enable this option, butler will remove all files that it does not currently manage.
 
 ##### Default Value
-false
+'false"
 
 ##### Example
-`clean-files = true`
+`clean-files = "true"`
 
 ### mustache-subs
 The `mustache-subs` configuration option defines an array of mustache substitutions that should be attempted on EVERY configuration file that butler managages. The mustache substitutions should be in the form of mustache=substitution format.
@@ -130,13 +130,13 @@ An empty array
 The `enable-cache` configuration option either enables or disables butler from caching the currently known good configuration files. This is helpful in the event that a bad configuration file gets downloaded, then butler can put the last known good configuration back into place.
 
 #### Default Value
-false
+"false"
 
 #### Example
-`enable-cache = true`
+`enable-cache = "true"`
 
 ### cache-path
-The `cache-path` configuration option tells butler where to store the cached configuration files to.
+The `cache-path` configuration option tells butler where to store the cached configuration files to. If enable-cache is set to "true", then cache-path must exist.
 
 ##### Default Value
 Empty String

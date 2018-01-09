@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
+	"git.corp.adobe.com/TechOps-IAO/butler/environment"
 	"git.corp.adobe.com/TechOps-IAO/butler/stats"
 
 	"github.com/hashicorp/go-retryablehttp"
@@ -27,16 +29,50 @@ func NewHttpReloader(manager string, method string, entry []byte) (Reloader, err
 		return result, err
 	}
 
+	newTimeout, _ := strconv.Atoi(environment.GetVar(opts.Timeout))
+	if newTimeout == 0 {
+		log.Warnf("NewHttpReloader(): could not convert %v to integer for timeout, defaulting to 0. This is probably undesired", opts.Timeout)
+	}
+
+	newRetries, _ := strconv.Atoi(environment.GetVar(opts.Retries))
+	if newRetries == 0 {
+		log.Warnf("NewHttpReloader(): could not convert %v to integer for retries, defaulting to 0. This is probably undesired", opts.Retries)
+	}
+
+	newRetryWaitMax, _ := strconv.Atoi(environment.GetVar(opts.RetryWaitMax))
+	if newRetryWaitMax == 0 {
+		log.Warnf("NewHttpReloader(): could not convert %v to integer for retry-wait-max, defaulting to 0. This is probably undesired", opts.RetryWaitMax)
+	}
+
+	newRetryWaitMin, _ := strconv.Atoi(environment.GetVar(opts.RetryWaitMin))
+	if newRetryWaitMin == 0 {
+		log.Warnf("NewHttpReloader(): could not convert %v to integer for retry-wait-min, defaulting to 0. This is probably undesired", opts.RetryWaitMin)
+	}
+
 	opts.Client = retryablehttp.NewClient()
 	opts.Client.Logger.SetFlags(0)
 	opts.Client.Logger.SetOutput(ioutil.Discard)
-	opts.Client.HTTPClient.Timeout = time.Duration(opts.Timeout) * time.Second
-	opts.Client.RetryMax = opts.Retries
-	opts.Client.RetryWaitMax = time.Duration(opts.RetryWaitMax) * time.Second
-	opts.Client.RetryWaitMin = time.Duration(opts.RetryWaitMin) * time.Second
+	opts.Client.HTTPClient.Timeout = time.Duration(newTimeout) * time.Second
+	opts.Client.RetryMax = newRetries
+	opts.Client.RetryWaitMax = time.Duration(newRetryWaitMax) * time.Second
+	opts.Client.RetryWaitMin = time.Duration(newRetryWaitMin) * time.Second
+
+	log.Debugf("NewHttpReloader(): opts=%#v", opts)
+
+	// Let's populate some environment variables
+	opts.Host = environment.GetVar(opts.Host)
+	opts.ContentType = environment.GetVar(opts.ContentType)
+	// we cannot do ints yet!
+	//opts.Port
+	opts.Uri = environment.GetVar(opts.Uri)
+	opts.Method = environment.GetVar(opts.Method)
+	opts.Payload = environment.GetVar(opts.Payload)
+
 	result.Method = method
 	result.Opts = opts
 	result.Manager = manager
+
+	//log.Debugf("NewHttpReloader(): opts=%#v", opts)
 	return result, err
 }
 
@@ -50,14 +86,14 @@ type HttpReloaderOpts struct {
 	Client       *retryablehttp.Client `json:"-"`
 	ContentType  string                `json:"content-type"`
 	Host         string                `json:"host"`
-	Port         int                   `json:"port"`
+	Port         string                `mapstructure:"port" json:"port"`
 	Uri          string                `json:"uri"`
 	Method       string                `json:"method"`
 	Payload      string                `json:"payload"`
-	Retries      int                   `json:"retries"`
-	RetryWaitMax int                   `json:"retry-wait-max"`
-	RetryWaitMin int                   `json:"retry-wait-min"`
-	Timeout      int                   `json:"timeout"`
+	Retries      string                `json:"retries"`
+	RetryWaitMax string                `json:"retry-wait-max"`
+	RetryWaitMin string                `json:"retry-wait-min"`
+	Timeout      string                `json:"timeout"`
 }
 
 func (h *HttpReloaderOpts) GetClient() *retryablehttp.Client {
@@ -74,7 +110,11 @@ func (h HttpReloader) Reload() error {
 	c := o.GetClient()
 	// Set the reloader retry policy
 	c.CheckRetry = h.ReloaderRetryPolicy
-	reloadUrl := fmt.Sprintf("%s://%s:%d%s", h.Method, o.Host, o.Port, o.Uri)
+	newPort, _ := strconv.Atoi(environment.GetVar(o.Port))
+	if newPort == 0 {
+		log.Warnf("HttpReloader::Reload(): could not convert %v to integer for port, defaulting to 0. This is probably undesired", o.Port)
+	}
+	reloadUrl := fmt.Sprintf("%s://%s:%d%s", h.Method, o.Host, newPort, o.Uri)
 
 	switch o.Method {
 	case "post":

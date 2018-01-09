@@ -165,12 +165,12 @@ func (bc *ButlerConfig) Init() error {
 		return err
 	}
 
-	bc.Client, err = NewConfigClient(bc.Scheme)
+	client, err := NewConfigClient(bc.Scheme)
 	if err != nil {
 		log.Debugf("Config::Init(): could not initialize butler config. err=%s", err.Error())
 		return err
 	}
-	bc.Client.Method = method
+	client.Method = method
 
 	switch bc.Scheme {
 	case "http", "https":
@@ -183,10 +183,10 @@ func (bc *ButlerConfig) Init() error {
 			bc.Url = ConfigUrl
 		}
 
-		bc.Client.SetTimeout(bc.Timeout)
-		bc.Client.SetRetryMax(bc.Retries)
-		bc.Client.SetRetryWaitMin(bc.RetryWaitMin)
-		bc.Client.SetRetryWaitMax(bc.RetryWaitMax)
+		client.SetTimeout(bc.Timeout)
+		client.SetRetryMax(bc.Retries)
+		client.SetRetryWaitMin(bc.RetryWaitMin)
+		client.SetRetryWaitMax(bc.RetryWaitMax)
 	case "s3", "S3":
 		pathSplit := strings.Split(bc.Path, "/")
 		bucket := pathSplit[0]
@@ -195,7 +195,9 @@ func (bc *ButlerConfig) Init() error {
 		bc.Url = path
 		bc.SetRegionAndBucket(bc.S3Region, bucket)
 	}
-	log.Debugf("Config::Init(): bc.Client.Method=%#v", bc.Client.Method)
+	bc.Client = client
+	log.Debugf("Config::Init(): client=%#v", client)
+	log.Debugf("Config::Init(): bc.Client=%#v", bc.Client)
 
 	bc.Config = NewConfigSettings()
 
@@ -210,26 +212,22 @@ func (bc *ButlerConfig) Handler() error {
 		return err
 	}
 	defer response.GetResponseBody().Close()
-	log.Debugf("Config::Handler(): test 1")
 
 	if response.GetResponseStatusCode() != 200 {
 		errMsg := fmt.Sprintf("Did not receive 200 response code for %s. code=%d", bc.Url, response.GetResponseStatusCode())
 		return errors.New(errMsg)
 	}
-	log.Debugf("Config::Handler(): test 2")
 
 	body, err := ioutil.ReadAll(response.GetResponseBody())
 	if err != nil {
 		errMsg := fmt.Sprintf("Could not read response body for %s. err=%s", bc.Url, err)
 		return errors.New(errMsg)
 	}
-	log.Debugf("Config::Handler(): test 3")
 
 	err = ValidateConfig(body)
 	if err != nil {
 		return err
 	}
-	log.Debugf("Config::Handler(): test 4")
 
 	if bc.RawConfig == nil {
 		err := bc.Config.ParseConfig(body)
@@ -244,12 +242,10 @@ func (bc *ButlerConfig) Handler() error {
 			bc.RawConfig = body
 		}
 	}
-	log.Debugf("Config::Handler(): test 5")
 
 	if !bytes.Equal(bc.RawConfig, body) {
 		err := bc.Config.ParseConfig(body)
 		if err != nil {
-			log.Debugf("Config::Handler(): test bc.Config.Globals=%#v", bc.Config.Globals)
 			if bc.Config.Globals.ExitOnFailure {
 				log.Fatal(err)
 			} else {
@@ -262,7 +258,6 @@ func (bc *ButlerConfig) Handler() error {
 	} else {
 		log.Debugf("Config::Handler(): butler config unchanged.")
 	}
-	log.Debugf("Config::Handler(): test 6")
 
 	// We don't want to handle the scheduler stuff on the first run. The scheduler doesn't yet exist
 	log.Debugf("Config::Handler(): CM PrevSchedulerInterval=%v SchedulerInterval=%v", bc.GetCMPrevInterval(), bc.GetCMInterval())

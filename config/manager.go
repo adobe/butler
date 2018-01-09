@@ -19,11 +19,13 @@ import (
 type Manager struct {
 	Name              string                  `json:"name"`
 	Repos             []string                `mapstructure:"repos" json:"repos"`
-	CleanFiles        bool                    `mapstructure:"clean-files" json:"clean-files"`
+	CfgCleanFiles     string                  `mapstructure:"clean-files" json:"-"`
+	CleanFiles        bool                    `json:"clean-files"`
 	LastRun           time.Time               `json:"last-run"`
 	MustacheSubsArray []string                `mapstructure:"mustache-subs" json:"-"`
 	MustacheSubs      map[string]string       `json:"mustache-subs"`
-	EnableCache       bool                    `mapstructure:"enable-cache" json:"enable-cache"`
+	CfgEnableCache    string                  `mapstructure:"enable-cache" json:"-"`
+	EnableCache       bool                    `json:"enable-cache"`
 	CachePath         string                  `mapstructure:"cache-path" json:"cache-path"`
 	DestPath          string                  `mapstructure:"dest-path" json:"dest-path"`
 	PrimaryConfigName string                  `mapstructure:"primary-config-name" json:"primary-config-name"`

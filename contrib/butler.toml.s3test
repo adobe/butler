@@ -7,12 +7,12 @@ title = "Butler Configuration"
   config-managers = ["prometheus"]
 
   ## Scheduler Interval is how often we try to grab configurations from repo
-  ## Default: 300
-  scheduler-interval = 10
+  ## Default: "300"
+  scheduler-interval = "10"
 
   ## Do we want to exit from butler if there are butler configuration load issues
-  ## Default: false
-  exit-on-config-failure = false
+  ## Default: "false"
+  exit-on-config-failure = "false"
 
   ## Path to status file where butler should store some internal status information
   ## Default: /var/tmp/butler.status
@@ -27,13 +27,13 @@ title = "Butler Configuration"
   ## new files get snuck in, which could affect the monitoring of the system.
   ## !!! THIS WILL CAUSE UNANTICIPATED DATA LOSS !!!
   ## Default: false
-  clean-files = true
+  clean-files = "true"
 
   ## These are the mustache substitutions that we'll attempt to make on the merged prometheus.yml
   mustache-subs = ["ethos-cluster-id=ethos01-dev-or1", "endpoint=external"]
 
   ## Should config caching be used
-  enable-cache = true
+  enable-cache = "true"
 
   ## Destination path to install cached configuration files to
   cache-path = "/opt/cache/prometheus"
@@ -71,14 +71,14 @@ title = "Butler Configuration"
 
     [prometheus.reloader.http]
       host = "localhost"
-      port = 9090
+      port = "9090"
       uri = "/-/reload"
       method = "post"
       payload = "{}"
       content-type = "application/json"
       # retry info and timeouts
-      retries = 5
-      retry-wait-min = 5
-      retry-wait-max = 10
-      timeout = 10
+      retries = "5"
+      retry-wait-min = "5"
+      retry-wait-max = "10"
+      timeout = "10"
 #butlerend

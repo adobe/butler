@@ -12,6 +12,7 @@ import (
 
 	"git.corp.adobe.com/TechOps-IAO/butler/config/methods"
 	"git.corp.adobe.com/TechOps-IAO/butler/config/reloaders"
+	"git.corp.adobe.com/TechOps-IAO/butler/environment"
 	"git.corp.adobe.com/TechOps-IAO/butler/stats"
 
 	"github.com/hashicorp/go-retryablehttp"
@@ -110,7 +111,7 @@ func ParseMustacheSubs(pairs []string) (map[string]string, error) {
 			continue
 		}
 		key := strings.TrimSpace(keyvalpairs[0])
-		val := strings.TrimSpace(keyvalpairs[1])
+		val := environment.GetVar(strings.TrimSpace(keyvalpairs[1]))
 		subs[key] = val
 	}
 	return subs, nil
@@ -282,10 +283,6 @@ func RestoreCachedConfigs(manager string, files []string) error {
 	return nil
 }
 
-func ParseConfigManager(config []byte) (Manager, error) {
-	return Manager{}, nil
-}
-
 func GetManagerOpts(entry string, bc *ConfigSettings) (*ManagerOpts, error) {
 	var (
 		err     error
@@ -296,12 +293,22 @@ func GetManagerOpts(entry string, bc *ConfigSettings) (*ManagerOpts, error) {
 		return &ManagerOpts{}, err
 	}
 
+	MgrOpts.RepoPath = environment.GetVar(MgrOpts.RepoPath)
+
 	switch MgrOpts.Method {
 	case "http", "https", "s3", "S3":
 		break
 	default:
 		msg := fmt.Sprintf("unknown manager.method=%v", MgrOpts.Method)
 		return &ManagerOpts{}, errors.New(msg)
+	}
+
+	for i, _ := range MgrOpts.PrimaryConfig {
+		MgrOpts.PrimaryConfig[i] = environment.GetVar(MgrOpts.PrimaryConfig[i])
+	}
+
+	for i, _ := range MgrOpts.AdditionalConfig {
+		MgrOpts.AdditionalConfig[i] = environment.GetVar(MgrOpts.AdditionalConfig[i])
 	}
 
 	repoSplit := strings.Split(entry, ".")
@@ -330,30 +337,59 @@ func GetManagerOpts(entry string, bc *ConfigSettings) (*ManagerOpts, error) {
 func GetConfigManager(entry string, bc *ConfigSettings) error {
 	var (
 		err     error
-		Manager Manager
+		Mgr Manager
 	)
 
-	Manager.Name = entry
-	Manager.ReloadManager = false
+	Mgr.Name = entry
+	Mgr.ReloadManager = false
 
-	err = viper.UnmarshalKey(entry, &Manager)
+	err = viper.UnmarshalKey(entry, &Mgr)
 	if err != nil {
 		return err
 	}
 
-	if len(Manager.Repos) < 1 {
+	if len(Mgr.Repos) < 1 {
 		msg := fmt.Sprintf("No repos configured for manager %s", entry)
 		return errors.New(msg)
 	}
 
-	if Manager.DestPath == "" {
-		msg := fmt.Sprintf("No dest-path configured for manager %s", entry)
-		errors.New(msg)
+	envCleanFiles := strings.ToLower(environment.GetVar(Mgr.CfgCleanFiles))
+	if envCleanFiles == "true" {
+		Mgr.CleanFiles = true
+	} else if envCleanFiles == "false" {
+		Mgr.CleanFiles = false
+	} else {
+		Mgr.CleanFiles = false
 	}
 
-	Manager.ManagerOpts = make(map[string]*ManagerOpts)
-	for _, m := range Manager.Repos {
-		bc.Managers[entry] = &Manager
+	envEnableCache := strings.ToLower(environment.GetVar(Mgr.CfgEnableCache))
+	if envEnableCache == "true" {
+		Mgr.EnableCache = true
+	} else if envEnableCache == "false" {
+		Mgr.EnableCache = false
+	} else {
+		Mgr.EnableCache = false
+	}
+
+	Mgr.CachePath = environment.GetVar(Mgr.CachePath)
+	if Mgr.EnableCache && Mgr.CachePath == "" {
+		msg := fmt.Sprintf("Caching Enabled but manager.cache-path is unset for manager %s", entry)
+		return errors.New(msg)
+	}
+
+	Mgr.DestPath = environment.GetVar(Mgr.DestPath)
+	Mgr.PrimaryConfigName = environment.GetVar(Mgr.PrimaryConfigName)
+	if Mgr.DestPath == "" {
+		msg := fmt.Sprintf("No dest-path configured for manager %s", entry)
+		return errors.New(msg)
+	}
+
+	Mgr.ManagerOpts = make(map[string]*ManagerOpts)
+	for _, m := range Mgr.Repos {
+		if bc.Managers == nil {
+			bc.Managers = make(map[string]*Manager)
+		}
+		bc.Managers[entry] = &Mgr
 		mopts := fmt.Sprintf("%s.%s", entry, m)
 		opts, err := GetManagerOpts(mopts, bc)
 		if err != nil {
@@ -367,7 +403,7 @@ func GetConfigManager(entry string, bc *ConfigSettings) error {
 		return err
 	}
 
-	Manager.MustacheSubs, err = ParseMustacheSubs(Manager.MustacheSubsArray)
+	Mgr.MustacheSubs, err = ParseMustacheSubs(Mgr.MustacheSubsArray)
 	if err != nil {
 		log.Debugf("GetConfigManager(): could not get mustache subs. err=%s", err.Error())
 		return err

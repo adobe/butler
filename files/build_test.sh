@@ -11,25 +11,25 @@ fi
 
 mkdir -p $BUTLER_GO_PATH
 cd $BUTLER_GO_PATH
-#rm -v /root/butler/vendor/vendor.json
-#mv /root/butler/vendor/* /root/go/src
 mv /root/butler/vendor .
 mv /root/butler/*.go .
 
-## stats dir
-mkdir stats
+## make butler directories
+mkdir -p stats config environment config/methods config/reloaders
+
+## move stats files
 mv /root/butler/stats/*.go stats
 
-## config dir
-mkdir config
+## move config files
 mv /root/butler/config/*.go config
 
-## config/methods
-mkdir config/methods
+## move environment files
+mv /root/butler/environment/*.go environment
+
+## move config/methods files
 mv /root/butler/config/methods/*.go config/methods
 
-## config/reloaders
-mkdir config/reloaders
+## move config/reloaders files
 mv /root/butler/config/reloaders/*.go config/reloaders
 
 go test -check.vv -coverprofile=/tmp/coverage-main.out

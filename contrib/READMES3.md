@@ -25,7 +25,7 @@ The `repos` configuration option defines an array of repositories where butler i
 #### Default Value
 Empty Array
 
-#### Example 
+#### Example
 `repos = ["Folder1", "Folder2"]`
 
 ## Repository Handler

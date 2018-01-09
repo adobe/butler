@@ -7,6 +7,8 @@ import (
 	"io/ioutil"
 	"os"
 
+	"git.corp.adobe.com/TechOps-IAO/butler/environment"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -35,6 +37,9 @@ func NewS3Method(manager *string, entry *string) (Method, error) {
 		if err != nil {
 			return result, err
 		}
+
+		result.Bucket = environment.GetVar(result.Bucket)
+		result.Region = environment.GetVar(result.Region)
 
 		// We should have something for both of these
 		if (result.Bucket == "") || (result.Region == "") {
@@ -88,7 +93,6 @@ func (s S3Method) Get(file string) (*Response, error) {
 			Key:    aws.String(file),
 		})
 	if err != nil {
-		//e := err.(awserr.RequestFailure)
 		var code int
 		if e, ok := err.(awserr.RequestFailure); ok {
 			code = e.StatusCode()
@@ -102,7 +106,6 @@ func (s S3Method) Get(file string) (*Response, error) {
 		}
 		tmpFile.Close()
 		os.Remove(tmpFile.Name())
-		//return &Response{statusCode: e.StatusCode()}, errors.New(fmt.Sprintf("S3Method::Get(): caught error for download err=%v", err.Error()))
 		return &Response{statusCode: code}, errors.New(fmt.Sprintf("S3Method::Get(): caught error for download err=%v", err.Error()))
 	}
 

@@ -14,6 +14,7 @@ import (
 
 	"git.corp.adobe.com/TechOps-IAO/butler/config"
 	"git.corp.adobe.com/TechOps-IAO/butler/environment"
+	"git.corp.adobe.com/TechOps-IAO/butler/stats"
 
 	"github.com/jasonlvhit/gocron"
 	log "github.com/sirupsen/logrus"
@@ -222,11 +223,23 @@ func main() {
 	for {
 		log.Debugf("main(): running first bc.Handler()")
 		err = bc.Handler()
+
+		// We need to keep track of the hostname (Repo), and the butler
+		// config file (Config) in order to set the stats on whether
+		// or not butlers OWN configuration file was successfully
+		// retrieved. Let's hope it does, but at least we'll know if it
+		// isn't.
+		Repo := strings.Split(pathSplit[1], "/")[0]
+		Config := strings.Join(strings.Split(pathSplit[1], "/")[1:], "/")
+		Config = fmt.Sprintf("/%s", Config)
+
 		if err != nil {
+			stats.SetButlerContactVal(stats.FAILURE, Repo, Config)
 			log.Infof("Cannot retrieve butler configuration. err=%s", err.Error())
 			log.Infof("Sleeping 5 seconds.")
 			time.Sleep(5 * time.Second)
 		} else {
+			stats.SetButlerContactVal(stats.SUCCESS, Repo, Config)
 			break
 		}
 	}

@@ -1,4 +1,4 @@
-# Butler Configuration for supporting S3 
+# Butler Configuration for supporting S3
 ## Overview
 The butler configuration file is similar to that explained in the README.md file. But there are a few changes that need to made for it to fetch config files from AWS S3.
 

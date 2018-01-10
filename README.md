@@ -46,6 +46,8 @@ Usage of ./butler:
 
 ```
 
+Valid schemes are: file, http (or https), and s3
+
 ### Use of Environment Variables
 Butler supports the usre of environment variables. Any field that is prefixed with `env:` will be looked up in the environment. This will work for all command line options, and MOST configuration file options.
 

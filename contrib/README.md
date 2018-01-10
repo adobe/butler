@@ -179,14 +179,16 @@ There are 4 options that can be configured under the Repository Handler configur
 1. additional-config
 
 ### method
-The `method` option defines what method to use for the retrieval of configuration files. Currently this option is only http/https and S3. In the future there will be added support for the following formats: file (local filesystem), blob (Azure Blob Storage)
+The `method` option defines what method to use for the retrieval of configuration files. Currently this option is only file, http/https, and S3. In the future there will be added support for the following formats: blob (Azure Blob Storage)
 
 #### Default Value
 None
 
 #### Example
+1. `method = "http"`
 1. `method = "https"`
 1. `method = "S3"`
+1. `method = "file"`
 
 ### repo-path
 The `repo-path` option is the URI path to the configuration file on the local or remote filesystem. It should not be a relative path, and should not include any host information. In case of S3 this will be relative the folder names defined under `repos` and can be left blank.
@@ -215,7 +217,7 @@ The `additional-config` option is an array strings, which are additional configu
 #### Example
 `additional-config = ["alerts/alerts1.yml", "extras/alertmanager.yml"]`
 
-## Repository Handler Retrieval Options
+## Repository Handler Retrieval Options (HTTP)
 The Repository Handler Retrieval Options must be defined under the Repository Handler using the name of the defined method.
 
 For example, look at the following (incomplete) definition:
@@ -230,7 +232,24 @@ For example, look at the following (incomplete) definition:
     method = "http"
     ...
     [a.repo1.domain.com.http]
-    ^^^^^^^^^^^^^^^^^^^^^^^^^ This is wehre the Repository Handler Retrieval Options should reside.
+    ^^^^^^^^^^^^^^^^^^^^^^^^^ This is where the Repository Handler Retrieval Options should reside.
+```
+## Repository Handler Retrieval Options (FILE)
+The Repository Handler Retrieval Options must be defined under the Repository Handler using the name of the defined method.
+
+For example, look at the following (incomplete) definition:
+```
+[globals]
+  config-managers = ["a", "b"]
+...
+[a]
+  repos = "repo1.domain.com", "repo2.domain.com"]
+  ...
+  [a.repo1.domain.com]
+    method = "file"
+    ...
+    [a.repo1.domain.com.file]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^ This is where the Repository Handler Retrieval Options should reside.
 ```
 ## Manager Reloader
 The Manager Reloader Option defines how the manager is to be reloaded. Currently there is one methods of reloading a manager. That is either over http or https connections.
@@ -312,3 +331,27 @@ The `retry-wait-max` option is the maximum amount of time, in seconds, to HOLD O
 The `timeout` option is the amount of time, in seconds, until the http connection times out.
 
 
+### FILE Retrieval Options
+The file retrieval option only has one option that can be used. If you use this option, then you are not going to use the `repo-path` option under the Repository Handler configuration section. Just set `repo-path=""`. Alternatively, you do not have to set this option, and use `repo-path` instead.
+
+1. path
+
+#### path
+The `path` option is the path on the filesystem where butler should be looking for files.
+
+Here is an example:
+
+```
+[globals]
+  config-managers = ["a", "b"]
+...
+[a]
+  repos = "repo1.domain.com", "repo2.domain.com"]
+  ...
+  [a.repo1.domain.com]
+    method = "file"
+    repo-path = ""
+    ...
+    [a.repo1.domain.com.file]
+      path = "/our/path/to/configs"
+```

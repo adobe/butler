@@ -28,10 +28,7 @@ func NewHttpMethod(manager *string, entry *string) (Method, error) {
 		}
 	}
 
-	log.Warnf("NewHttpMethod(): result=%#v", result)
-	log.Warnf("NewHttpMethod(): result.Timeout=%#v", result.Timeout)
 	newTimeout, _ := strconv.Atoi(environment.GetVar(result.Timeout))
-	//log.Warnf("NewHttpMethod(): err=%#v", err)
 	if newTimeout == 0 {
 		log.Warnf("NewHttpMethod(): could not convert %v to integer for timeout, defaulting to 0. This is probaby undesired", result.Timeout)
 	}

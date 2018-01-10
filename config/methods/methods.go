@@ -31,6 +31,8 @@ func New(manager *string, method string, entry *string) (Method, error) {
 		return NewHttpMethod(manager, entry)
 	case "S3", "s3":
 		return NewS3Method(manager, entry)
+	case "file":
+		return NewFileMethod(manager, entry)
 	default:
 		return NewGenericMethod(manager, entry)
 	}

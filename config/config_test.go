@@ -407,7 +407,7 @@ func (s *ConfigTestSuite) TestGetManagerOptsFullCheck(c *C) {
 
 func (s *ConfigTestSuite) TestConfigCompleteEnvironment(c *C) {
 	var (
-		err  error
+		err    error
 		config ConfigSettings
 	)
 

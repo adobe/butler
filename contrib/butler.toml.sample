@@ -47,7 +47,7 @@ title = "Butler Configuration"
 
   ## These are the definitions for the first repo which is defined for prometheus
   [prometheus.repo1.domain.com]
-    ## Method can be http or https. In the future it may support Amazon s3 or Azure blob
+    ## Method can be file, http, https, or s3. In the future it will support Azure blob
     method = "http"
 
     ## Path is the URI / Path to the configuration files on the repo
@@ -69,11 +69,12 @@ title = "Butler Configuration"
 
   ## This will be processed second (and appended / replaced depending)
   [prometheus.repo2.domain.com]
-    ## Method can be http or https. In the future it may support Amazon s3 or Azure blob
-    method = "http"
+    ## Method can be file, http, https, or s3. In the future it will support Azure blob
+    method = "file"
 
     ## Path is the URI / Path to the configuration files on the repo
-    repo-path = "/butler/configs/prometheus"
+    ## Since we're using the `file` method, then we will unset repo-path.
+    repo-path = ""
 
     ## This is a list of the primary configuration files which get MERGED together
     primary-config = ["prometheus-repo2.yml", "prometheus-repo2-other.yml"]
@@ -83,11 +84,8 @@ title = "Butler Configuration"
     additional-config = ["alerts/tenant.yml", "butler/butler-repo2.yml"]
 
     ## These are repo specific http get options
-    [prometheus.repo2.domain.com.http]
-      retries = "5"
-      retry-wait-min = "5"
-      retry-wait-max = "10"
-      timeout = "10"
+    [prometheus.repo2.domain.com.file]
+      path = "/butler/configs/prometheus"
 
   ## These are the options for reloading the prometheus config-handler
   [prometheus.reloader]
@@ -135,7 +133,7 @@ title = "Butler Configuration"
 
   ## These are the definitions for the first repo which is defined for alertmanager
   [alertmanager.repo3.domain.com]
-    ## Method can be http or https. In the future it may support Amazon s3 or Azure blob
+    ## Method can be file, http, https, or s3. In the future it will support Azure blob
     method = "http"
 
     ## Path is the URI / Path to the file on the repo
@@ -156,7 +154,7 @@ title = "Butler Configuration"
 
   ## This will be processed second (and appended / replaced depending)
   [alertmanager.repo4.domain.com]
-    ## Method can be http or https. In the future it may support Amazon s3 or Azure blob
+    ## Method can be file, http, https, or s3. In the future it will support Azure blob
     method = "http"
 
     ## Path is the URI / Path to the file on the repo

@@ -1,4 +1,5 @@
 # butler
+![Butler Logo][butler-logo]
 
 ## Butler Configuration Management System (BCMS) Overview
 The butler tool is designed to grab any configuration files, defined in its configuration file, from a remote location/repository via http(s) and side load them onto another locally running container.
@@ -501,3 +502,4 @@ process_virtual_memory_bytes 2.39341568e+08
 ```
 [workflow-diagram]: https://git.corp.adobe.com/TechOps-IAO/butler/raw/master/contrib/diagrams/png/Butler%20Workflow.png
 [elements-diagram]: https://git.corp.adobe.com/TechOps-IAO/butler/raw/master/contrib/diagrams/png/Butler%20Elements.png
+[butler-logo]: https://git.corp.adobe.com/TechOps-IAO/butler/raw/master/contrib/images/butler.png

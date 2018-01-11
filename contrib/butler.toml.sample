@@ -20,7 +20,7 @@ title = "Butler Configuration"
 
 ## This is the definition for the prometheus configuration handler
 [prometheus]
-  repos = ["repo1.domain.com", "repo2.domain.com"]
+  repos = ["repo1.domain.com", "repo2.domain.com", "azure-repo"]
 
   ## !!! IMPORTANT !!! Do you want butler to clean up any NON BUTLER MANAGED files under dest-path?
   ## Butler would prefer to manage all the files under the configuration path. This is so that no
@@ -86,6 +86,29 @@ title = "Butler Configuration"
     ## These are repo specific http get options
     [prometheus.repo2.domain.com.file]
       path = "/butler/configs/prometheus"
+
+  [prometheus.azure-repo]
+    ## Method can be file, http, https, or s3. In the future it will support Azure blob
+    method = "blob"
+
+    ## Path is the URI / Path to the configuration files on the repo
+    ## Since we're using the `blob` method, then we will set this as the container name
+    repo-path = "blob-container"
+
+    ## This is a list of the primary configuration files which get MERGED together
+    ## Azure blob storage will not allow for any directories here. The files must reside in
+    ## the container
+    primary-config = ["prometheus-repo2.yml", "prometheus-repo2-other.yml"]
+
+    ## This is a list of additional configuration files which will get thrown onto the filesystem
+    ## If there are duplicates, then the last file will be taken.
+    ## Azure blob storage will not allow for any directories here. The files must reside in
+    ## the container
+    additional-config = ["tenant.yml", "butler-repo2.yml"]
+
+    ## These are repo specific http get options
+    [prometheus.repo2.domain.com.blob]
+      storage-account-name = "blobstorageaccountname"
 
   ## These are the options for reloading the prometheus config-handler
   [prometheus.reloader]

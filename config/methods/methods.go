@@ -33,6 +33,8 @@ func New(manager *string, method string, entry *string) (Method, error) {
 		return NewS3Method(manager, entry)
 	case "file":
 		return NewFileMethod(manager, entry)
+	case "blob":
+		return NewBlobMethod(manager, entry)
 	default:
 		return NewGenericMethod(manager, entry)
 	}

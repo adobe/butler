@@ -46,7 +46,7 @@ Usage of ./butler:
 
 ```
 
-Valid schemes are: file, http (or https), and s3
+Valid schemes are: blob (Azure), file, http (or https), and s3 (AWS)
 
 ### Use of Environment Variables
 Butler supports the usre of environment variables. Any field that is prefixed with `env:` will be looked up in the environment. This will work for all command line options, and MOST configuration file options.
@@ -85,6 +85,16 @@ INFO[2017-10-11T14:24:29+01:00] Starting butler version v1.0.0
 [14:24]pts/12:22(stegen@woden):[~/git/ethos/butler]%
 ```
 When you execute butler with the above arguments, you are asking butler to grab its configuration file from S3 storage using bucket `s3-bucket`, file key `config/butler.toml` and the aws-region as specified by `s3.region`, and try to re-retrieve and refresh it every 10 seconds. It will also use the default log level of INFO. If you need more verbosity to your output, specify `debug` as the logging level argument.
+
+#### Azure CLI and Usage
+In order to use the butler Azure CLI, you must set the appropriate environment variables.
+1. `BUTLER_STORAGE_TOKEN` - This is the API Token to your Azure Storage Container resource
+
+The following environment variable is optional
+1. `BUTLER_STORAGE_ACCOUNT`- This is the name of the Azure Storage Account. You can either specify this in the environment, or you can specify it in the butler.toml configuration file. See the example file for reference under `./contrib/butler.toml.sample`.
+
+The command line option looks like this:
+`[14:24]pts/12:21(stegen@woden):[~/git/ethos/butler]% ./butler -config.path blob://azure-storage-account/azure-blob-container/butler.toml -config.retrieve-interval 10 -log.level info`
 
 ### DCOS Deployment JSON
 ```

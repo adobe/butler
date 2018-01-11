@@ -299,7 +299,7 @@ func (bmo *ManagerOpts) GetAdditionalRemoteConfigFiles() []string {
 // Really need to come up with a better method for this.
 func (bmo *ManagerOpts) DownloadConfigFile(file string) *os.File {
 	switch bmo.Method {
-	case "file", "http", "https", "s3", "S3":
+	case "blob", "file", "http", "https", "s3", "S3":
 		tmpFile, err := ioutil.TempFile("/tmp", "pcmsfile")
 		if err != nil {
 			msg := fmt.Sprintf("ManagerOpts::DownloadConfigFile(): could not create temporary file. err=%v", err)
@@ -317,6 +317,12 @@ func (bmo *ManagerOpts) DownloadConfigFile(file string) *os.File {
 			// repo to get the actual path on the filesystem. So that is what
 			// we are doing here.
 			file = fmt.Sprintf("/%s", strings.Join(strings.Split(strings.Split(file, "://")[1], "/")[1:], "/"))
+		}
+
+		if bmo.Method == "blob" {
+			// the file argument for the Get()'ing configs are passed in like:
+			// blob://storageaccount/container/file. We need to strip out blob://
+			file = strings.Split(file, "://")[1]
 		}
 
 		response, err := bmo.Opts.Get(file)

@@ -3,6 +3,42 @@
 	"ignore": "test",
 	"package": [
 		{
+			"checksumSHA1": "YDEw1uWzG+8V7KAaJfr4jKs1cM0=",
+			"path": "github.com/Azure/azure-sdk-for-go/storage",
+			"revision": "eae258195456be76b2ec9ad2ee2ab63cdda365d9",
+			"revisionTime": "2018-01-09T21:59:56Z"
+		},
+		{
+			"checksumSHA1": "RzIYmvG1ReOud+kafFsZTDIZSK0=",
+			"path": "github.com/Azure/go-autorest/autorest",
+			"revision": "8c58b4788dedd95779efe0ac2055bb6a1b9b8e01",
+			"revisionTime": "2018-01-06T16:29:27Z"
+		},
+		{
+			"checksumSHA1": "OxKbGGQUfsDtM4Fz4ysBpallhOE=",
+			"path": "github.com/Azure/go-autorest/autorest/adal",
+			"revision": "8c58b4788dedd95779efe0ac2055bb6a1b9b8e01",
+			"revisionTime": "2018-01-06T16:29:27Z"
+		},
+		{
+			"checksumSHA1": "PwTnRhiCu8p2D1M2nsM0ADL4FM0=",
+			"path": "github.com/Azure/go-autorest/autorest/azure",
+			"revision": "8c58b4788dedd95779efe0ac2055bb6a1b9b8e01",
+			"revisionTime": "2018-01-06T16:29:27Z"
+		},
+		{
+			"checksumSHA1": "9nXCi9qQsYjxCeajJKWttxgEt0I=",
+			"path": "github.com/Azure/go-autorest/autorest/date",
+			"revision": "8c58b4788dedd95779efe0ac2055bb6a1b9b8e01",
+			"revisionTime": "2018-01-06T16:29:27Z"
+		},
+		{
+			"checksumSHA1": "VYvyVPooYXiO6gqwCGkPPK5vCzk=",
+			"path": "github.com/Sirupsen/logrus",
+			"revision": "3d4380f53a34dcdc95f0c1db702615992b38d9a4",
+			"revisionTime": "2017-06-20T14:45:10Z"
+		},
+		{
 			"checksumSHA1": "WCDpvzinTSrJ8CMZ+b5VD5HDtzk=",
 			"path": "github.com/aws/aws-sdk-go/aws",
 			"revision": "8c6a611084ff32c030aeb61554c5b987b4cdf4eb",
@@ -177,6 +213,12 @@
 			"revisionTime": "2017-03-20T16:26:55Z"
 		},
 		{
+			"checksumSHA1": "+TKtBzv23ywvmmqRiGEjUba4YmI=",
+			"path": "github.com/dgrijalva/jwt-go",
+			"revision": "dbeaa9332f19a944acb5736b4456cfcc02140e29",
+			"revisionTime": "2017-10-19T21:57:19Z"
+		},
+		{
 			"checksumSHA1": "x2Km0Qy3WgJJnV19Zv25VwTJcBM=",
 			"path": "github.com/fsnotify/fsnotify",
 			"revision": "4da3e2cfbabc9f751898f250b49f2439785783a1",
@@ -287,6 +329,12 @@
 			"revisionTime": "2017-03-21T09:30:39Z"
 		},
 		{
+			"checksumSHA1": "T9E+5mKBQ/BX4wlNxgaPfetxdeI=",
+			"path": "github.com/marstr/guid",
+			"revision": "8bdf7d1a087ccc975cf37dd6507da50698fd19ca",
+			"revisionTime": "2017-04-27T23:51:15Z"
+		},
+		{
 			"checksumSHA1": "bKMZjd2wPw13VwoE7mBeSv5djFA=",
 			"path": "github.com/matttproud/golang_protobuf_extensions/pbutil",
 			"revision": "c12348ce28de40eed0136aa2b644d0ee0650e56c",
@@ -351,6 +399,12 @@
 			"path": "github.com/prometheus/procfs",
 			"revision": "fcdb11ccb4389efb1b210b7ffb623ab71c5fdd60",
 			"revisionTime": "2016-12-06T22:21:41Z"
+		},
+		{
+			"checksumSHA1": "eDQ6f1EsNf+frcRO/9XukSEchm8=",
+			"path": "github.com/satori/go.uuid",
+			"revision": "36e9d2ebbde5e3f13ab2e25625fd453271d6522e",
+			"revisionTime": "2018-01-03T17:44:51Z"
 		},
 		{
 			"checksumSHA1": "BYvROBsiyAXK4sq6yhDe8RgT4LM=",

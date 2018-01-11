@@ -18,7 +18,7 @@ import (
 
 var (
 	ConfigSchedulerInterval = 300
-	ValidSchemes            = []string{"file", "http", "https", "s3", "S3"}
+	ValidSchemes            = []string{"blob", "file", "http", "https", "s3", "S3"}
 )
 
 // butlerHeader and butlerFooter represent the strings that need to be matched
@@ -77,7 +77,7 @@ func (c *ConfigClient) Get(val string) (*methods.Response, error) {
 		err      error
 	)
 	switch c.Scheme {
-	case "file", "http", "https", "s3", "S3":
+	case "blob", "file", "http", "https", "s3", "S3":
 		response, err = c.Method.Get(val)
 	default:
 		response = &methods.Response{}
@@ -181,9 +181,7 @@ func (c *ConfigSettings) ParseConfig(config []byte) error {
 	// Let's get the path arrays dialed in
 	for _, m := range c.Managers {
 		for _, u := range m.Repos {
-			log.Debugf("ConfigSettings::ParseConfig(): url=%#v", u)
 			opts := fmt.Sprintf("%s.%s", m.Name, u)
-			log.Debugf("ConfigSettings::ParseConfig(): ManagerOpts=%#v", m.ManagerOpts[opts])
 			baseRemotePath := fmt.Sprintf("%s://%s%s", m.ManagerOpts[opts].Method, u, m.ManagerOpts[opts].RepoPath)
 			for _, f := range m.ManagerOpts[opts].PrimaryConfig {
 				fullRemotePath := fmt.Sprintf("%s/%s", baseRemotePath, f)

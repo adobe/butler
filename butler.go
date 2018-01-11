@@ -160,8 +160,6 @@ func main() {
 	bc.SetScheme(scheme)
 	bc.SetPath(path)
 
-	log.Debugf("main(): scheme=%#v path=%#v bc=%#v", scheme, path, bc)
-
 	switch scheme {
 	case "http", "https":
 		// Set the HTTP Timeout
@@ -204,6 +202,8 @@ func main() {
 		log.Debugf("main(): setting file path=%v", newPath)
 		// stegen gotta figure out what is up here!
 		bc.SetPath(newPath)
+	case "blob":
+		os.Setenv("BUTLER_STORAGE_ACCOUNT", strings.Split(path, "/")[0])
 	}
 
 	// Set the butler configuration retrieval interval

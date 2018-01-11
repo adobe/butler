@@ -178,6 +178,7 @@ func (bc *ButlerConfig) Init() error {
 	}
 	client.Method = method
 
+	// stegen
 	switch bc.Scheme {
 	case "http", "https":
 		if bc.Url == "" {
@@ -210,11 +211,15 @@ func (bc *ButlerConfig) Init() error {
 		if err != nil {
 			return err
 		}
+	case "blob":
+		pathSplit := strings.Split(bc.Path, "/")
+		account := strings.Split(bc.Path, "/")[0]
+		//path := fmt.Sprintf("/%s", strings.Join(pathSplit[1:], "/"))
+		path := fmt.Sprintf("%s", strings.Join(pathSplit[1:], "/"))
+		client.Method, err = methods.NewBlobMethodWithAccount(account)
+		bc.Url = path
 	}
 	bc.Client = client
-	log.Debugf("Config::Init(): client=%#v", client)
-	log.Debugf("Config::Init(): bc.Client=%#v", bc.Client)
-
 	bc.Config = NewConfigSettings()
 
 	log.Debugf("Config::Init(): butler config initialized.")

@@ -179,19 +179,20 @@ There are 4 options that can be configured under the Repository Handler configur
 1. additional-config
 
 ### method
-The `method` option defines what method to use for the retrieval of configuration files. Currently this option is only file, http/https, and S3. In the future there will be added support for the following formats: blob (Azure Blob Storage)
+The `method` option defines what method to use for the retrieval of configuration files. Currently this option is only blob, file, http/https, and S3.
 
 #### Default Value
 None
 
 #### Example
+1. `method = "blob"`
+1. `method = "file"`
 1. `method = "http"`
 1. `method = "https"`
 1. `method = "S3"`
-1. `method = "file"`
 
 ### repo-path
-The `repo-path` option is the URI path to the configuration file on the local or remote filesystem. It should not be a relative path, and should not include any host information. In case of S3 this will be relative the folder names defined under `repos` and can be left blank.
+The `repo-path` option is the URI path to the configuration file on the local or remote filesystem. It should not be a relative path, and should not include any host information. In case of S3 this will be relative the folder names defined under `repos` and can be left blank. In the case of blob, the repo-path can be set to the storage account name.
 
 #### Default Value
 None
@@ -354,4 +355,30 @@ Here is an example:
     ...
     [a.repo1.domain.com.file]
       path = "/our/path/to/configs"
+```
+
+### Blob Retrieval Options
+The blob retrieval option only has one option that can be used. If you use this option, then you are do not have to set the BUTLER_STORAGE_ACCOUNT environment variable.
+
+1. storage-account-name
+
+#### storage-account-name
+The `storage-account-name` option is name of the Azure Storage Account
+
+Here is an example:
+
+```
+[globals]
+  config-managers = ["a", "b"]
+...
+[a]
+  repos = "repo1.domain.com", "repo2.domain.com"]
+  ...
+  [a.repo1.domain.com]
+    method = "blob"
+    repo-path = "azurestoragecontainer"
+    ...
+    [a.repo1.domain.com.blob]
+      # Alternatively to this you can et 
+      storage-account-name = "blobstorageaccountname"
 ```

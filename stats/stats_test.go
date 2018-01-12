@@ -3,10 +3,10 @@ package stats
 import (
 	"time"
 
+	"github.com/prometheus/client_model/go"
+	log "github.com/sirupsen/logrus"
 	. "gopkg.in/check.v1"
 	"testing"
-	log "github.com/sirupsen/logrus"
-	"github.com/prometheus/client_model/go"
 )
 
 func Test(t *testing.T) { TestingT(t) }

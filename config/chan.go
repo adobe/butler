@@ -21,6 +21,9 @@ type ChanEvent interface {
 	CopyAdditionalConfigFiles(string) bool
 }
 
+// ConfigChanEvent is the object passed around in the channel which contains
+// information on whether the file has changed, the path to the tempfile,
+// the config name, and repository event information
 type ConfigChanEvent struct {
 	HasChanged bool
 	TmpFile    *os.File
@@ -28,6 +31,9 @@ type ConfigChanEvent struct {
 	Repo       map[string]*RepoFileEvent
 }
 
+// CanCopyFiles returns a boolean which tells whether or not butler is able to
+// copy the files from the repository to the local filesystem. The assumption
+// is that ALL files have to pass before butler attempts to copy over.
 func (c *ConfigChanEvent) CanCopyFiles() bool {
 	var (
 		res bool
@@ -46,6 +52,9 @@ func (c *ConfigChanEvent) CanCopyFiles() bool {
 	return res
 }
 
+// CleanTmpFiles returns an error, or not, depending on whether butler was able
+// to delete all the tempfiles that were created during the config file
+// retrieval from the remote repository
 func (c *ConfigChanEvent) CleanTmpFiles() error {
 	log.Debugf("ConfigChanEvent::CleanTmpFiles(): cleaning up temporary files")
 	for _, r := range c.Repo {
@@ -61,6 +70,9 @@ func (c *ConfigChanEvent) CleanTmpFiles() error {
 	return nil
 }
 
+// GetTmpFileMap returns a slice of SORTED TmpFile objects which contain the
+// names of all the temp files creted during the config file retrieval from the
+// remote repository.
 func (c *ConfigChanEvent) GetTmpFileMap() []TmpFile {
 	var (
 		keys   []string
@@ -88,6 +100,7 @@ func (c *ConfigChanEvent) GetTmpFileMap() []TmpFile {
 	return res
 }
 
+// SetSuccess sets the value for the file argument in the repo argument to true
 func (c *ConfigChanEvent) SetSuccess(repo string, file string, err error) error {
 	// If c.Repo has not been initialized, do so.
 	if c.Repo == nil {
@@ -104,6 +117,7 @@ func (c *ConfigChanEvent) SetSuccess(repo string, file string, err error) error 
 	return nil
 }
 
+// SetFailure sets the value for the file argument in the repo argument to false
 func (c *ConfigChanEvent) SetFailure(repo string, file string, err error) error {
 	// If c.Repo has not been initialized, do so.
 	if c.Repo == nil {

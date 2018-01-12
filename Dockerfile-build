@@ -1,5 +1,5 @@
 FROM golang:1.8.1-alpine
-LABEL maintaner="Stegen Smith <matthsmi@adobe.com>
+LABEL maintaner="Stegen Smith <matthsmi@adobe.com>"
 
 ### required to build
 RUN mkdir -p /root/butler/stats /root/butler/config /root/butler/config/methods /root/butler/config/reloaders /root/butler/environment

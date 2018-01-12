@@ -1,5 +1,5 @@
 FROM golang:1.8.1-alpine
-LABEL maintaner="Stegen Smith <matthsmi@adobe.com>
+LABEL maintaner="Stegen Smith <matthsmi@adobe.com>"
 
 ### required for test
 COPY ./files/doit.sh /doit.sh

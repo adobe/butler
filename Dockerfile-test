@@ -17,6 +17,6 @@ COPY ./environment/*.go /root/butler/environment
 COPY ./vendor /root/butler/vendor
 ### required to build
 
-RUN apk update && apk add bash git
+RUN apk update && apk add bash git && apk add ca-certificates
 
 CMD ["/doit.sh"]

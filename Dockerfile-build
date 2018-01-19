@@ -13,6 +13,6 @@ COPY ./environment/*.go /root/butler/environment
 COPY ./vendor /root/butler/vendor
 ### required to build
 
-RUN apk update && apk add bash
+RUN apk update && apk add bash && apk add ca-certificates
 
 RUN /root/build.sh

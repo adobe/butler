@@ -17,7 +17,7 @@ type ChanEvent interface {
 	GetTmpFileMap() []TmpFile
 	SetSuccess(string, string, error) error
 	SetTmpFile(string, string, string) error
-	CopyPrimaryConfigFiles() bool
+	CopyPrimaryConfigFiles(map[string]*ManagerOpts) bool
 	CopyAdditionalConfigFiles(string) bool
 }
 
@@ -141,8 +141,18 @@ func (c *ConfigChanEvent) SetTmpFile(repo string, file string, tmpfile string) e
 	return nil
 }
 
-func (c *ConfigChanEvent) CopyPrimaryConfigFiles() bool {
-	log.Debugf("Manager::CopyPrimaryConfigFiles(): entering")
+func (c *ConfigChanEvent) CopyPrimaryConfigFiles(opts map[string]*ManagerOpts) bool {
+	var (
+		primaryConfigs []string
+	)
+
+	// need to get a list of the primary config files, in order from first to last, through each repo
+	for _, opt := range opts {
+		for _, config := range opt.PrimaryConfig {
+			primaryConfigs = append(primaryConfigs, config)
+		}
+	}
+
 	out, err := os.OpenFile(c.TmpFile.Name(), os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
 		log.Infof("ConfigChanEvent::CopyPrimaryConfigFiles(): Could not process and merge new %s err=%s.", c.ConfigFile, err.Error())
@@ -150,24 +160,30 @@ func (c *ConfigChanEvent) CopyPrimaryConfigFiles() bool {
 		c.CleanTmpFiles()
 		return false
 	} else {
-		for _, f := range c.GetTmpFileMap() {
-			in, err := os.Open(f.File)
-			if err != nil {
-				log.Infof("ConfigChanEvent::CopyPrimaryConfigFiles(): Could not process and merge new %s err=%s.", c.ConfigFile, err.Error())
-				stats.SetButlerConfigVal(stats.FAILURE, "local", stats.GetStatsLabel(f.Name))
-				c.CleanTmpFiles()
-				out.Close()
-				return false
+		// we need to go through each fo the primary config files in order, and then find the corresponding tmpMap entry
+		for _, f := range primaryConfigs {
+			for _, t := range c.GetTmpFileMap() {
+				if t.Name == f {
+					in, err := os.Open(t.File)
+					if err != nil {
+						log.Infof("ConfigChanEvent::CopyPrimaryConfigFiles(): Could not process and merge new %s err=%s.", c.ConfigFile, err.Error())
+						stats.SetButlerConfigVal(stats.FAILURE, "local", stats.GetStatsLabel(t.Name))
+						c.CleanTmpFiles()
+						out.Close()
+						return false
+					}
+					_, err = io.Copy(out, in)
+					if err != nil {
+						log.Infof("ConfigChanEvent::CopyPrimaryConfigFiles(): Could not process and merge new %s err=%s.", c.ConfigFile, err.Error())
+						stats.SetButlerConfigVal(stats.FAILURE, "local", stats.GetStatsLabel(t.Name))
+						c.CleanTmpFiles()
+						out.Close()
+						return false
+					}
+					in.Close()
+					break
+				}
 			}
-			_, err = io.Copy(out, in)
-			if err != nil {
-				log.Infof("ConfigChanEvent::CopyPrimaryConfigFiles(): Could not process and merge new %s err=%s.", c.ConfigFile, err.Error())
-				stats.SetButlerConfigVal(stats.FAILURE, "local", stats.GetStatsLabel(f.Name))
-				c.CleanTmpFiles()
-				out.Close()
-				return false
-			}
-			in.Close()
 		}
 	}
 	out.Close()

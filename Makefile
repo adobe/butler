@@ -9,7 +9,8 @@ pkgs=$(shell $(GO) list ./... | egrep -v "(vendor)")
 
 export ARTIFACTORY_USER=$(shell echo "$$ARTIFACTORY_USER")
 export ARTIFACTORY_REPO=butler
-export ARTIFACTORY_VERSION=1.1.0
+export ARTIFACTORY_VERSION=1.1.1
+export VERSION=v$(ARTIFACTORY_VERSION)
 export ARTIFACTORY_PROD_HOST=docker-ethos-core-univ-release.dr-uw2.adobeitc.com
 export ARTIFACTORY_DEV_HOST=docker-ethos-core-univ-dev.dr-uw2.adobeitc.com
 
@@ -19,7 +20,7 @@ ci: build
 	@echo "Success"
 
 build:
-	@docker build -t $(BUILDER_TAG) -f Dockerfile-build .
+	@docker build --build-arg VERSION=$(VERSION) -t $(BUILDER_TAG) -f Dockerfile-build .
 	@docker run -v m2:/root/.m2 -v `pwd`:/build $(BUILDER_TAG) cp /root/butler/butler /build
 	@docker build -t $(IMAGE_TAG) .
 
@@ -33,7 +34,7 @@ post-deploy-build:
 	@echo "Nothing is defined in post-deploy-build step"
 
 test:
-	@docker build -t $(TESTER_TAG) -f Dockerfile-test .
+	@docker build --build-arg VERSION=$(VERSION) -t $(TESTER_TAG) -f Dockerfile-test .
 	@docker run -i $(TESTER_TAG)
 
 enter-test:
@@ -43,7 +44,7 @@ test-local:
 	@go test $(pkgs) -check.vv -v
 
 build-$(ARTIFACTORY_REPO):
-	@docker build -t $(ARTIFACTORY_REPO):$(ARTIFACTORY_VERSION) .
+	@docker build --build-arg VERSION=$(VERSIO) -t $(ARTIFACTORY_REPO):$(ARTIFACTORY_VERSION) .
 
 push-$(ARTIFACTORY_REPO)-release: DOCKER_IMAGE_ID = $(shell docker images -q $(ARTIFACTORY_REPO):$(ARTIFACTORY_VERSION))
 push-$(ARTIFACTORY_REPO)-release: build-$(ARTIFACTORY_REPO)
@@ -85,7 +86,7 @@ help:
 	@printf "make alertmanager-logs\t\tTail the logs of the test prometheus instance.\n"
 
 run:
-	$(GO) run butler.go -config.path http://localhost/butler/config/butler.toml -config.retrieve-interval 10 -log.level debug
+	$(GO) run -ldflags "-X main.version=$(VERSION)" butler.go -config.path http://localhost/butler/config/butler.toml -config.retrieve-interval 10 -log.level debug
 
 start-prometheus:
 	@docker run --rm -it --name=prometheus -d -p 9090:9090 -v /opt/prometheus:/etc/prometheus prom/prometheus -config.file=/etc/prometheus/prometheus.yml -storage.local.path=/prometheus -storage.local.memory-chunks=104857

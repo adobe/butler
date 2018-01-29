@@ -304,12 +304,6 @@
 			"revisionTime": "2017-05-05T08:58:37Z"
 		},
 		{
-			"checksumSHA1": "OjjL/hCz0GDh/c0U0w+c8glE7OE=",
-			"path": "github.com/hoisie/mustache",
-			"revision": "6375acf62c69d9d3ad20fd0599d82ca94ea12284",
-			"revisionTime": "2016-08-04T23:50:33Z"
-		},
-		{
 			"checksumSHA1": "Epx/Fewr0QrXZRdg26+97oIoV2k=",
 			"path": "github.com/jasonlvhit/gocron",
 			"revision": "42a5804d37aa0b9239b265e894a16b8edbf52d54",
@@ -345,6 +339,12 @@
 			"path": "github.com/mitchellh/mapstructure",
 			"revision": "d0303fe809921458f417bcf828397a65db30a7e4",
 			"revisionTime": "2017-05-23T03:00:23Z"
+		},
+		{
+			"checksumSHA1": "fJHNYBdN9KSIqks8Hebp4ChPhDo=",
+			"path": "github.com/mslocrian/mustache",
+			"revision": "0ba5e8ce9e20a8f11660cfcea72d82f7e28bab84",
+			"revisionTime": "2018-01-26T17:03:04Z"
 		},
 		{
 			"checksumSHA1": "zZg0J0MqvnqXVYo644QDvnUinrc=",

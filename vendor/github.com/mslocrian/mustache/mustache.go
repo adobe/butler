@@ -347,7 +347,6 @@ func lookup(contextChain []interface{}, name string) reflect.Value {
     // dot notation
     if name != "." && strings.Contains(name, ".") {
         parts := strings.SplitN(name, ".", 2)
-        
         v := lookup(contextChain, parts[0])
         return lookup([]interface{}{v}, parts[1])
     }
@@ -494,7 +493,9 @@ func renderElement(element interface{}, contextChain []interface{}, buf io.Write
                 s := fmt.Sprint(val.Interface())
                 template.HTMLEscape(buf, []byte(s))
             }
-        }
+        } else {
+            fmt.Fprintf(buf, fmt.Sprintf("{{ %s }}", elem.name))
+    }
     case *sectionElement:
         renderSection(elem, contextChain, buf)
     case *Template:

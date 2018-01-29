@@ -16,7 +16,9 @@ import (
 	"git.corp.adobe.com/TechOps-IAO/butler/stats"
 
 	"github.com/hashicorp/go-retryablehttp"
-	"github.com/hoisie/mustache"
+	// until i get my pr merged
+	//"github.com/hoisie/mustache"
+	"github.com/mslocrian/mustache"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/udhos/equalfile"

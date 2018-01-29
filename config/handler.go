@@ -348,7 +348,7 @@ func (bc *ButlerConfig) RunCMHandler() error {
 
 		if PrimaryChan.CanCopyFiles() && AdditionalChan.CanCopyFiles() {
 			log.Debugf("Config::RunCMHandler(): successfully retrieved files. processing...")
-			p := PrimaryChan.CopyPrimaryConfigFiles()
+			p := PrimaryChan.CopyPrimaryConfigFiles(m.ManagerOpts)
 			a := AdditionalChan.CopyAdditionalConfigFiles(m.DestPath)
 			if p || a {
 				ReloadManager = append(ReloadManager, m.Name)
@@ -384,7 +384,7 @@ func (bc *ButlerConfig) RunCMHandler() error {
 					}
 					stats.SetButlerReloadVal(stats.FAILURE, m.Name)
 					if m.EnableCache {
-						RestoreCachedConfigs(m.Name, bc.Config.GetAllConfigLocalPaths())
+						RestoreCachedConfigs(m.Name, bc.Config.GetAllConfigLocalPaths(), m.CleanFiles)
 					}
 				} else {
 					err := SetManagerStatus(bc.GetStatusFile(), m.Name, true)
@@ -412,7 +412,7 @@ func (bc *ButlerConfig) RunCMHandler() error {
 				}
 				stats.SetButlerReloadVal(stats.FAILURE, m)
 				if mgr.EnableCache {
-					RestoreCachedConfigs(m, bc.Config.GetAllConfigLocalPaths())
+					RestoreCachedConfigs(m, bc.Config.GetAllConfigLocalPaths(), mgr.CleanFiles)
 				}
 			} else {
 				err := SetManagerStatus(bc.GetStatusFile(), m, true)

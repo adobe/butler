@@ -246,21 +246,23 @@ func CacheConfigs(manager string, files []string) error {
 // the config directory and a slice of config file names
 // and restores those files from the cache back to the
 // filesystem. It returns an error on the event of an error
-func RestoreCachedConfigs(manager string, files []string) error {
+func RestoreCachedConfigs(manager string, files []string, cleanFiles bool) error {
 	// If we do not have a good configuration cache, then there's nothing for us to do.
 	if ConfigCache == nil {
-		log.Infof("RestoreCachedConfigFs(): No current known good configurations in cache. Cleaning configuration...")
-		for _, file := range files {
-			log.Infof("RestoreCachedConfigs(): Removing bad Prometheus configuration file %s.", file)
-			os.Remove(file)
+		if cleanFiles {
+			log.Infof("RestoreCachedConfigs(): No current known good configurations in cache. Cleaning configuration...")
+			for _, file := range files {
+				log.Infof("RestoreCachedConfigs(): Removing bad %s configuration file %s.", manager, file)
+				os.Remove(file)
+			}
+			log.Infof("RestoreCachedConfigs(): Done cleaning broken configuration. Returning...")
 		}
-		log.Infof("RestoreCachedConfigs(): Done cleaning broken configuration. Returning...")
 		stats.SetButlerKnownGoodCachedVal(stats.FAILURE, manager)
 		stats.SetButlerKnownGoodRestoredVal(stats.FAILURE, manager)
 		return nil
 	}
 
-	log.Infof("RestoreCachedConfigs(): Restoring known good Prometheus configurations from cache.")
+	log.Infof("RestoreCachedConfigs(): Restoring known good configurations from cache.")
 	for _, file := range files {
 		fileData := ConfigCache[manager][file]
 
@@ -279,7 +281,7 @@ func RestoreCachedConfigs(manager string, files []string) error {
 			}
 		}
 	}
-	log.Infof("RestoreCachedConfigs(): Done restoring known good Prometheus configurations from cache.")
+	log.Infof("RestoreCachedConfigs(): Done restoring known good configurations from cache.")
 	stats.SetButlerKnownGoodCachedVal(stats.FAILURE, manager)
 	stats.SetButlerKnownGoodRestoredVal(stats.SUCCESS, manager)
 	return nil

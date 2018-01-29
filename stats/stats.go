@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
-	log "github.com/sirupsen/logrus"
+	//log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -108,7 +108,6 @@ func SetButlerRenderVal(res float64, repo string, file string) {
 	}
 	statsMutex.Unlock()
 
-	log.Infof("SetButlerRenderVal(): res=%v, repo=%v, file=%v", res, repo, file)
 	if res == SUCCESS {
 		ButlerRenderSuccess.With(prometheus.Labels{"config_file": file, "repo": repo}).Set(SUCCESS)
 		ButlerRenderTime.With(prometheus.Labels{"config_file": file, "repo": repo}).SetToCurrentTime()

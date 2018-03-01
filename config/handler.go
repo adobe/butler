@@ -170,6 +170,7 @@ func (bc *ButlerConfig) Init() error {
 			return err
 		}
 	}
+	log.Warnf("ButlerConfig::Init() Above \"NewHttpMethod(): could not convert\" warnings may be safely disregarded.")
 
 	client, err := NewConfigClient(bc.Scheme)
 	if err != nil {

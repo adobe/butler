@@ -31,22 +31,22 @@ func NewHttpReloader(manager string, method string, entry []byte) (Reloader, err
 
 	newTimeout, _ := strconv.Atoi(environment.GetVar(opts.Timeout))
 	if newTimeout == 0 {
-		log.Warnf("NewHttpReloader(): could not convert %v to integer for timeout, defaulting to 0. This is probably undesired", opts.Timeout)
+		log.Warnf("NewHttpReloader(): could not convert %v to integer for timeout, defaulting to 0. This is probably undesired.", opts.Timeout)
 	}
 
 	newRetries, _ := strconv.Atoi(environment.GetVar(opts.Retries))
 	if newRetries == 0 {
-		log.Warnf("NewHttpReloader(): could not convert %v to integer for retries, defaulting to 0. This is probably undesired", opts.Retries)
+		log.Warnf("NewHttpReloader(): could not convert %v to integer for retries, defaulting to 0. This is probably undesired.", opts.Retries)
 	}
 
 	newRetryWaitMax, _ := strconv.Atoi(environment.GetVar(opts.RetryWaitMax))
 	if newRetryWaitMax == 0 {
-		log.Warnf("NewHttpReloader(): could not convert %v to integer for retry-wait-max, defaulting to 0. This is probably undesired", opts.RetryWaitMax)
+		log.Warnf("NewHttpReloader(): could not convert %v to integer for retry-wait-max, defaulting to 0. This is probably undesired.", opts.RetryWaitMax)
 	}
 
 	newRetryWaitMin, _ := strconv.Atoi(environment.GetVar(opts.RetryWaitMin))
 	if newRetryWaitMin == 0 {
-		log.Warnf("NewHttpReloader(): could not convert %v to integer for retry-wait-min, defaulting to 0. This is probably undesired", opts.RetryWaitMin)
+		log.Warnf("NewHttpReloader(): could not convert %v to integer for retry-wait-min, defaulting to 0. This is probably undesired.", opts.RetryWaitMin)
 	}
 
 	opts.Client = retryablehttp.NewClient()
@@ -112,7 +112,7 @@ func (h HttpReloader) Reload() error {
 	c.CheckRetry = h.ReloaderRetryPolicy
 	newPort, _ := strconv.Atoi(environment.GetVar(o.Port))
 	if newPort == 0 {
-		log.Warnf("HttpReloader::Reload(): could not convert %v to integer for port, defaulting to 0. This is probably undesired", o.Port)
+		log.Warnf("HttpReloader::Reload(): could not convert %v to integer for port, defaulting to 0. This is probably undesired.", o.Port)
 	}
 	reloadUrl := fmt.Sprintf("%s://%s:%d%s", h.Method, o.Host, newPort, o.Uri)
 

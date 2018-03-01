@@ -49,8 +49,13 @@ type ManagerOpts struct {
 }
 
 func (bm *Manager) Reload() error {
-	log.Debugf("Manager::Reload(): reloading...")
-	return bm.Reloader.Reload()
+	log.Debugf("Manager::Reload(): reloading %s manager...", bm.Name)
+	if bm.Reloader == nil {
+		log.Warnf("Manager::Reload(): No reloader defined for %s manager. Moving on...", bm.Name)
+		return nil
+	} else {
+		return bm.Reloader.Reload()
+	}
 }
 
 func (bm *Manager) DownloadPrimaryConfigFiles(c chan ChanEvent) error {

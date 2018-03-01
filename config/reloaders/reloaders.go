@@ -2,6 +2,7 @@ package reloaders
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	log "github.com/sirupsen/logrus"
@@ -31,6 +32,11 @@ func New(entry string) (Reloader, error) {
 		return NewGenericReloader(entry, "error", []byte(entry))
 	}
 
+	// No reloader has been defined. We'll assume that is OK
+	// but will let the upstream know and they can handle it
+	if result == nil {
+		return NewGenericReloaderWithCustomError(entry, "error", errors.New("no reloader has been defined"))
+	}
 	method := result["method"].(string)
 	jsonRes, err := json.Marshal(result[method])
 	if err != nil {

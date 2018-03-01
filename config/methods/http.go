@@ -30,22 +30,22 @@ func NewHttpMethod(manager *string, entry *string) (Method, error) {
 
 	newTimeout, _ := strconv.Atoi(environment.GetVar(result.Timeout))
 	if newTimeout == 0 {
-		log.Warnf("NewHttpMethod(): could not convert %v to integer for timeout, defaulting to 0. This is probaby undesired", result.Timeout)
+		log.Warnf("NewHttpMethod(): could not convert %v to integer for timeout, defaulting to 0. This is probably undesired.", result.Timeout)
 	}
 
 	newRetries, _ := strconv.Atoi(environment.GetVar(result.Retries))
 	if newRetries == 0 {
-		log.Warnf("NewHttpMethod(): could not convert %v to integer for retries, defaulting to 0. This is probaby undesired", result.Retries)
+		log.Warnf("NewHttpMethod(): could not convert %v to integer for retries, defaulting to 0. This is probably undesired.", result.Retries)
 	}
 
 	newRetryWaitMax, _ := strconv.Atoi(environment.GetVar(result.RetryWaitMax))
 	if newRetryWaitMax == 0 {
-		log.Warnf("NewHttpMethod(): could not convert %v to integer for retry-wait-max, defaulting to 0. This is probaby undesired", result.RetryWaitMax)
+		log.Warnf("NewHttpMethod(): could not convert %v to integer for retry-wait-max, defaulting to 0. This is probably undesired.", result.RetryWaitMax)
 	}
 
 	newRetryWaitMin, _ := strconv.Atoi(environment.GetVar(result.RetryWaitMin))
 	if newRetryWaitMin == 0 {
-		log.Warnf("NewHttpMethod(): could not convert %v to integer for retry-wait-min, defaulting to 0. This is probaby undesired", result.RetryWaitMin)
+		log.Warnf("NewHttpMethod(): could not convert %v to integer for retry-wait-min, defaulting to 0. This is probably undesired.", result.RetryWaitMin)
 	}
 
 	result.Client = retryablehttp.NewClient()

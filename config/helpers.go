@@ -531,12 +531,16 @@ func GetConfigManager(entry string, bc *ConfigSettings) error {
 
 	reloader, err := reloaders.New(entry)
 	if err != nil {
-		return err
+		log.Warnf("helpers.GetConfigManager(): No reloader has been defined for the \"%s\" manager.", entry)
+		reloader = nil
+		// If we've got no reloader for this manager, then there is no need to cache
+		log.Debugf("helpers.GetConfigManager(): No reloader defined for \"%s\" manager. Setting EnableCache to false", entry)
+		Mgr.EnableCache = false
 	}
 
 	Mgr.MustacheSubs, err = ParseMustacheSubs(Mgr.MustacheSubsArray)
 	if err != nil {
-		log.Debugf("GetConfigManager(): could not get mustache subs. err=%s", err.Error())
+		log.Debugf("helpers.GetConfigManager(): could not get mustache subs. err=%s", err.Error())
 		return err
 	}
 	m := bc.Managers[entry]

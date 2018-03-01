@@ -8,6 +8,10 @@ func NewGenericReloader(manager string, method string, entry []byte) (Reloader, 
 	return GenericReloader{}, errors.New("Generic reloader is not very useful")
 }
 
+func NewGenericReloaderWithCustomError(manager string, method string, err error) (Reloader, error) {
+	return GenericReloader{}, err
+}
+
 type GenericReloader struct {
 	Opts GenericReloaderOpts
 }

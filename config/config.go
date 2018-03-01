@@ -124,7 +124,7 @@ func (c *ConfigSettings) ParseConfig(config []byte) error {
 
 	envSchedulerInterval, _ := strconv.Atoi(environment.GetVar(Config.Globals.CfgSchedulerInterval))
 	if envSchedulerInterval == 0 {
-		log.Warnf("ConfigSettings::ParseConfig() could not convert %v to integer for scheduler-interval, defaulting to 0. This is probably undesired", Config.Globals.CfgSchedulerInterval)
+		log.Warnf("ConfigSettings::ParseConfig() could not convert %v to integer for scheduler-interval, defaulting to 0. This is probably undesired.", Config.Globals.CfgSchedulerInterval)
 		Config.Globals.SchedulerInterval = ConfigSchedulerInterval
 	} else {
 		Config.Globals.SchedulerInterval = envSchedulerInterval

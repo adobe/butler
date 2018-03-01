@@ -134,8 +134,25 @@ func (h HttpReloader) Reload() error {
 			// at this point we should raise an error
 			return errors.New(msg)
 		}
+	case "get":
+		log.Debugf("HttpReloader::Reload(): getting up!")
+		resp, err := c.Get(reloadUrl)
+		if err != nil {
+			msg := fmt.Sprintf("HttpReloader::Reload(): err=%v", err.Error())
+			log.Errorf(msg)
+			return errors.New(msg)
+		}
+		if resp.StatusCode == 200 {
+			log.Infof("HttpReloader::Reload(): successfully reloaded config. http_code=%d", int(resp.StatusCode))
+			// at this point error should be nil, so things are OK
+		} else {
+			msg := fmt.Sprintf("HttpReloader::Reload(): received bad response from server. reverting to last known good config. http_code=%d", int(resp.StatusCode))
+			log.Errorf(msg)
+			// at this point we should raise an error
+			return errors.New(msg)
+		}
 	default:
-		msg := fmt.Sprintf("HttpReloader::Reload(): %s is not a supported reload method", h.Method)
+		msg := fmt.Sprintf("HttpReloader::Reload(): \"%s\" is not a supported reload method", o.Method)
 		return errors.New(msg)
 	}
 

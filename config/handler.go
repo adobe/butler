@@ -377,7 +377,9 @@ func (bc *ButlerConfig) RunCMHandler() error {
 			if !GetManagerStatus(bc.GetStatusFile(), m.Name) {
 				log.Debugf("Config::RunCMHandler(): Could not find manager status. Going to reload to get in sync.")
 				err := m.Reload()
-				log.Debugf("Config::RunCMHandler(): err=%#v", err)
+				if err != nil {
+					log.Errorf("Config::RunCMHandler(): err=%#v", err)
+				}
 				if err != nil {
 					err := SetManagerStatus(bc.GetStatusFile(), m.Name, false)
 					if err != nil {

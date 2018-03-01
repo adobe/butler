@@ -3,7 +3,7 @@ package config
 import (
 	"bufio"
 	"bytes"
-	"encoding/json"
+	//"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -17,6 +17,7 @@ import (
 	"git.corp.adobe.com/TechOps-IAO/butler/environment"
 	"git.corp.adobe.com/TechOps-IAO/butler/stats"
 
+	"github.com/Jeffail/gabs"
 	"github.com/hashicorp/go-retryablehttp"
 	// until i get my pr merged
 	//"github.com/hoisie/mustache"
@@ -154,7 +155,7 @@ func runJsonValidate(f *bytes.Reader) error {
 	var (
 		err  error
 		data []byte
-		v    interface{}
+		//v    interface{}
 	)
 
 	data, err = ioutil.ReadAll(f)
@@ -163,7 +164,7 @@ func runJsonValidate(f *bytes.Reader) error {
 		return errors.New(msg)
 	}
 
-	err = json.Unmarshal(data, v)
+	_, err = gabs.ParseJSON(data)
 	if err != nil {
 		msg := fmt.Sprintf("could not Unmarshal json data into interface. err=%v", err.Error())
 		return errors.New(msg)
@@ -190,7 +191,7 @@ func runYamlValidate(f *bytes.Reader) error {
 		return errors.New(msg)
 	}
 
-	err = runTextValidate(f)
+	err = runTextValidate(bytes.NewReader(data))
 	if err != nil {
 		msg := fmt.Sprintf("could not verify butler header/footer for yaml data. err=%v", err.Error())
 		return errors.New(msg)
@@ -210,7 +211,7 @@ func getFileExtension(file string) string {
 	} else {
 		result = "text"
 	}
-	log.Debugf("getFileExtension(): extension type=%v", result)
+	log.Debugf("helpers.getFileExtension(): extension type=%v", result)
 	return result
 }
 
@@ -224,7 +225,7 @@ func ParseMustacheSubs(pairs []string) (map[string]string, error) {
 		p = strings.TrimSpace(p)
 		keyvalpairs := strings.Split(p, "=")
 		if len(keyvalpairs) != 2 {
-			log.Infof("ParseMustacheSubs(): invalid key value pair \"%s\"... ignoring.", keyvalpairs)
+			log.Warnf("helpers.ParseMustacheSubs(): invalid key value pair \"%s\"... ignoring.", keyvalpairs)
 			continue
 		}
 		key := strings.TrimSpace(keyvalpairs[0])

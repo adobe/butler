@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"git.corp.adobe.com/TechOps-IAO/butler/config/methods"
@@ -297,7 +298,7 @@ func GetManagerOpts(entry string, bc *ConfigSettings) (*ManagerOpts, error) {
 		return &ManagerOpts{}, err
 	}
 
-	MgrOpts.RepoPath = environment.GetVar(MgrOpts.RepoPath)
+	MgrOpts.RepoPath = filepath.Clean(environment.GetVar(MgrOpts.RepoPath))
 
 	switch MgrOpts.Method {
 	case "blob", "file", "http", "https", "s3", "S3":
@@ -308,11 +309,11 @@ func GetManagerOpts(entry string, bc *ConfigSettings) (*ManagerOpts, error) {
 	}
 
 	for i, _ := range MgrOpts.PrimaryConfig {
-		MgrOpts.PrimaryConfig[i] = environment.GetVar(MgrOpts.PrimaryConfig[i])
+		MgrOpts.PrimaryConfig[i] = filepath.Clean(environment.GetVar(MgrOpts.PrimaryConfig[i]))
 	}
 
 	for i, _ := range MgrOpts.AdditionalConfig {
-		MgrOpts.AdditionalConfig[i] = environment.GetVar(MgrOpts.AdditionalConfig[i])
+		MgrOpts.AdditionalConfig[i] = filepath.Clean(environment.GetVar(MgrOpts.AdditionalConfig[i]))
 	}
 
 	repoSplit := strings.Split(entry, ".")
@@ -375,14 +376,14 @@ func GetConfigManager(entry string, bc *ConfigSettings) error {
 		Mgr.EnableCache = false
 	}
 
-	Mgr.CachePath = environment.GetVar(Mgr.CachePath)
+	Mgr.CachePath = filepath.Clean(environment.GetVar(Mgr.CachePath))
 	if Mgr.EnableCache && Mgr.CachePath == "" {
 		msg := fmt.Sprintf("Caching Enabled but manager.cache-path is unset for manager %s", entry)
 		return errors.New(msg)
 	}
 
-	Mgr.DestPath = environment.GetVar(Mgr.DestPath)
-	Mgr.PrimaryConfigName = environment.GetVar(Mgr.PrimaryConfigName)
+	Mgr.DestPath = filepath.Clean(environment.GetVar(Mgr.DestPath))
+	Mgr.PrimaryConfigName = filepath.Clean(environment.GetVar(Mgr.PrimaryConfigName))
 	if Mgr.DestPath == "" {
 		msg := fmt.Sprintf("No dest-path configured for manager %s", entry)
 		return errors.New(msg)

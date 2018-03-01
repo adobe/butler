@@ -30,7 +30,7 @@ type Manager struct {
 	DestPath          string                  `mapstructure:"dest-path" json:"dest-path"`
 	PrimaryConfigName string                  `mapstructure:"primary-config-name" json:"primary-config-name"`
 	ManagerOpts       map[string]*ManagerOpts `json:"opts"`
-	Reloader          reloaders.Reloader      `mapstructure:"-" json:"reloader"`
+	Reloader          reloaders.Reloader      `mapstructure:"-" json:"reloader,omitempty"`
 	ReloadManager     bool                    `json:"-"`
 }
 

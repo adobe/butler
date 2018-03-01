@@ -1,10 +1,12 @@
 package methods
 
 import (
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"git.corp.adobe.com/TechOps-IAO/butler/environment"
@@ -63,6 +65,7 @@ func NewHttpMethod(manager *string, entry *string) (Method, error) {
 type HttpMethod struct {
 	Client       *retryablehttp.Client `json:"-"`
 	Manager      *string               `json:"-"`
+	Host         string                `mapstruecture:"host" json:"host,omitempty"`
 	Retries      string                `mapstructure:"retries" json:"retries"`
 	RetryWaitMax string                `mapstructure:"retry-wait-max" json:"retry-wait-max"`
 	RetryWaitMin string                `mapstructure:"retry-wait-min" json:"retry-wait-min"`
@@ -70,8 +73,24 @@ type HttpMethod struct {
 }
 
 func (h HttpMethod) Get(file string) (*Response, error) {
-	var res Response
-	r, err := h.Client.Get(file)
+	var (
+		err error
+		r   *http.Response
+		res Response
+	)
+
+	if h.Host != "" {
+		// we're going to have to do some ghetto stuff here!
+		scheme := strings.Split(file, "://")[0]
+		entry := strings.Split(file, "://")[1]
+		uriSplit := strings.Split(entry, "/")[1:]
+		uri := strings.Join(uriSplit, "/")
+		url := fmt.Sprintf("%s://%s/%s", scheme, h.Host, uri)
+		log.Debugf("HttpMethod::Get(): h.Host specified, new url=%v was=%v", url, file)
+		r, err = h.Client.Get(url)
+	} else {
+		r, err = h.Client.Get(file)
+	}
 	if err != nil {
 		return &Response{}, err
 	}

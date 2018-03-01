@@ -72,6 +72,11 @@ title = "Butler Configuration"
 
     ## These are repo specific http get options
     [prometheus.repo1.domain.com.http]
+      # This value is optional. By default butler will use the repo name as
+      # the hostname. If you set the host value, butler will use that host
+      # instead
+      host = "fqdn.domain.com"
+      # These values should be set
       retries = "env:HTTP_RETRIES"
       retry-wait-min = "5"
       retry-wait-max = "10"

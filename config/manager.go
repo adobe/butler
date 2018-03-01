@@ -44,6 +44,7 @@ type ManagerOpts struct {
 	AdditionalConfigsFullUrls       []string       `json:"-"`
 	PrimaryConfigsFullLocalPaths    []string       `json:"-"`
 	AdditionalConfigsFullLocalPaths []string       `json:"-"`
+	ContentType                     string         `mapstructure:"content-type" json:"content-type"`
 	Opts                            methods.Method `json:"opts"`
 }
 
@@ -93,12 +94,30 @@ func (bm *Manager) DownloadPrimaryConfigFiles(c chan ChanEvent) error {
 			}
 			Chan.SetTmpFile(opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i], f.Name())
 
+			// For the prometheus.yml we have to do some mustache replacement on downloaded file
+			// We are doing this before the header/footer check because YAML parsing doesn't like
+			// the mustache entries... so we shuffled this around.
+			if err := RenderConfigMustache(f, bm.MustacheSubs); err != nil {
+				log.Errorf("%s for %s.", err.Error(), u)
+				stats.SetButlerRenderVal(stats.FAILURE, opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i])
+				stats.SetButlerConfigVal(stats.FAILURE, opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i])
+				log.Debugf("Manager::DownloadPrimaryConfigFiles(): render for %s is nil.", opts.GetPrimaryRemoteConfigFiles()[i])
+				Chan.SetFailure(opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i], errors.New("could not render file"))
+				continue
+			} else {
+				// stats
+				stats.SetButlerRenderVal(stats.SUCCESS, opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i])
+				stats.SetButlerConfigVal(stats.SUCCESS, opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i])
+				Chan.SetSuccess(opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i], nil)
+			}
+
 			// Let's ensure that the files starts with #butlerstart and
 			// ends with #butlerend. If they do not, then we will assume
 			// we did not get a correct configuration, or that there is an
 			// issue with the upstream
-			if err := ValidateConfig(f); err != nil {
-				log.Infof("%s for %s.", err.Error(), u)
+			filename := opts.GetPrimaryRemoteConfigFiles()[i]
+			if err := ValidateConfig(NewValidateOpts().WithContentType(opts.ContentType).WithFileName(filename).WithData(f)); err != nil {
+				log.Errorf("%s for %s.", err.Error(), u)
 				stats.SetButlerConfigVal(stats.FAILURE, opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i])
 
 				// Set this stats global as failure here, since we aren't sure whether or not it was a parse error or
@@ -108,21 +127,6 @@ func (bm *Manager) DownloadPrimaryConfigFiles(c chan ChanEvent) error {
 				Chan.SetFailure(opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i], errors.New("could not validate file"))
 				continue
 			} else {
-				stats.SetButlerConfigVal(stats.SUCCESS, opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i])
-				Chan.SetSuccess(opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i], nil)
-			}
-
-			// For the prometheus.yml we have to do some mustache replacement on downloaded file
-			if err := RenderConfigMustache(f, bm.MustacheSubs); err != nil {
-				log.Infof("%s for %s.\n", err.Error(), u)
-				stats.SetButlerRenderVal(stats.FAILURE, opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i])
-				stats.SetButlerConfigVal(stats.FAILURE, opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i])
-				log.Debugf("Manager::DownloadPrimaryConfigFiles(): render for %s is nil.", opts.GetPrimaryRemoteConfigFiles()[i])
-				Chan.SetFailure(opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i], errors.New("could not render file"))
-				continue
-			} else {
-				// stats
-				stats.SetButlerRenderVal(stats.SUCCESS, opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i])
 				stats.SetButlerConfigVal(stats.SUCCESS, opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i])
 				Chan.SetSuccess(opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i], nil)
 			}
@@ -166,11 +170,29 @@ func (bm *Manager) DownloadAdditionalConfigFiles(c chan ChanEvent) error {
 				Chan.SetTmpFile(opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i], f.Name())
 			}
 
+			// Let's process some mustache ...
+			// NOTE: We USED to do this only for the primary configuration. Unsure how this will
+			// affect the additional configurations. we can remove this if there are adverse
+			// effects.
+			// We are doing this before the header/footer check because YAML parsing doesn't like
+			// the mustache entries... so we shuffled this around.
+			if err := RenderConfigMustache(f, bm.MustacheSubs); err != nil {
+				stats.SetButlerRenderVal(stats.FAILURE, opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i])
+				stats.SetButlerConfigVal(stats.FAILURE, opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i])
+				Chan.SetFailure(opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i], errors.New("could not render file"))
+				continue
+			} else {
+				stats.SetButlerRenderVal(stats.SUCCESS, opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i])
+				stats.SetButlerConfigVal(stats.SUCCESS, opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i])
+				Chan.SetSuccess(opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i], nil)
+			}
+
 			// Let's ensure that the files starts with #butlerstart and
 			// ends with #butlerend. IF they do not, then we will assume
 			// we did not get a correct configuration, or that there is an
 			// issue with the upstream
-			if err := ValidateConfig(f); err != nil {
+			filename := opts.GetAdditionalRemoteConfigFiles()[i]
+			if err := ValidateConfig(NewValidateOpts().WithContentType(opts.ContentType).WithFileName(filename).WithData(f)); err != nil {
 				stats.SetButlerConfigVal(stats.FAILURE, opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i])
 
 				// Set this stats global as failure here, since we aren't sure whether or not it was a parse error or
@@ -180,21 +202,6 @@ func (bm *Manager) DownloadAdditionalConfigFiles(c chan ChanEvent) error {
 				Chan.SetFailure(opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i], errors.New("could not validate file"))
 				continue
 			} else {
-				stats.SetButlerConfigVal(stats.SUCCESS, opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i])
-				Chan.SetSuccess(opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i], nil)
-			}
-
-			// Let's process some mustache ...
-			// NOTE: We USED to do this only for the primary configuration. Unsure how this will
-			// affect the additional configurations. we can remove this if there are adverse
-			// effects.
-			if err := RenderConfigMustache(f, bm.MustacheSubs); err != nil {
-				stats.SetButlerRenderVal(stats.FAILURE, opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i])
-				stats.SetButlerConfigVal(stats.FAILURE, opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i])
-				Chan.SetFailure(opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i], errors.New("could not render file"))
-				continue
-			} else {
-				stats.SetButlerRenderVal(stats.SUCCESS, opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i])
 				stats.SetButlerConfigVal(stats.SUCCESS, opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i])
 				Chan.SetSuccess(opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i], nil)
 			}
@@ -330,7 +337,7 @@ func (bmo *ManagerOpts) DownloadConfigFile(file string) *os.File {
 		if err != nil {
 			tmpFile.Close()
 			os.Remove(tmpFile.Name())
-			log.Infof("ManagerOpts::DownloadConfigFile(): Could not download from %s, err=%s", file, err.Error())
+			log.Errorf("ManagerOpts::DownloadConfigFile(): Could not download from %s, err=%s", file, err.Error())
 			tmpFile = nil
 			return tmpFile
 		}
@@ -340,7 +347,7 @@ func (bmo *ManagerOpts) DownloadConfigFile(file string) *os.File {
 		if response.GetResponseStatusCode() != 200 {
 			tmpFile.Close()
 			os.Remove(tmpFile.Name())
-			log.Infof("ManagerOpts::DownloadConfigFile(): Did not receive 200 response code for %s. code=%v", file, response.GetResponseStatusCode())
+			log.Errorf("ManagerOpts::DownloadConfigFile(): Did not receive 200 response code for %s. code=%v", file, response.GetResponseStatusCode())
 			tmpFile = nil
 			return tmpFile
 		}
@@ -349,7 +356,7 @@ func (bmo *ManagerOpts) DownloadConfigFile(file string) *os.File {
 		if err != nil {
 			tmpFile.Close()
 			os.Remove(tmpFile.Name())
-			log.Infof("ManagerOpts::DownloadConfigFile(): Could not copy to %s, err=%s", file, err.Error())
+			log.Errorf("ManagerOpts::DownloadConfigFile(): Could not copy to %s, err=%s", file, err.Error())
 			tmpFile = nil
 			return tmpFile
 		}

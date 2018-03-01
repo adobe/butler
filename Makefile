@@ -9,7 +9,7 @@ pkgs=$(shell $(GO) list ./... | egrep -v "(vendor)")
 
 export ARTIFACTORY_USER=$(shell echo "$$ARTIFACTORY_USER")
 export ARTIFACTORY_REPO=butler
-export ARTIFACTORY_VERSION=1.1.4
+export ARTIFACTORY_VERSION=1.1.5
 export VERSION=v$(ARTIFACTORY_VERSION)
 export ARTIFACTORY_PROD_HOST=docker-ethos-core-univ-release.dr-uw2.adobeitc.com
 export ARTIFACTORY_DEV_HOST=docker-ethos-core-univ-dev.dr-uw2.adobeitc.com
@@ -89,7 +89,7 @@ run:
 	$(GO) run -ldflags "-X main.version=$(VERSION)" butler.go -config.path http://localhost/butler/config/butler.toml -config.retrieve-interval 10 -log.level debug
 
 start-prometheus:
-	@docker run --rm -it --name=prometheus -d -p 9090:9090 -v /opt/prometheus:/etc/prometheus prom/prometheus -config.file=/etc/prometheus/prometheus.yml -storage.local.path=/prometheus -storage.local.memory-chunks=104857
+	@docker run --rm -it --name=prometheus -d -p 9090:9090 -v /opt/prometheus:/etc/prometheus prom/prometheus:v1.8.2 -config.file=/etc/prometheus/prometheus.yml -storage.local.path=/prometheus -storage.local.memory-chunks=104857
 
 start-alertmanager:
 	@docker run --rm -it --name=alertmanager -d -p 9093:9093 -v /opt/alertmanager:/etc/alertmanager prom/alertmanager -config.file=/etc/alertmanager/alertmanager.yml

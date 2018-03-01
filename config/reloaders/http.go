@@ -122,7 +122,7 @@ func (h HttpReloader) Reload() error {
 		resp, err := c.Post(reloadUrl, o.ContentType, strings.NewReader(o.Payload))
 		if err != nil {
 			msg := fmt.Sprintf("HttpReloader::Reload(): err=%v", err.Error())
-			log.Infof(msg)
+			log.Errorf(msg)
 			return errors.New(msg)
 		}
 		if resp.StatusCode == 200 {
@@ -130,7 +130,7 @@ func (h HttpReloader) Reload() error {
 			// at this point error should be nil, so things are OK
 		} else {
 			msg := fmt.Sprintf("HttpReloader::Reload(): received bad response from server. reverting to last known good config. http_code=%d", int(resp.StatusCode))
-			log.Infof(msg)
+			log.Errorf(msg)
 			// at this point we should raise an error
 			return errors.New(msg)
 		}

@@ -68,3 +68,28 @@ type ConfigGlobals struct {
 	CfgStatusFile        string   `mapstructure:"status-file" json:"-"`
 	StatusFile           string   `json:"status-file"`
 }
+
+type ValidateOpts struct {
+	ContentType string
+	FileName    string
+	Data        interface{}
+}
+
+func NewValidateOpts() *ValidateOpts {
+	return &ValidateOpts{ContentType: "text"}
+}
+
+func (o *ValidateOpts) WithContentType(t string) *ValidateOpts {
+	o.ContentType = t
+	return o
+}
+
+func (o *ValidateOpts) WithData(d interface{}) *ValidateOpts {
+	o.Data = d
+	return o
+}
+
+func (o *ValidateOpts) WithFileName(f string) *ValidateOpts {
+	o.FileName = f
+	return o
+}

@@ -3,6 +3,7 @@ package config
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -23,6 +24,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/udhos/equalfile"
+	"gopkg.in/yaml.v2"
 )
 
 func IsValidScheme(s string) bool {
@@ -42,9 +44,73 @@ func IsValidScheme(s string) bool {
 // file and ensures that it begins with the proper header, and ends with the
 // proper footer. If it does not begin or end with the proper header/footer,
 // then an error is returned. If the file passes the checks, a nil is returned.
-//func ValidateConfig(f *os.File) error {
-func ValidateConfig(f interface{}) error {
+//func ValidateConfig(f interface{}) error {
+func ValidateConfig(opts *ValidateOpts) error {
 	var (
+		err               error
+		file              *bytes.Reader
+		contentTypeSwitch string
+	)
+
+	log.Debugf("ValidateConfig(): checking content-type=%v FileName=%v", opts.ContentType, opts.FileName)
+	f := opts.Data
+	switch t := f.(type) {
+	case *os.File:
+		newf := f.(*os.File)
+
+		fd, err := os.Open(newf.Name())
+		if err != nil {
+			log.Errorf("ValidateConfig(): caught error on open err=%#v", err.Error())
+			return err
+		}
+		defer fd.Close()
+
+		fi, err := fd.Stat()
+		if err != nil {
+			log.Errorf("ValidateConfig(): caught error on stat err=%#v", err.Error())
+			return err
+		}
+
+		data := make([]byte, fi.Size())
+		_, err = fd.Read(data)
+		if err != nil {
+			log.Errorf("ValidateConfig(): caught error on fd.Read() err=%#v", err.Error())
+			return err
+		}
+
+		file = bytes.NewReader(data)
+	case []byte:
+		newf := f.([]byte)
+		file = bytes.NewReader(newf)
+	default:
+		return errors.New(fmt.Sprintf("ValidateConfig(): unknown file type %s for %s", t, f))
+	}
+
+	if opts.ContentType == "auto" {
+		contentTypeSwitch = getFileExtension(opts.FileName)
+	} else {
+		contentTypeSwitch = opts.ContentType
+	}
+
+	switch contentTypeSwitch {
+	case "text":
+		err = runTextValidate(file)
+	case "json":
+		err = runJsonValidate(file)
+	case "yaml":
+		err = runYamlValidate(file)
+	default:
+		err = errors.New(fmt.Sprintf("unknown content type %s", opts.ContentType))
+	}
+	if err != nil {
+		log.Errorf("ValidateConfig(): returning err=%#v for content-type=%v and FileName=%v", err, opts.ContentType, opts.FileName)
+	}
+	return err
+}
+
+func runTextValidate(f *bytes.Reader) error {
+	var (
+		//err error
 		configLine    string
 		isFirstLine   bool
 		isValidHeader bool
@@ -54,23 +120,7 @@ func ValidateConfig(f interface{}) error {
 	isFirstLine = true
 	isValidHeader = true
 	isValidFooter = true
-
-	switch t := f.(type) {
-	case *os.File:
-		newf := f.(*os.File)
-		file, err := os.Open(newf.Name())
-		if err != nil {
-			return err
-		}
-		defer file.Close()
-		scanner = bufio.NewScanner(file)
-	case []byte:
-		newf := f.([]byte)
-		file := bytes.NewReader(newf)
-		scanner = bufio.NewScanner(file)
-	default:
-		return errors.New(fmt.Sprintf("ValidateConfig(): unknown file type %s for %s", t, f))
-	}
+	scanner = bufio.NewScanner(f)
 
 	for scanner.Scan() {
 		configLine = scanner.Text()
@@ -98,6 +148,70 @@ func ValidateConfig(f interface{}) error {
 	} else {
 		return nil
 	}
+}
+
+func runJsonValidate(f *bytes.Reader) error {
+	var (
+		err  error
+		data []byte
+		v    interface{}
+	)
+
+	data, err = ioutil.ReadAll(f)
+	if err != nil {
+		msg := fmt.Sprintf("could not read data from bytes.Reader. err=%v", err.Error())
+		return errors.New(msg)
+	}
+
+	err = json.Unmarshal(data, v)
+	if err != nil {
+		msg := fmt.Sprintf("could not Unmarshal json data into interface. err=%v", err.Error())
+		return errors.New(msg)
+	}
+	return nil
+}
+
+func runYamlValidate(f *bytes.Reader) error {
+	var (
+		err  error
+		data []byte
+		v    interface{}
+	)
+
+	data, err = ioutil.ReadAll(f)
+	if err != nil {
+		msg := fmt.Sprintf("could not read data from bytes.Reader. err=%v", err.Error())
+		return errors.New(msg)
+	}
+
+	err = yaml.Unmarshal(data, &v)
+	if err != nil {
+		msg := fmt.Sprintf("could not Unmarshal yaml data into interface. err=%v", err.Error())
+		return errors.New(msg)
+	}
+
+	err = runTextValidate(f)
+	if err != nil {
+		msg := fmt.Sprintf("could not verify butler header/footer for yaml data. err=%v", err.Error())
+		return errors.New(msg)
+	}
+	return nil
+}
+
+func getFileExtension(file string) string {
+	var result string
+	file = strings.ToLower(file)
+	if strings.HasSuffix(file, "json") {
+		result = "json"
+	} else if strings.HasSuffix(file, "yaml") {
+		result = "yaml"
+	} else if strings.HasSuffix(file, "yml") {
+		result = "yaml"
+	} else {
+		result = "text"
+	}
+	log.Debugf("getFileExtension(): extension type=%v", result)
+	return result
 }
 
 func ParseMustacheSubs(pairs []string) (map[string]string, error) {
@@ -173,7 +287,7 @@ func CompareAndCopy(source string, dest string) bool {
 		err = CopyFile(source, dest)
 		if err != nil {
 			stats.SetButlerWriteVal(stats.FAILURE, stats.GetStatsLabel(dest))
-			log.Infof(err.Error())
+			log.Errorf(err.Error())
 			return false
 		}
 		stats.SetButlerWriteVal(stats.SUCCESS, stats.GetStatsLabel(dest))
@@ -222,7 +336,7 @@ func CopyFile(src string, dst string) error {
 // caches those files into memory. It returns an error
 // on the event of error
 func CacheConfigs(manager string, files []string) error {
-	log.Infof("CacheConfig(): Storing known good configurations to cache.")
+	log.Infof("helpers.CacheConfig(): Storing known good configurations to cache.")
 	if ConfigCache == nil {
 		ConfigCache = make(map[string]map[string][]byte)
 	}
@@ -230,14 +344,14 @@ func CacheConfigs(manager string, files []string) error {
 	for _, file := range files {
 		out, err := ioutil.ReadFile(file)
 		if err != nil {
-			msg := fmt.Sprintf("CacheConfig(): Could not store %s to cache. err=%s", file, err.Error())
-			log.Infof(msg)
+			msg := fmt.Sprintf("helpers.CacheConfig(): Could not store %s to cache. err=%s", file, err.Error())
+			log.Errorf(msg)
 			return errors.New(msg)
 		} else {
 			ConfigCache[manager][file] = out
 		}
 	}
-	log.Infof("CacheConfig(): Done storing known good configurations to cache")
+	log.Infof("helpers.CacheConfig(): Done storing known good configurations to cache")
 	stats.SetButlerKnownGoodCachedVal(stats.SUCCESS, manager)
 	stats.SetButlerKnownGoodRestoredVal(stats.FAILURE, manager)
 	return nil
@@ -251,38 +365,38 @@ func RestoreCachedConfigs(manager string, files []string, cleanFiles bool) error
 	// If we do not have a good configuration cache, then there's nothing for us to do.
 	if ConfigCache == nil {
 		if cleanFiles {
-			log.Infof("RestoreCachedConfigs(): No current known good configurations in cache. Cleaning configuration...")
+			log.Infof("helpers.RestoreCachedConfigs(): No current known good configurations in cache. Cleaning configuration...")
 			for _, file := range files {
-				log.Infof("RestoreCachedConfigs(): Removing bad %s configuration file %s.", manager, file)
+				log.Warnf("helpers.RestoreCachedConfigs(): Removing bad %s configuration file %s.", manager, file)
 				os.Remove(file)
 			}
-			log.Infof("RestoreCachedConfigs(): Done cleaning broken configuration. Returning...")
+			log.Infof("helpers.RestoreCachedConfigs(): Done cleaning broken configuration. Returning...")
 		}
 		stats.SetButlerKnownGoodCachedVal(stats.FAILURE, manager)
 		stats.SetButlerKnownGoodRestoredVal(stats.FAILURE, manager)
 		return nil
 	}
 
-	log.Infof("RestoreCachedConfigs(): Restoring known good configurations from cache.")
+	log.Infof("helpers.RestoreCachedConfigs(): Restoring known good configurations from cache.")
 	for _, file := range files {
 		fileData := ConfigCache[manager][file]
 
 		f, err := os.OpenFile(file, os.O_WRONLY|os.O_TRUNC, 0644)
 		if err != nil {
-			log.Infof("RestoreCachedConfigs(): Could not open %s for writing! err=%s.", file, err.Error())
+			log.Errorf("helpers.RestoreCachedConfigs(): Could not open %s for writing! err=%s.", file, err.Error())
 			continue
 		} else {
 			count, err := f.Write(fileData)
 			if err != nil {
-				log.Infof("RestoreCachedConfigs(): Could write to %s! err=%s.", file, err.Error())
+				log.Errorf("helpers.RestoreCachedConfigs(): Could write to %s! err=%s.", file, err.Error())
 				continue
 			} else {
 				f.Close()
-				log.Infof("RestoreCachedConfigs(): Wrote %d bytes for %s.", count, file)
+				log.Infof("helpers.RestoreCachedConfigs(): Wrote %d bytes for %s.", count, file)
 			}
 		}
 	}
-	log.Infof("RestoreCachedConfigs(): Done restoring known good configurations from cache.")
+	log.Infof("helpers.RestoreCachedConfigs(): Done restoring known good configurations from cache.")
 	stats.SetButlerKnownGoodCachedVal(stats.FAILURE, manager)
 	stats.SetButlerKnownGoodRestoredVal(stats.SUCCESS, manager)
 	return nil
@@ -296,6 +410,18 @@ func GetManagerOpts(entry string, bc *ConfigSettings) (*ManagerOpts, error) {
 	err = viper.UnmarshalKey(entry, &MgrOpts)
 	if err != nil {
 		return &ManagerOpts{}, err
+	}
+
+	MgrOpts.ContentType = environment.GetVar(MgrOpts.ContentType)
+	if MgrOpts.ContentType == "" {
+		MgrOpts.ContentType = "auto"
+	}
+	switch strings.ToLower(MgrOpts.ContentType) {
+	case "auto", "json", "text", "yaml":
+		MgrOpts.ContentType = strings.ToLower(MgrOpts.ContentType)
+	default:
+		msg := fmt.Sprintf("unknown manager.content-type=%v", MgrOpts.ContentType)
+		return &ManagerOpts{}, errors.New(msg)
 	}
 
 	MgrOpts.RepoPath = filepath.Clean(environment.GetVar(MgrOpts.RepoPath))

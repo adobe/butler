@@ -60,6 +60,16 @@ title = "Butler Configuration"
     ## If there are duplicates, then the last file will be taken.
     additional-config = ["alerts/commonalerts.yml", "butler/butler.yml"]
 
+    # This to specify the content type of the files that are being downloaded from the repository.
+    # If it is `auto`, then butler will attempt to determine the file extension
+    # and then apply the below rules.
+    #
+    # If it is `text`, then butler header and footer checks will happen.
+    # If it is `json`, then butler header and footer checks will not happen, but json parsing will.
+    # If it is `yaml`, then butler header and footer checks will happen, and yaml will be parsed.
+    # Default value: "auto"
+    content-type = "auto"
+
     ## These are repo specific http get options
     [prometheus.repo1.domain.com.http]
       retries = "env:HTTP_RETRIES"

@@ -235,7 +235,7 @@ func (bc *ButlerConfig) Handler() error {
 	Repo := strings.Split(bc.Url, "/")[0]
 	Config := fmt.Sprintf("/%s", strings.Join(strings.Split(bc.Url, "/")[1:], "/"))
 
-	log.Debugf("ButlerConfig::Handler(): entering.")
+	log.Infof("ButlerConfig::Handler(): entering.")
 	response, err := bc.Client.Get(bc.Url)
 
 	if err != nil {
@@ -257,7 +257,7 @@ func (bc *ButlerConfig) Handler() error {
 		return errors.New(errMsg)
 	}
 
-	err = ValidateConfig(body)
+	err = ValidateConfig(NewValidateOpts().WithData(body))
 	if err != nil {
 		stats.SetButlerContactVal(stats.FAILURE, Repo, Config)
 		return err
@@ -292,7 +292,7 @@ func (bc *ButlerConfig) Handler() error {
 			bc.RawConfig = body
 		}
 	} else {
-		log.Debugf("Config::Handler(): butler config unchanged.")
+		log.Infof("ButlerConfig::Handler(): butler config unchanged.")
 	}
 
 	// We don't want to handle the scheduler stuff on the first run. The scheduler doesn't yet exist
@@ -334,7 +334,7 @@ func (bc *ButlerConfig) RunCMHandler() error {
 	var (
 		ReloadManager []string
 	)
-	log.Debugf("Config::RunCMHandler(): entering")
+	log.Infof("Config::RunCMHandler(): entering")
 
 	c1 := make(chan ChanEvent)
 	c2 := make(chan ChanEvent)
@@ -368,7 +368,7 @@ func (bc *ButlerConfig) RunCMHandler() error {
 	}
 
 	if len(ReloadManager) == 0 {
-		log.Debugf("Config::RunCMHandler(): CM files unchanged... continuing.")
+		log.Infof("Config::RunCMHandler(): CM files unchanged... continuing.")
 		// We are going to run through the managers and ensure that the status file
 		// is in an OK state for the manager. If it is not, then we will attempt a reload
 		for _, m := range bc.GetManagers() {

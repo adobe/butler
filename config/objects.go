@@ -46,14 +46,17 @@ type ConfigSettings struct {
 	Globals  ConfigGlobals       `json:"globals"`
 }
 
-func (b *ConfigSettings) GetAllConfigLocalPaths() []string {
+func (b *ConfigSettings) GetAllConfigLocalPaths(mgr string) []string {
 	var result []string
-	for _, m := range b.Managers {
-		result = append(result, fmt.Sprintf("%s/%s", m.DestPath, m.PrimaryConfigName))
-		for _, o := range m.ManagerOpts {
-			for _, f := range o.AdditionalConfigsFullLocalPaths {
-				result = append(result, f)
-			}
+	if _, ok := b.Managers[mgr]; !ok {
+		return result
+	}
+
+	mopts := b.Managers[mgr]
+	result = append(result, fmt.Sprintf("%s/%s", mopts.DestPath, mopts.PrimaryConfigName))
+	for _, o := range mopts.ManagerOpts {
+		for _, f := range o.AdditionalConfigsFullLocalPaths {
+			result = append(result, f)
 		}
 	}
 	return result

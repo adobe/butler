@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"git.corp.adobe.com/TechOps-IAO/butler/alog"
 	"git.corp.adobe.com/TechOps-IAO/butler/config"
 	"git.corp.adobe.com/TechOps-IAO/butler/environment"
 
@@ -68,9 +69,15 @@ type MonitorOutput struct {
 
 // Start turns up the http server for monitoring butler.
 func (m *Monitor) Start() {
-	http.HandleFunc("/health-check", m.MonitorHandler)
-	http.Handle("/metrics", promhttp.Handler())
-	server := &http.Server{}
+	mux := http.DefaultServeMux
+	mux.HandleFunc("/health-check", m.MonitorHandler)
+	mux.Handle("/metrics", promhttp.Handler())
+	loggingHandler := alog.NewApacheLoggingHandler(mux)
+
+	server := &http.Server{
+		Handler: loggingHandler,
+	}
+
 	listener, err := net.Listen("tcp", ":8080")
 	if err != nil {
 		log.Fatalf("Error creating listener: %s", err.Error())
@@ -94,6 +101,7 @@ func (m *Monitor) MonitorHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		fmt.Fprintf(w, "Could not Marshal JSON, but I promise I'm up!")
 	}
+
 	w.Header().Set("Content-Type", "application/json")
 	fmt.Fprintf(w, string(resp))
 }

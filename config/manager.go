@@ -21,6 +21,7 @@ type Manager struct {
 	Repos             []string                `mapstructure:"repos" json:"repos"`
 	CfgCleanFiles     string                  `mapstructure:"clean-files" json:"-"`
 	CleanFiles        bool                    `json:"clean-files"`
+	GoodCache         bool                    `json:"good-cache"`
 	LastRun           time.Time               `json:"last-run"`
 	MustacheSubsArray []string                `mapstructure:"mustache-subs" json:"-"`
 	MustacheSubs      map[string]string       `json:"mustache-subs"`

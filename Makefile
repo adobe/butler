@@ -9,7 +9,7 @@ pkgs=$(shell $(GO) list ./... | egrep -v "(vendor)")
 
 export ARTIFACTORY_USER=$(shell echo "$$ARTIFACTORY_USER")
 export ARTIFACTORY_REPO=butler
-export ARTIFACTORY_VERSION=1.1.8
+export ARTIFACTORY_VERSION=1.1.9
 export VERSION=v$(ARTIFACTORY_VERSION)
 export ARTIFACTORY_PROD_HOST=docker-ethos-core-univ-release.dr-uw2.adobeitc.com
 export ARTIFACTORY_DEV_HOST=docker-ethos-core-univ-dev.dr-uw2.adobeitc.com
@@ -77,7 +77,8 @@ help:
 	@printf "make push-butler-dockerhub\tPushes butler to DockerHub (If necessary).\n"
 	@printf "make run\t\t\tRun butler on local system.\n"
 	@printf "make start-alertmanager\t\tRun a local alertmanager instance for testing.\n"
-	@printf "make start-prometheus\t\tRun a local prometheus instance for testing.\n"
+	@printf "make start-prometheus\t\tRun a local prometheus v1 instance for testing.\n"
+	@printf "make start-prometheus2\t\tRun a local prometheus v2 instance for testing.\n"
 	@printf "make start-am-prom\t\tRun a local alertmanager and prometheus instance for testing.\n"
 	@printf "make stop-alertmanager\t\tStop the local test alertmanager instance.\n"
 	@printf "make stop-prometheus\t\tStop the local test prometheus instance.\n"
@@ -90,6 +91,9 @@ run:
 
 start-prometheus:
 	@docker run --rm -it --name=prometheus -d -p 9090:9090 -v /opt/prometheus:/etc/prometheus prom/prometheus:v1.8.2 -config.file=/etc/prometheus/prometheus.yml -storage.local.path=/prometheus -storage.local.memory-chunks=104857
+
+start-prometheus2:
+	@docker run --rm -it --name=prometheus -d -p 9090:9090 -v /opt/prometheus:/etc/prometheus prom/prometheus:v2.1.0 --config.file=/etc/prometheus/prometheus.yml --storage.tsdb.path=/prometheus
 
 start-alertmanager:
 	@docker run --rm -it --name=alertmanager -d -p 9093:9093 -v /opt/alertmanager:/etc/alertmanager prom/alertmanager -config.file=/etc/alertmanager/alertmanager.yml

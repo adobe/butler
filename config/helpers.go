@@ -223,6 +223,9 @@ func ParseMustacheSubs(pairs []string) (map[string]string, error) {
 
 	for _, p := range pairs {
 		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
 		keyvalpairs := strings.Split(p, "=")
 		if len(keyvalpairs) != 2 {
 			log.Warnf("helpers.ParseMustacheSubs(): invalid key value pair \"%s\"... ignoring.", keyvalpairs)
@@ -337,7 +340,7 @@ func CopyFile(src string, dst string) error {
 // caches those files into memory. It returns an error
 // on the event of error
 func CacheConfigs(manager string, files []string) error {
-	log.Infof("helpers.CacheConfig(): Storing known good configurations to cache.")
+	log.Infof("helpers.CacheConfig(): Storing known good configurations to cache for \"%s\" manager.", manager)
 	if ConfigCache == nil {
 		ConfigCache = make(map[string]map[string][]byte)
 	}
@@ -345,14 +348,14 @@ func CacheConfigs(manager string, files []string) error {
 	for _, file := range files {
 		out, err := ioutil.ReadFile(file)
 		if err != nil {
-			msg := fmt.Sprintf("helpers.CacheConfig(): Could not store %s to cache. err=%s", file, err.Error())
+			msg := fmt.Sprintf("helpers.CacheConfig(): Could not store %s to cache for \"%s\" manager. err=%s", file, manager, err.Error())
 			log.Errorf(msg)
 			return errors.New(msg)
 		} else {
 			ConfigCache[manager][file] = out
 		}
 	}
-	log.Infof("helpers.CacheConfig(): Done storing known good configurations to cache")
+	log.Infof("helpers.CacheConfig(): Done storing known good configurations to cache for \"%s\" manager.", manager)
 	stats.SetButlerKnownGoodCachedVal(stats.SUCCESS, manager)
 	stats.SetButlerKnownGoodRestoredVal(stats.FAILURE, manager)
 	return nil
@@ -366,19 +369,19 @@ func RestoreCachedConfigs(manager string, files []string, cleanFiles bool) error
 	// If we do not have a good configuration cache, then there's nothing for us to do.
 	if ConfigCache == nil {
 		if cleanFiles {
-			log.Infof("helpers.RestoreCachedConfigs(): No current known good configurations in cache. Cleaning configuration...")
+			log.Infof("helpers.RestoreCachedConfigs(): No current known good configurations in cache for \"%s\" manager. Cleaning configuration...", manager)
 			for _, file := range files {
 				log.Warnf("helpers.RestoreCachedConfigs(): Removing bad %s configuration file %s.", manager, file)
 				os.Remove(file)
 			}
-			log.Infof("helpers.RestoreCachedConfigs(): Done cleaning broken configuration. Returning...")
+			log.Infof("helpers.RestoreCachedConfigs(): Done cleaning broken configuration for \"%s\" manager. Returning...", manager)
 		}
 		stats.SetButlerKnownGoodCachedVal(stats.FAILURE, manager)
 		stats.SetButlerKnownGoodRestoredVal(stats.FAILURE, manager)
 		return nil
 	}
 
-	log.Infof("helpers.RestoreCachedConfigs(): Restoring known good configurations from cache.")
+	log.Infof("helpers.RestoreCachedConfigs(): Restoring known good configurations from cache for \"%s\" manager.", manager)
 	for _, file := range files {
 		fileData := ConfigCache[manager][file]
 
@@ -397,7 +400,7 @@ func RestoreCachedConfigs(manager string, files []string, cleanFiles bool) error
 			}
 		}
 	}
-	log.Infof("helpers.RestoreCachedConfigs(): Done restoring known good configurations from cache.")
+	log.Infof("helpers.RestoreCachedConfigs(): Done restoring known good configurations from cache for \"%s\" manager.", manager)
 	stats.SetButlerKnownGoodCachedVal(stats.FAILURE, manager)
 	stats.SetButlerKnownGoodRestoredVal(stats.SUCCESS, manager)
 	return nil
@@ -439,9 +442,16 @@ func GetManagerOpts(entry string, bc *ConfigSettings) (*ManagerOpts, error) {
 		MgrOpts.PrimaryConfig[i] = filepath.Clean(environment.GetVar(MgrOpts.PrimaryConfig[i]))
 	}
 
+	var additionalConfig []string
 	for i, _ := range MgrOpts.AdditionalConfig {
-		MgrOpts.AdditionalConfig[i] = filepath.Clean(environment.GetVar(MgrOpts.AdditionalConfig[i]))
+		cfg := strings.TrimSpace(environment.GetVar(MgrOpts.AdditionalConfig[i]))
+		if cfg == "" {
+			continue
+		} else {
+			additionalConfig = append(additionalConfig, cfg)
+		}
 	}
+	MgrOpts.AdditionalConfig = additionalConfig
 
 	repoSplit := strings.Split(entry, ".")
 	MgrOpts.Repo = strings.Join(repoSplit[1:len(repoSplit)], ".")
@@ -474,6 +484,7 @@ func GetConfigManager(entry string, bc *ConfigSettings) error {
 
 	Mgr.Name = entry
 	Mgr.ReloadManager = false
+	Mgr.GoodCache = false
 
 	err = viper.UnmarshalKey(entry, &Mgr)
 	if err != nil {

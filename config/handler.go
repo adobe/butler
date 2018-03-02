@@ -43,7 +43,7 @@ func (bc *ButlerConfig) SetScheme(s string) error {
 	scheme := strings.ToLower(s)
 	if !IsValidScheme(scheme) {
 		errMsg := fmt.Sprintf("%s is an invalid scheme", scheme)
-		log.Debugf("Config::SetScheme(): %s is an invalid scheme", scheme)
+		log.Errorf("Config::SetScheme(): %s is an invalid scheme", scheme)
 		return errors.New(errMsg)
 	} else {
 		log.Debugf("Config::SetScheme(): setting bc.Scheme=%s", scheme)
@@ -59,7 +59,6 @@ func (bc *ButlerConfig) SetPath(p string) error {
 }
 
 func (bc *ButlerConfig) GetPath() string {
-	log.Debugf("Config::GetPath(): getting bc.Path=%s", bc.Path)
 	return bc.Path
 }
 
@@ -156,17 +155,17 @@ func (bc *ButlerConfig) GetLogLevel() log.Level {
 }
 
 func (bc *ButlerConfig) Init() error {
-	log.Debugf("Config::Init(): initializing butler config.")
+	log.Infof("Config::Init(): initializing butler config.")
 	var err error
 
 	method, err := methods.New(nil, bc.Scheme, nil)
 	if err != nil {
 		if err.Error() == "Generic method handler is not very useful" {
-			log.Debugf("Config::Init(): could not initialize butler config (check if using valid scheme). err=%s", err.Error())
+			log.Errorf("Config::Init(): could not initialize butler config (check if using valid scheme). err=%s", err.Error())
 			return errors.New(fmt.Sprintf("\"%s\" is an invalid config retrieval method.", bc.Scheme))
 
 		} else {
-			log.Debugf("Config::Init(): could not initialize butler config. err=%s", err.Error())
+			log.Errorf("Config::Init(): could not initialize butler config. err=%s", err.Error())
 			return err
 		}
 	}
@@ -174,7 +173,7 @@ func (bc *ButlerConfig) Init() error {
 
 	client, err := NewConfigClient(bc.Scheme)
 	if err != nil {
-		log.Debugf("Config::Init(): could not initialize butler config. err=%s", err.Error())
+		log.Errorf("Config::Init(): could not initialize butler config. err=%s", err.Error())
 		return err
 	}
 	client.Method = method
@@ -185,7 +184,7 @@ func (bc *ButlerConfig) Init() error {
 		if bc.Url == "" {
 			ConfigUrl := fmt.Sprintf("%s://%s", bc.Scheme, bc.Path)
 			if _, err = url.ParseRequestURI(ConfigUrl); err != nil {
-				log.Debugf("Config::Init(): could not initialize butler config. err=%s", err.Error())
+				log.Errorf("Config::Init(): could not initialize butler config. err=%s", err.Error())
 				return err
 			}
 			bc.Url = ConfigUrl
@@ -223,7 +222,7 @@ func (bc *ButlerConfig) Init() error {
 	bc.Client = client
 	bc.Config = NewConfigSettings()
 
-	log.Debugf("Config::Init(): butler config initialized.")
+	log.Infof("Config::Init(): butler config initialized.")
 	return nil
 }
 
@@ -386,8 +385,8 @@ func (bc *ButlerConfig) RunCMHandler() error {
 						log.Fatalf("Config::RunCMHandler(): could not write to %v err=%v", bc.GetStatusFile(), err.Error())
 					}
 					stats.SetButlerReloadVal(stats.FAILURE, m.Name)
-					if m.EnableCache {
-						RestoreCachedConfigs(m.Name, bc.Config.GetAllConfigLocalPaths(), m.CleanFiles)
+					if m.EnableCache && m.GoodCache {
+						RestoreCachedConfigs(m.Name, bc.Config.GetAllConfigLocalPaths(m.Name), m.CleanFiles)
 					}
 				} else {
 					err := SetManagerStatus(bc.GetStatusFile(), m.Name, true)
@@ -396,7 +395,8 @@ func (bc *ButlerConfig) RunCMHandler() error {
 					}
 					stats.SetButlerReloadVal(stats.SUCCESS, m.Name)
 					if m.EnableCache {
-						CacheConfigs(m.Name, bc.Config.GetAllConfigLocalPaths())
+						CacheConfigs(m.Name, bc.Config.GetAllConfigLocalPaths(m.Name))
+						m.GoodCache = true
 					}
 				}
 			}
@@ -407,15 +407,15 @@ func (bc *ButlerConfig) RunCMHandler() error {
 			log.Debugf("Config::RunCMHandler(): m=%#v", m)
 			mgr := bc.GetManager(m)
 			err := mgr.Reload()
-			log.Debugf("Config::RunCMHandler(): err=%#v", err)
 			if err != nil {
+				log.Errorf("Config::RunCMHandler(): Could not reload manager \"%v\" err=%#v", mgr.Name, err)
 				err := SetManagerStatus(bc.GetStatusFile(), m, false)
 				if err != nil {
 					log.Fatalf("Config::RunCMHandler(): could not write to %v err=%v", bc.GetStatusFile(), err.Error())
 				}
 				stats.SetButlerReloadVal(stats.FAILURE, m)
-				if mgr.EnableCache {
-					RestoreCachedConfigs(m, bc.Config.GetAllConfigLocalPaths(), mgr.CleanFiles)
+				if mgr.EnableCache && mgr.GoodCache {
+					RestoreCachedConfigs(m, bc.Config.GetAllConfigLocalPaths(mgr.Name), mgr.CleanFiles)
 				}
 			} else {
 				err := SetManagerStatus(bc.GetStatusFile(), m, true)
@@ -424,7 +424,8 @@ func (bc *ButlerConfig) RunCMHandler() error {
 				}
 				stats.SetButlerReloadVal(stats.SUCCESS, m)
 				if mgr.EnableCache {
-					CacheConfigs(m, bc.Config.GetAllConfigLocalPaths())
+					CacheConfigs(m, bc.Config.GetAllConfigLocalPaths(mgr.Name))
+					mgr.GoodCache = true
 				}
 			}
 		}

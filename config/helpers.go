@@ -3,7 +3,6 @@ package config
 import (
 	"bufio"
 	"bytes"
-	//"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -109,6 +108,17 @@ func ValidateConfig(opts *ValidateOpts) error {
 	return err
 }
 
+func checkButlerHeaderFooter(in []byte) bool {
+	switch string(in) {
+	case butlerHeader:
+		return true
+	case butlerFooter:
+		return true
+	default:
+		return false
+	}
+}
+
 func runTextValidate(f *bytes.Reader) error {
 	var (
 		//err error
@@ -155,7 +165,6 @@ func runJsonValidate(f *bytes.Reader) error {
 	var (
 		err  error
 		data []byte
-		//v    interface{}
 	)
 
 	data, err = ioutil.ReadAll(f)
@@ -211,7 +220,6 @@ func getFileExtension(file string) string {
 	} else {
 		result = "text"
 	}
-	log.Debugf("helpers.getFileExtension(): extension type=%v", result)
 	return result
 }
 
@@ -305,9 +313,10 @@ func CompareAndCopy(source string, dest string) bool {
 // error, an error is returned, otherwise nil is returned.
 func CopyFile(src string, dst string) error {
 	var (
-		err error
-		in  *os.File
-		out *os.File
+		err       error
+		in        *os.File
+		out       *os.File
+		newSource []byte
 	)
 
 	// open source
@@ -316,6 +325,22 @@ func CopyFile(src string, dst string) error {
 		return err
 	}
 	defer in.Close()
+
+	// at this point what we're trying to do is to strip the butler
+	// header and footer out of the file
+	scanner := bufio.NewScanner(in)
+	for scanner.Scan() {
+		var line []byte
+		line = scanner.Bytes()
+		if !checkButlerHeaderFooter(line) {
+			newSource = append(newSource, line...)
+			newSource = append(newSource, []byte("\n")...)
+		}
+	}
+
+	if err = scanner.Err(); err != nil {
+		return err
+	}
 
 	// open destination
 	if _, err = os.Stat(dst); err != nil {
@@ -327,7 +352,7 @@ func CopyFile(src string, dst string) error {
 		return err
 	}
 
-	_, err = io.Copy(out, in)
+	_, err = io.Copy(out, bytes.NewReader(newSource))
 	cerr := out.Close()
 	if err != nil {
 		return err

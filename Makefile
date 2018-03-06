@@ -9,7 +9,7 @@ pkgs=$(shell $(GO) list ./... | egrep -v "(vendor)")
 
 export ARTIFACTORY_USER=$(shell echo "$$ARTIFACTORY_USER")
 export ARTIFACTORY_REPO=butler
-export ARTIFACTORY_VERSION=1.1.10
+export ARTIFACTORY_VERSION=1.1.11
 export VERSION=v$(ARTIFACTORY_VERSION)
 export ARTIFACTORY_PROD_HOST=docker-ethos-core-univ-release.dr-uw2.adobeitc.com
 export ARTIFACTORY_DEV_HOST=docker-ethos-core-univ-dev.dr-uw2.adobeitc.com
@@ -96,11 +96,11 @@ start-prometheus2:
 	@docker run --rm -it --name=prometheus -d -p 9090:9090 -v /opt/prometheus:/etc/prometheus prom/prometheus:v2.1.0 --config.file=/etc/prometheus/prometheus.yml --storage.tsdb.path=/prometheus
 
 start-alertmanager:
-	@docker run --rm -it --name=alertmanager -d -p 9093:9093 -v /opt/alertmanager:/etc/alertmanager prom/alertmanager -config.file=/etc/alertmanager/alertmanager.yml
+	@docker run --rm -it --name=alertmanager -d -p 9093:9093 -v /opt/butler/alertmanager:/etc/alertmanager prom/alertmanager:v0.13.0 --config.file=/etc/alertmanager/alertmanager.yml
 
-start-am-prom:
-	@docker run --rm -it --name=prometheus -d -p 9090:9090 -v /opt/prometheus:/etc/prometheus prom/prometheus -config.file=/etc/prometheus/prometheus.yml -storage.local.path=/prometheus -storage.local.memory-chunks=104857
-	@docker run --rm -it --name=alertmanager -d -p 9093:9093 -v /opt/alertmanager:/etc/alertmanager prom/alertmanager -config.file=/etc/alertmanager/alertmanager.yml
+start-am-prom: start-prometheus start-alertmanager
+#	@docker run --rm -it --name=prometheus -d -p 9090:9090 -v /opt/prometheus:/etc/prometheus prom/prometheus -config.file=/etc/prometheus/prometheus.yml -storage.local.path=/prometheus -storage.local.memory-chunks=104857
+#	@docker run --rm -it --name=alertmanager -d -p 9093:9093 -v /opt/alertmanager:/etc/alertmanager prom/alertmanager -config.file=/etc/alertmanager/alertmanager.yml
 
 stop-prometheus:
 	@docker stop prometheus

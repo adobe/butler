@@ -86,6 +86,23 @@ func SetButlerReloadVal(res float64, label string) {
 	}
 }
 
+func DeleteButlerReloadVal(label string) {
+	statsMutex.Lock()
+	if ButlerReloadCount != nil {
+		ButlerReloadCount.Delete(prometheus.Labels{"manager": label})
+	}
+	if ButlerReloadSuccess != nil {
+		ButlerReloadSuccess.Delete(prometheus.Labels{"manager": label})
+	}
+	if ButlerReloadTime != nil {
+		ButlerReloadTime.Delete(prometheus.Labels{"manager": label})
+	}
+	if ButlerReloaderRetry != nil {
+		ButlerReloaderRetry.Delete(prometheus.Labels{"manager": label})
+	}
+	statsMutex.Unlock()
+}
+
 func SetButlerRenderVal(res float64, repo string, file string) {
 	// We don't want to have a race condition where two
 	// we try to initialize the same stat at the same time

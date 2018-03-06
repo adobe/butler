@@ -51,3 +51,27 @@ func New(entry string) (Reloader, error) {
 		return NewGenericReloader(entry, method, jsonRes)
 	}
 }
+
+func NewReloaderError() *ReloaderError {
+	return &ReloaderError{}
+}
+
+func (r *ReloaderError) WithCode(c int) *ReloaderError {
+	r.Code = c
+	return r
+}
+
+func (r *ReloaderError) WithMessage(m string) *ReloaderError {
+	r.Message = m
+	return r
+}
+
+func (r *ReloaderError) Error() string {
+	msg := fmt.Sprintf("%v. code=%v", r.Message, r.Code)
+	return msg
+}
+
+type ReloaderError struct {
+	Code    int
+	Message string
+}

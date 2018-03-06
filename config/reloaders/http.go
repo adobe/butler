@@ -123,16 +123,16 @@ func (h HttpReloader) Reload() error {
 		if err != nil {
 			msg := fmt.Sprintf("HttpReloader::Reload(): err=%v", err.Error())
 			log.Errorf(msg)
-			return errors.New(msg)
+			return NewReloaderError().WithMessage(err.Error()).WithCode(1)
 		}
 		if resp.StatusCode == 200 {
 			log.Infof("HttpReloader::Reload(): successfully reloaded config. http_code=%d", int(resp.StatusCode))
 			// at this point error should be nil, so things are OK
 		} else {
-			msg := fmt.Sprintf("HttpReloader::Reload(): received bad response from server. reverting to last known good config. http_code=%d", int(resp.StatusCode))
+			msg := fmt.Sprintf("HttpReloader::Reload(): received bad response from server. http_code=%d", int(resp.StatusCode))
 			log.Errorf(msg)
 			// at this point we should raise an error
-			return errors.New(msg)
+			return NewReloaderError().WithMessage("received bad response from server").WithCode(resp.StatusCode)
 		}
 	case "get":
 		log.Debugf("HttpReloader::Reload(): getting up!")
@@ -140,16 +140,16 @@ func (h HttpReloader) Reload() error {
 		if err != nil {
 			msg := fmt.Sprintf("HttpReloader::Reload(): err=%v", err.Error())
 			log.Errorf(msg)
-			return errors.New(msg)
+			return NewReloaderError().WithMessage(err.Error()).WithCode(1)
 		}
 		if resp.StatusCode == 200 {
 			log.Infof("HttpReloader::Reload(): successfully reloaded config. http_code=%d", int(resp.StatusCode))
 			// at this point error should be nil, so things are OK
 		} else {
-			msg := fmt.Sprintf("HttpReloader::Reload(): received bad response from server. reverting to last known good config. http_code=%d", int(resp.StatusCode))
+			msg := fmt.Sprintf("HttpReloader::Reload(): received bad response from server. http_code=%d", int(resp.StatusCode))
 			log.Errorf(msg)
 			// at this point we should raise an error
-			return errors.New(msg)
+			return NewReloaderError().WithMessage("received bad response from server").WithCode(resp.StatusCode)
 		}
 	default:
 		msg := fmt.Sprintf("HttpReloader::Reload(): \"%s\" is not a supported reload method", o.Method)

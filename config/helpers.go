@@ -102,6 +102,14 @@ func ValidateConfig(opts *ValidateOpts) error {
 	default:
 		err = errors.New(fmt.Sprintf("unknown content type %s", opts.ContentType))
 	}
+
+	if err != nil {
+		log.Errorf("ValidateConfig(): returning err=%#v for content-type=%v and FileName=%v", err, opts.ContentType, opts.FileName)
+		return err
+	}
+
+	// let's rewrite a sanitized temporary config file
+	err = removeButlerHeaderFooter(opts.Data)
 	if err != nil {
 		log.Errorf("ValidateConfig(): returning err=%#v for content-type=%v and FileName=%v", err, opts.ContentType, opts.FileName)
 	}
@@ -117,6 +125,52 @@ func checkButlerHeaderFooter(in []byte) bool {
 	default:
 		return false
 	}
+}
+
+func removeButlerHeaderFooter(file interface{}) error {
+	var (
+		err       error
+		in        *os.File
+		out       *os.File
+		newSource []byte
+	)
+
+	switch f := file.(type) {
+	case *os.File:
+		in, err = os.Open(f.Name())
+		if err != nil {
+			return err
+		}
+		scanner := bufio.NewScanner(in)
+		for scanner.Scan() {
+			var line []byte
+			line = scanner.Bytes()
+			if !checkButlerHeaderFooter(line) {
+				newSource = append(newSource, line...)
+				newSource = append(newSource, []byte("\n")...)
+			}
+		}
+		if err = scanner.Err(); err != nil {
+			in.Close()
+			return err
+		}
+		in.Close()
+
+		out, err = os.OpenFile(f.Name(), os.O_WRONLY|os.O_TRUNC, 0644)
+		if err != nil {
+			return err
+		}
+		_, err = io.Copy(out, bytes.NewReader(newSource))
+		out.Sync()
+		cerr := out.Close()
+		if err != nil {
+			return err
+		}
+		return cerr
+	default:
+		return nil
+	}
+	return nil
 }
 
 func runTextValidate(f *bytes.Reader) error {
@@ -295,11 +349,14 @@ func CompareAndCopy(source string, dest string) bool {
 	cmp := equalfile.New(nil, equalfile.Options{})
 	equal, err := cmp.CompareFile(source, dest)
 	if !equal {
-		log.Infof("config.CompareAndCopy(): Found difference in \"%s.\"  Updating.", dest)
+		if err != nil {
+			log.Errorf("helpers.CompareAndCopy(): caught error from compare. source=%v dest=%v err=%#v", source, dest, err)
+		}
+		log.Infof("helpers.CompareAndCopy(): Found difference in \"%s.\"  Updating.", dest)
 		err = CopyFile(source, dest)
 		if err != nil {
 			stats.SetButlerWriteVal(stats.FAILURE, stats.GetStatsLabel(dest))
-			log.Errorf(err.Error())
+			log.Errorf("helpers.CompareAndCopy(): could not copy source=%v to dest=%v. err=%#v", source, dest, err)
 			return false
 		}
 		stats.SetButlerWriteVal(stats.SUCCESS, stats.GetStatsLabel(dest))
@@ -353,6 +410,7 @@ func CopyFile(src string, dst string) error {
 	}
 
 	_, err = io.Copy(out, bytes.NewReader(newSource))
+	out.Sync()
 	cerr := out.Close()
 	if err != nil {
 		return err
@@ -406,7 +464,7 @@ func RestoreCachedConfigs(manager string, files []string, cleanFiles bool) error
 		return nil
 	}
 
-	log.Infof("helpers.RestoreCachedConfigs(): Restoring known good configurations from cache for \"%s\" manager.", manager)
+	log.Warnf("helpers.RestoreCachedConfigs(): Restoring known good configurations from cache for \"%s\" manager.", manager)
 	for _, file := range files {
 		fileData := ConfigCache[manager][file]
 
@@ -417,15 +475,15 @@ func RestoreCachedConfigs(manager string, files []string, cleanFiles bool) error
 		} else {
 			count, err := f.Write(fileData)
 			if err != nil {
-				log.Errorf("helpers.RestoreCachedConfigs(): Could write to %s! err=%s.", file, err.Error())
+				log.Errorf("helpers.RestoreCachedConfigs(): Could not write to %s! err=%s.", file, err.Error())
 				continue
 			} else {
 				f.Close()
-				log.Infof("helpers.RestoreCachedConfigs(): Wrote %d bytes for %s.", count, file)
+				log.Warnf("helpers.RestoreCachedConfigs(): Wrote %d bytes for %s.", count, file)
 			}
 		}
 	}
-	log.Infof("helpers.RestoreCachedConfigs(): Done restoring known good configurations from cache for \"%s\" manager.", manager)
+	log.Warnf("helpers.RestoreCachedConfigs(): Done restoring known good configurations from cache for \"%s\" manager.", manager)
 	stats.SetButlerKnownGoodCachedVal(stats.FAILURE, manager)
 	stats.SetButlerKnownGoodRestoredVal(stats.SUCCESS, manager)
 	return nil
@@ -533,10 +591,15 @@ func GetConfigManager(entry string, bc *ConfigSettings) error {
 	envEnableCache := strings.ToLower(environment.GetVar(Mgr.CfgEnableCache))
 	if envEnableCache == "true" {
 		Mgr.EnableCache = true
-	} else if envEnableCache == "false" {
-		Mgr.EnableCache = false
 	} else {
 		Mgr.EnableCache = false
+	}
+
+	envManagerTimeoutOk := strings.ToLower(environment.GetVar(Mgr.CfgManagerTimeoutOk))
+	if envManagerTimeoutOk == "true" {
+		Mgr.ManagerTimeoutOk = true
+	} else {
+		Mgr.ManagerTimeoutOk = false
 	}
 
 	Mgr.CachePath = filepath.Clean(environment.GetVar(Mgr.CachePath))

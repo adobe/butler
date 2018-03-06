@@ -45,6 +45,11 @@ title = "Butler Configuration"
   ## we need a name for the merged configuration file. It will be put under dest-path
   primary-config-name = "prometheus.yml"
 
+  ## When butler is unable to contact the upstream manager, then it moves on
+  ## and does not update metrics, or cache, or clean, or anything.
+  ## Default: false
+  manager-timeout-ok = "false"
+
   ## These are the definitions for the first repo which is defined for prometheus
   [prometheus.repo1.domain.com]
     ## Method can be file, http, https, or s3. In the future it will support Azure blob

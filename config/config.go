@@ -185,12 +185,15 @@ func (c *ConfigSettings) ParseConfig(config []byte) error {
 			baseRemotePath := fmt.Sprintf("%s://%s%s", m.ManagerOpts[opts].Method, u, m.ManagerOpts[opts].RepoPath)
 			for _, f := range m.ManagerOpts[opts].PrimaryConfig {
 				fullRemotePath := fmt.Sprintf("%s/%s", baseRemotePath, f)
-				fullLocalPath := fmt.Sprintf("%s/%s", m.DestPath, f)
-				log.Debugf("ConfigSettings::ParseConfig(): full remote path to primary config: %s", fullRemotePath)
-				log.Debugf("ConfigSettings::ParseConfig(): full local path to primary config: %s", fullLocalPath)
 				m.ManagerOpts[opts].AppendPrimaryConfigUrl(fullRemotePath)
-				m.ManagerOpts[opts].AppendPrimaryConfigFile(fullLocalPath)
+				log.Debugf("ConfigSettings::ParseConfig(): full remote path to primary config: %s", fullRemotePath)
 			}
+			// we've only got one primary config, so we only need the array to have that element
+			// we still need to populate the remote paths, since we are merging multiple files
+			// into one. This used to be in the above loop
+			fullLocalPath := fmt.Sprintf("%s/%s", m.DestPath, m.PrimaryConfigName)
+			m.ManagerOpts[opts].AppendPrimaryConfigFile(fullLocalPath)
+			log.Debugf("ConfigSettings::ParseConfig(): full local path to primary config: %s", fullLocalPath)
 			for _, f := range m.ManagerOpts[opts].AdditionalConfig {
 				fullRemotePath := fmt.Sprintf("%s/%s", baseRemotePath, f)
 				fullLocalPath := fmt.Sprintf("%s/%s", m.DestPath, f)

@@ -17,22 +17,24 @@ import (
 )
 
 type Manager struct {
-	Name              string                  `json:"name"`
-	Repos             []string                `mapstructure:"repos" json:"repos"`
-	CfgCleanFiles     string                  `mapstructure:"clean-files" json:"-"`
-	CleanFiles        bool                    `json:"clean-files"`
-	GoodCache         bool                    `json:"good-cache"`
-	LastRun           time.Time               `json:"last-run"`
-	MustacheSubsArray []string                `mapstructure:"mustache-subs" json:"-"`
-	MustacheSubs      map[string]string       `json:"mustache-subs"`
-	CfgEnableCache    string                  `mapstructure:"enable-cache" json:"-"`
-	EnableCache       bool                    `json:"enable-cache"`
-	CachePath         string                  `mapstructure:"cache-path" json:"cache-path"`
-	DestPath          string                  `mapstructure:"dest-path" json:"dest-path"`
-	PrimaryConfigName string                  `mapstructure:"primary-config-name" json:"primary-config-name"`
-	ManagerOpts       map[string]*ManagerOpts `json:"opts"`
-	Reloader          reloaders.Reloader      `mapstructure:"-" json:"reloader,omitempty"`
-	ReloadManager     bool                    `json:"-"`
+	Name                string                  `json:"name"`
+	Repos               []string                `mapstructure:"repos" json:"repos"`
+	CfgCleanFiles       string                  `mapstructure:"clean-files" json:"-"`
+	CleanFiles          bool                    `json:"clean-files"`
+	GoodCache           bool                    `json:"good-cache"`
+	LastRun             time.Time               `json:"last-run"`
+	MustacheSubsArray   []string                `mapstructure:"mustache-subs" json:"-"`
+	MustacheSubs        map[string]string       `json:"mustache-subs"`
+	CfgEnableCache      string                  `mapstructure:"enable-cache" json:"-"`
+	EnableCache         bool                    `json:"enable-cache"`
+	CachePath           string                  `mapstructure:"cache-path" json:"cache-path"`
+	DestPath            string                  `mapstructure:"dest-path" json:"dest-path"`
+	PrimaryConfigName   string                  `mapstructure:"primary-config-name" json:"primary-config-name"`
+	CfgManagerTimeoutOk string                  `mapstructure:"manager-timeout-ok" json:"-"`
+	ManagerTimeoutOk    bool                    `json:"manager-timeout-ok"`
+	ManagerOpts         map[string]*ManagerOpts `json:"opts"`
+	Reloader            reloaders.Reloader      `mapstructure:"-" json:"reloader,omitempty"`
+	ReloadManager       bool                    `json:"-"`
 }
 
 type ManagerOpts struct {
@@ -70,7 +72,7 @@ func (bm *Manager) DownloadPrimaryConfigFiles(c chan ChanEvent) error {
 	Chan.ConfigFile = &PrimaryConfigName
 
 	// Create a temporary file for the merged prometheus configurations.
-	tmpFile, err := ioutil.TempFile("/tmp", "pcmsfile")
+	tmpFile, err := ioutil.TempFile("/tmp", "bcmsfile")
 	if err != nil {
 		msg := fmt.Sprintf("Manager::DownloadPrimaryConfigFiles(): Could not create temporary file . err=v", err.Error())
 		log.Fatal(msg)
@@ -313,7 +315,7 @@ func (bmo *ManagerOpts) GetAdditionalRemoteConfigFiles() []string {
 func (bmo *ManagerOpts) DownloadConfigFile(file string) *os.File {
 	switch bmo.Method {
 	case "blob", "file", "http", "https", "s3", "S3":
-		tmpFile, err := ioutil.TempFile("/tmp", "pcmsfile")
+		tmpFile, err := ioutil.TempFile("/tmp", "bcmsfile")
 		if err != nil {
 			msg := fmt.Sprintf("ManagerOpts::DownloadConfigFile(): could not create temporary file. err=%v", err)
 			log.Fatal(msg)

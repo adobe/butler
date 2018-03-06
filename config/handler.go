@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"git.corp.adobe.com/TechOps-IAO/butler/config/methods"
+	"git.corp.adobe.com/TechOps-IAO/butler/config/reloaders"
 	"git.corp.adobe.com/TechOps-IAO/butler/stats"
 
 	"github.com/jasonlvhit/gocron"
@@ -178,7 +179,6 @@ func (bc *ButlerConfig) Init() error {
 	}
 	client.Method = method
 
-	// stegen
 	switch bc.Scheme {
 	case "http", "https":
 		if bc.Url == "" {
@@ -232,8 +232,9 @@ func (bc *ButlerConfig) Handler() error {
 	// or not butlers OWN configuration file was successfully
 	// retrieved. Let's hope it does, but at least we'll know if it
 	// isn't
-	Repo := strings.Split(bc.Url, "/")[0]
-	Config := fmt.Sprintf("/%s", strings.Join(strings.Split(bc.Url, "/")[1:], "/"))
+	RepoSplit := strings.Split(strings.Split(bc.Url, "://")[1], "/")
+	Repo := RepoSplit[0]
+	Config := fmt.Sprintf("/%s", strings.Join(RepoSplit[1:], "/"))
 
 	log.Infof("ButlerConfig::Handler(): entering.")
 	response, err := bc.Client.Get(bc.Url)
@@ -257,7 +258,7 @@ func (bc *ButlerConfig) Handler() error {
 		return errors.New(errMsg)
 	}
 
-	err = ValidateConfig(NewValidateOpts().WithData(body))
+	err = ValidateConfig(NewValidateOpts().WithData(body).WithFileName("butler.toml"))
 	if err != nil {
 		stats.SetButlerContactVal(stats.FAILURE, Repo, Config)
 		return err
@@ -377,16 +378,25 @@ func (bc *ButlerConfig) RunCMHandler() error {
 				log.Debugf("Config::RunCMHandler(): Could not find manager status. Going to reload to get in sync.")
 				err := m.Reload()
 				if err != nil {
-					log.Errorf("Config::RunCMHandler(): err=%#v", err)
-				}
-				if err != nil {
-					err := SetManagerStatus(bc.GetStatusFile(), m.Name, false)
-					if err != nil {
-						log.Fatalf("Config::RunCMHandler(): could not write to %v err=%v", bc.GetStatusFile(), err.Error())
-					}
-					stats.SetButlerReloadVal(stats.FAILURE, m.Name)
-					if m.EnableCache && m.GoodCache {
-						RestoreCachedConfigs(m.Name, bc.Config.GetAllConfigLocalPaths(m.Name), m.CleanFiles)
+					switch e := err.(type) {
+					case *reloaders.ReloaderError:
+						// an http timeout is 1
+						log.Debugf("Config::RunCMHandler(): e.Code=%#v, m.ManagerTimeoutOk=%#v", e.Code, m.ManagerTimeoutOk)
+						if e.Code == 1 && m.ManagerTimeoutOk == true {
+							// we really don't care about here
+							// let's make sure we at least delete our metrics
+							stats.DeleteButlerReloadVal(m.Name)
+						} else {
+							log.Errorf("Config::RunCMHandler(): err=%#v", err)
+							err := SetManagerStatus(bc.GetStatusFile(), m.Name, false)
+							if err != nil {
+								log.Fatalf("Config::RunCMHandler(): could not write to %v err=%v", bc.GetStatusFile(), err.Error())
+							}
+							stats.SetButlerReloadVal(stats.FAILURE, m.Name)
+							if m.EnableCache && m.GoodCache {
+								RestoreCachedConfigs(m.Name, bc.Config.GetAllConfigLocalPaths(m.Name), m.CleanFiles)
+							}
+						}
 					}
 				} else {
 					err := SetManagerStatus(bc.GetStatusFile(), m.Name, true)
@@ -408,14 +418,24 @@ func (bc *ButlerConfig) RunCMHandler() error {
 			mgr := bc.GetManager(m)
 			err := mgr.Reload()
 			if err != nil {
-				log.Errorf("Config::RunCMHandler(): Could not reload manager \"%v\" err=%#v", mgr.Name, err)
-				err := SetManagerStatus(bc.GetStatusFile(), m, false)
-				if err != nil {
-					log.Fatalf("Config::RunCMHandler(): could not write to %v err=%v", bc.GetStatusFile(), err.Error())
-				}
-				stats.SetButlerReloadVal(stats.FAILURE, m)
-				if mgr.EnableCache && mgr.GoodCache {
-					RestoreCachedConfigs(m, bc.Config.GetAllConfigLocalPaths(mgr.Name), mgr.CleanFiles)
+				switch e := err.(type) {
+				case *reloaders.ReloaderError:
+					log.Debugf("Config::RunCMHandler(): e.Code=%#v, mgr.ManagerTimeoutOk=%#v", e.Code, mgr.ManagerTimeoutOk)
+					if e.Code == 1 && mgr.ManagerTimeoutOk == true {
+						// we really don't care about here, but
+						// let's make sure we at least delete our metrics
+						stats.DeleteButlerReloadVal(mgr.Name)
+					} else {
+						log.Errorf("Config::RunCMHandler(): Could not reload manager \"%v\" err=%#v", mgr.Name, err)
+						err := SetManagerStatus(bc.GetStatusFile(), m, false)
+						if err != nil {
+							log.Fatalf("Config::RunCMHandler(): could not write to %v err=%v", bc.GetStatusFile(), err.Error())
+						}
+						stats.SetButlerReloadVal(stats.FAILURE, m)
+						if mgr.EnableCache && mgr.GoodCache {
+							RestoreCachedConfigs(m, bc.Config.GetAllConfigLocalPaths(mgr.Name), mgr.CleanFiles)
+						}
+					}
 				}
 			} else {
 				err := SetManagerStatus(bc.GetStatusFile(), m, true)

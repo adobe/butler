@@ -186,6 +186,7 @@ func (c *ConfigChanEvent) CopyPrimaryConfigFiles(opts map[string]*ManagerOpts) b
 			}
 		}
 	}
+	out.Sync()
 	out.Close()
 	return CompareAndCopy(c.TmpFile.Name(), *c.ConfigFile)
 }

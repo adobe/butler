@@ -39,12 +39,6 @@
 			"revisionTime": "2017-10-15T11:14:30Z"
 		},
 		{
-			"checksumSHA1": "VYvyVPooYXiO6gqwCGkPPK5vCzk=",
-			"path": "github.com/Sirupsen/logrus",
-			"revision": "3d4380f53a34dcdc95f0c1db702615992b38d9a4",
-			"revisionTime": "2017-06-20T14:45:10Z"
-		},
-		{
 			"checksumSHA1": "WCDpvzinTSrJ8CMZ+b5VD5HDtzk=",
 			"path": "github.com/aws/aws-sdk-go/aws",
 			"revision": "8c6a611084ff32c030aeb61554c5b987b4cdf4eb",
@@ -377,28 +371,22 @@
 			"revisionTime": "2015-02-12T10:17:44Z"
 		},
 		{
-			"checksumSHA1": "mHyjbJ3BWOfUV6q9f5PBt0gaY1k=",
+			"checksumSHA1": "+wZ+Pa6NX+NOxUvayXBXGOcqFe8=",
 			"path": "github.com/prometheus/common/expfmt",
-			"revision": "6d76b79f239843a04e8ad8dfd8fcadfa3920236f",
-			"revisionTime": "2016-12-20T17:45:53Z"
+			"revision": "e4aa40a9169a88835b849a6efb71e05dc04b88f0",
+			"revisionTime": "2018-03-12T11:28:59Z"
 		},
 		{
 			"checksumSHA1": "GWlM3d2vPYyNATtTFgftS10/A9w=",
 			"path": "github.com/prometheus/common/internal/bitbucket.org/ww/goautoneg",
-			"revision": "6d76b79f239843a04e8ad8dfd8fcadfa3920236f",
-			"revisionTime": "2016-12-20T17:45:53Z"
+			"revision": "e4aa40a9169a88835b849a6efb71e05dc04b88f0",
+			"revisionTime": "2018-03-12T11:28:59Z"
 		},
 		{
-			"checksumSHA1": "ZA4MLHNAP905WiAOLy4BBzmcuxM=",
-			"path": "github.com/prometheus/common/log",
-			"revision": "6d76b79f239843a04e8ad8dfd8fcadfa3920236f",
-			"revisionTime": "2016-12-20T17:45:53Z"
-		},
-		{
-			"checksumSHA1": "vopCLXHzYm+3l5fPKOf4/fQwrCM=",
+			"checksumSHA1": "YU+/K48IMawQnToO4ETE6a+hhj4=",
 			"path": "github.com/prometheus/common/model",
-			"revision": "6d76b79f239843a04e8ad8dfd8fcadfa3920236f",
-			"revisionTime": "2016-12-20T17:45:53Z"
+			"revision": "e4aa40a9169a88835b849a6efb71e05dc04b88f0",
+			"revisionTime": "2018-03-12T11:28:59Z"
 		},
 		{
 			"checksumSHA1": "L+p4t3KrLDAKJnrreOz2BZIt9Mg=",
@@ -413,10 +401,10 @@
 			"revisionTime": "2018-01-03T17:44:51Z"
 		},
 		{
-			"checksumSHA1": "BYvROBsiyAXK4sq6yhDe8RgT4LM=",
+			"checksumSHA1": "ByFN6xh/YGP/D3DM9c8p0D9D1XM=",
 			"path": "github.com/sirupsen/logrus",
-			"revision": "89742aefa4b206dcf400792f3bd35b542998eb3b",
-			"revisionTime": "2017-08-22T13:27:46Z"
+			"revision": "90150a8ed11b6ce285e77e8af2b0109559ce4777",
+			"revisionTime": "2018-03-15T01:07:03Z"
 		},
 		{
 			"checksumSHA1": "lBehULzb2/kIK3wZ0gz2yNmHq9s=",

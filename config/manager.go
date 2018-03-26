@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"time"
 
@@ -340,7 +341,15 @@ func (bmo *ManagerOpts) DownloadConfigFile(file string) *os.File {
 			file = strings.Split(file, "://")[1]
 		}
 
-		response, err := bmo.Opts.Get(file)
+		url, err := url.Parse(file)
+		if err != nil {
+			tmpFile.Close()
+			os.Remove(tmpFile.Name())
+			log.Errorf("ManagerOpts::DownloadConfigFile(): Could not parse file %s to *url.URL, err=%s", file, err.Error())
+			tmpFile = nil
+			return tmpFile
+		}
+		response, err := bmo.Opts.Get(url)
 
 		if err != nil {
 			tmpFile.Close()

@@ -5,6 +5,7 @@ import (
 	. "gopkg.in/check.v1"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"strings"
 	"testing"
@@ -198,6 +199,9 @@ var TestManagerOptsFail4 = []byte(`[testing.localhost]
 func (s *ConfigTestSuite) SetUpSuite(c *C) {
 	s.TestServer = httptest.NewServer(&TestHttpHandler{})
 	s.Config = NewButlerConfig()
+	u, err := url.Parse(s.TestServer.URL)
+	c.Assert(err, IsNil)
+	s.Config.Url = u
 	log.SetLevel(log.DebugLevel)
 }
 
@@ -228,13 +232,9 @@ func (s *ConfigTestSuite) TestNewConfigClientDefault(c *C) {
 func (s *ConfigTestSuite) TestConfigConfigHandler_InternalServerError(c *C) {
 	var err error
 	TestHttpCase = 0
-	urlSplit := strings.Split(s.TestServer.URL, "://")
-	log.Debugf("TestConfigConfigHandler_InternalServerError(): urlSplit=%#v", urlSplit)
-	s.Config.SetScheme(urlSplit[0])
-	s.Config.SetPath(urlSplit[1])
-	s.Config.SetUrl(s.TestServer.URL)
+	s.Config.SetScheme(s.Config.Url.Scheme)
+	s.Config.SetPath(s.Config.Url.Path)
 	s.Config.Init()
-	log.Debugf("TestConfigConfigHandler_InternalServerError(): s.Config.Config=%#v", s.Config.Config)
 	err = s.Config.Handler()
 	//log.Infof("err=%#v\n", err.Error())
 	c.Assert(err, NotNil)
@@ -247,7 +247,6 @@ func (s *ConfigTestSuite) TestConfigConfigHandler_NotFound(c *C) {
 	urlSplit := strings.Split(s.TestServer.URL, "://")
 	s.Config.SetScheme(urlSplit[0])
 	s.Config.SetPath(urlSplit[1])
-	s.Config.SetUrl(s.TestServer.URL)
 	s.Config.Init()
 	err = s.Config.Handler()
 	//log.Infof("err=%#v\n", err.Error())

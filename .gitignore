@@ -1,5 +1,7 @@
 butler
+env
 *.swp
 *.key
 *.toml
+*.bak
  .idea

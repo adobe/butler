@@ -1,6 +1,7 @@
 package methods
 
 import (
+	"net/url"
 	//"testing"
 	. "gopkg.in/check.v1"
 )
@@ -21,7 +22,9 @@ func (s *GenericTestSuite) TestGet(c *C) {
 	c.Assert(err, NotNil)
 	c.Assert(method, Equals, GenericMethod{})
 
-	resp, err2 := method.Get("hiya")
+	u, err := url.Parse("hiya")
+	c.Assert(err, IsNil)
+	resp, err2 := method.Get(u)
 	c.Assert(err2, NotNil)
 	c.Assert(resp, IsNil)
 }

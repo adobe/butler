@@ -2,6 +2,7 @@ package methods
 
 import (
 	"errors"
+	"net/url"
 )
 
 func NewGenericMethod(manager *string, entry *string) (Method, error) {
@@ -11,7 +12,7 @@ func NewGenericMethod(manager *string, entry *string) (Method, error) {
 type GenericMethod struct {
 }
 
-func (m GenericMethod) Get(file string) (*Response, error) {
+func (m GenericMethod) Get(u *url.URL) (*Response, error) {
 	var (
 		result *Response
 	)

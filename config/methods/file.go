@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"net/url"
 
 	"git.corp.adobe.com/TechOps-IAO/butler/environment"
 
@@ -31,28 +32,29 @@ func NewFileMethod(manager *string, entry *string) (Method, error) {
 	return result, err
 }
 
-func NewFileMethodWithPath(file string) (Method, error) {
+func NewFileMethodWithUrl(u *url.URL) (Method, error) {
 	var (
 		err    error
 		result FileMethod
 	)
 
-	result.Path = file
+	result.Url = u
+	result.Path = u.Path
 	return result, err
 }
 
 type FileMethod struct {
-	Path string `mapstructure:"path" json:"path"`
+	Url  *url.URL `json:"-"`
+	Path string   `mapstructure:"path" json:"path"`
 }
 
-func (f FileMethod) Get(file string) (*Response, error) {
+func (f FileMethod) Get(u *url.URL) (*Response, error) {
 	var (
 		err      error
 		fileData []byte
 		response Response
 	)
-
-	fileData, err = ioutil.ReadFile(fmt.Sprintf("%s/%s", f.Path, file))
+	fileData, err = ioutil.ReadFile(fmt.Sprintf("%s%s", f.Url.Host, f.Url.Path))
 
 	if err != nil {
 		// 504 is hokey, but we need some bogus code.

@@ -3,11 +3,13 @@ package methods
 import (
 	log "github.com/sirupsen/logrus"
 	"io"
+	"net/url"
 	"strings"
 )
 
 type Method interface {
-	Get(string) (*Response, error)
+	//Get(string) (*Response, error)
+	Get(*url.URL) (*Response, error)
 }
 
 type Response struct {

@@ -1,12 +1,12 @@
 package methods
 
 import (
-	"fmt"
+	//"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
-	"strings"
+	//"strings"
 	"time"
 
 	"git.corp.adobe.com/TechOps-IAO/butler/environment"
@@ -72,25 +72,28 @@ type HttpMethod struct {
 	Timeout      string                `mapstructure:"timeout" json:"timeout"`
 }
 
-func (h HttpMethod) Get(file string) (*Response, error) {
+func (h HttpMethod) Get(u *url.URL) (*Response, error) {
 	var (
 		err error
 		r   *http.Response
 		res Response
 	)
 
-	if h.Host != "" {
-		// we're going to have to do some ghetto stuff here!
-		scheme := strings.Split(file, "://")[0]
-		entry := strings.Split(file, "://")[1]
-		uriSplit := strings.Split(entry, "/")[1:]
-		uri := strings.Join(uriSplit, "/")
-		url := fmt.Sprintf("%s://%s/%s", scheme, h.Host, uri)
-		log.Debugf("HttpMethod::Get(): h.Host specified, new url=%v was=%v", url, file)
-		r, err = h.Client.Get(url)
-	} else {
-		r, err = h.Client.Get(file)
-	}
+	/*
+		if h.Host != "" {
+			// we're going to have to do some ghetto stuff here!
+			scheme := u.Scheme
+			entry := strings.Split(file, "://")[1]
+			uriSplit := strings.Split(entry, "/")[1:]
+			uri := strings.Join(uriSplit, "/")
+			url := fmt.Sprintf("%s://%s/%s", scheme, h.Host, uri)
+			log.Debugf("HttpMethod::Get(): h.Host specified, new url=%v was=%v", url, file)
+			r, err = h.Client.Get(url)
+		} else {
+			r, err = h.Client.Get(file)
+		}
+	*/
+	r, err = h.Client.Get(u.String())
 	if err != nil {
 		return &Response{}, err
 	}

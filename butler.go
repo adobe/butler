@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	_ "net/http/pprof"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -91,7 +92,7 @@ func (m *Monitor) Start() {
 // information
 func (m *Monitor) MonitorHandler(w http.ResponseWriter, r *http.Request) {
 	mOut := MonitorOutput{ConfigPath: m.Config.GetPath(),
-		ConfigScheme:     m.Config.Scheme,
+		ConfigScheme:     m.Config.Url.Scheme,
 		RetrieveInterval: m.Config.Interval,
 		LogLevel:         m.Config.GetLogLevel(),
 		ConfigSettings:   *m.Config.Config,
@@ -155,20 +156,21 @@ func main() {
 
 	log.Infof("Starting butler version %s", version)
 
-	newConfigPath := environment.GetVar(*configPath)
-	pathSplit := strings.Split(newConfigPath, "://")
-	if len(pathSplit) != 2 {
-		log.Fatalf("Cannot properly parse -config.path. -config.path must be in URL form. -config.path=%v", newConfigPath)
+	newUrl, err := url.Parse(environment.GetVar(*configPath))
+	if err != nil || newUrl.Scheme == "" {
+		log.Fatalf("Cannot properly parse -config.path. -config.path must be in URL form. -config.path=%v", environment.GetVar(*configPath))
 	}
-	scheme := strings.ToLower(pathSplit[0])
-	path := pathSplit[1]
 
 	bc := config.NewButlerConfig()
+	bc.Url = newUrl
 	bc.SetLogLevel(SetLogLevel(newConfigLogLevel))
-	bc.SetScheme(scheme)
-	bc.SetPath(path)
+	err = bc.SetScheme(bc.Url.Scheme)
+	if err != nil {
+		log.Fatalf("Unsupported butler scheme. scheme=%v", bc.Url.Scheme)
+	}
+	bc.SetPath(bc.Url.Path)
 
-	switch scheme {
+	switch bc.Url.Scheme {
 	case "http", "https":
 		// Set the HTTP Timeout
 		newConfigHttpTimeout, _ := strconv.Atoi(environment.GetVar(*configHttpTimeout))
@@ -205,13 +207,8 @@ func main() {
 		newConfigS3Region := environment.GetVar(*configS3Region)
 		log.Debugf("main(): setting s3 region=%v", newConfigS3Region)
 		bc.SetRegion(newConfigS3Region)
-	case "file":
-		newPath := environment.GetVar(path)
-		log.Debugf("main(): setting file path=%v", newPath)
-		// stegen gotta figure out what is up here!
-		bc.SetPath(newPath)
 	case "blob":
-		os.Setenv("BUTLER_STORAGE_ACCOUNT", strings.Split(path, "/")[0])
+		os.Setenv("BUTLER_STORAGE_ACCOUNT", bc.Url.Host)
 	}
 
 	// Set the butler configuration retrieval interval

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -42,7 +43,6 @@ func (c *ConfigClient) SetTimeout(val int) {
 		log.Debugf("ConfigClient::SetTimeout(): setting timeout to %v", val)
 		log.Debugf("ConfigClient::SetTimeout(): c=%#v", c)
 		c.HttpClient.HTTPClient.Timeout = time.Duration(val) * time.Second
-		//c.Method.SetTimeout(val)
 	}
 }
 
@@ -51,7 +51,6 @@ func (c *ConfigClient) SetRetryMax(val int) {
 	case "http", "https":
 		log.Debugf("ConfigClient::SetRetryMax(): setting retry max to %v", val)
 		c.HttpClient.RetryMax = val
-		//c.Client.Manager.Retries = val
 	}
 }
 
@@ -59,7 +58,6 @@ func (c *ConfigClient) SetRetryWaitMin(val int) {
 	switch c.Scheme {
 	case "http", "https":
 		c.HttpClient.RetryWaitMin = time.Duration(val) * time.Second
-		//c.Client.Manager.RetryWaitMin = val
 	}
 }
 
@@ -67,16 +65,15 @@ func (c *ConfigClient) SetRetryWaitMax(val int) {
 	switch c.Scheme {
 	case "http", "https":
 		c.HttpClient.RetryWaitMax = time.Duration(val) * time.Second
-		//c.Client.Manager.RetryWaitMax = val
 	}
 }
 
-func (c *ConfigClient) Get(val string) (*methods.Response, error) {
+func (c *ConfigClient) Get(val *url.URL) (*methods.Response, error) {
 	var (
 		response *methods.Response
 		err      error
 	)
-	switch c.Scheme {
+	switch val.Scheme {
 	case "blob", "file", "http", "https", "s3", "S3":
 		response, err = c.Method.Get(val)
 	default:

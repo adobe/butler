@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"reflect"
 
@@ -188,7 +189,9 @@ func (s *BlobTestSuite) TestGet(c *C) {
 	method, err := NewBlobMethod(&manager, &entry)
 	c.Assert(err, IsNil)
 
-	resp, err := method.Get("none")
+	u, err := url.Parse("none")
+	c.Assert(err, IsNil)
+	resp, err := method.Get(u)
 	c.Assert(err, NotNil)
 
 	var b *storage.Blob
@@ -197,7 +200,9 @@ func (s *BlobTestSuite) TestGet(c *C) {
 	})
 	defer patch.Unpatch()
 
-	resp, err = method.Get("/foo/bar")
+	u, err = url.Parse("/foo/bar")
+	c.Assert(err, IsNil)
+	resp, err = method.Get(u)
 	c.Assert(err, IsNil)
 	c.Assert(resp, NotNil)
 	out, err := ioutil.ReadAll(resp.GetResponseBody())
@@ -208,7 +213,9 @@ func (s *BlobTestSuite) TestGet(c *C) {
 	patch = monkey.PatchInstanceMethod(reflect.TypeOf(b), "Get", func(*storage.Blob, *storage.GetBlobOptions) (io.ReadCloser, error) {
 		return ioutil.NopCloser(bytes.NewReader([]byte("boom"))), errors.New("some error")
 	})
-	resp, err = method.Get("/foo/bar")
+	u, err = url.Parse("/foo/bar")
+	c.Assert(err, IsNil)
+	resp, err = method.Get(u)
 	c.Assert(err, NotNil)
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "some error")

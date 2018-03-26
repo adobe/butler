@@ -513,6 +513,12 @@ func GetManagerOpts(entry string, bc *ConfigSettings) (*ManagerOpts, error) {
 
 	MgrOpts.RepoPath = filepath.Clean(environment.GetVar(MgrOpts.RepoPath))
 
+	// This means that repo path was == "" and then filepath.Clean sets it to ".".
+	// We don't want that!
+	if MgrOpts.RepoPath == "." {
+		MgrOpts.RepoPath = ""
+	}
+
 	switch MgrOpts.Method {
 	case "blob", "file", "http", "https", "s3", "S3":
 		break
@@ -634,7 +640,7 @@ func GetConfigManager(entry string, bc *ConfigSettings) error {
 		log.Warnf("helpers.GetConfigManager(): No reloader has been defined for the \"%s\" manager.", entry)
 		reloader = nil
 		// If we've got no reloader for this manager, then there is no need to cache
-		log.Debugf("helpers.GetConfigManager(): No reloader defined for \"%s\" manager. Setting EnableCache to false", entry)
+		log.Debugf("helpers.GetConfigManager(): No reloader has been defined for \"%s\" manager. Setting EnableCache to false", entry)
 		Mgr.EnableCache = false
 	}
 
@@ -714,7 +720,6 @@ func ParseConfig(config []byte) error {
 					return errors.New(msg)
 				}
 			}
-			//Config.Managers[entry] = Manager{}
 		}
 	}
 

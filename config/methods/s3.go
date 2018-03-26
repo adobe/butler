@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"net/url"
 	"os"
 
 	"git.corp.adobe.com/TechOps-IAO/butler/environment"
@@ -76,21 +77,24 @@ func NewS3MethodWithRegionAndBucket(region string, bucket string) (Method, error
 	return result, err
 }
 
-func (s S3Method) Get(file string) (*Response, error) {
+func (s S3Method) Get(u *url.URL) (*Response, error) {
 	var (
 		response Response
 	)
+
+	// stegen
+	log.Debugf("S3Method::Get(): u=%#v", u)
 
 	tmpFile, err := ioutil.TempFile("/tmp", "s3pcmsfile")
 	if err != nil {
 		return &Response{}, errors.New(fmt.Sprintf("S3Method::Get(): could not create temp file err=%v", err))
 	}
 
-	log.Debugf("S3Method::Get(): going to download s3 region=%v, bucket=%v, key=%v", s.Region, s.Bucket, file)
+	log.Debugf("S3Method::Get(): going to download s3 region=%v, bucket=%v, key=%v", s.Region, s.Bucket, u.Path)
 	_, err = s.Downloader.Download(tmpFile,
 		&s3.GetObjectInput{
 			Bucket: aws.String(s.Bucket),
-			Key:    aws.String(file),
+			Key:    aws.String(u.Path),
 		})
 	if err != nil {
 		var code int
@@ -98,7 +102,10 @@ func (s S3Method) Get(file string) (*Response, error) {
 			code = e.StatusCode()
 		}
 		if e, ok := err.(awserr.Error); ok {
-			err = e.OrigErr()
+			err2 := e.OrigErr()
+			if err2 != nil {
+				err = err2
+			}
 			// actually couldn't fulfill the reqeust since the host
 			// probably doesn't exist. code = 504 is probably wrong but
 			// whatever... gateway timeout will have to be good enough ;)

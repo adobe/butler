@@ -3,6 +3,7 @@ package methods
 import (
 	"bytes"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"testing"
 
@@ -105,9 +106,11 @@ func (s *FileTestSuite) TestNewFileMethodEnv(c *C) {
 	os.Unsetenv("BUTLER_PATH")
 }
 
-func (s *FileTestSuite) TestNewFileMethodWithPath(c *C) {
+func (s *FileTestSuite) TestNewFileMethodWithUrl(c *C) {
 	path := "/var/www/html/butler/configs/hiya"
-	method, err := NewFileMethodWithPath(path)
+	u, err := url.Parse(path)
+	c.Assert(err, IsNil)
+	method, err := NewFileMethodWithUrl(u)
 	c.Assert(err, IsNil)
 	m := method.(FileMethod)
 	c.Assert(m.Path, Equals, path)
@@ -116,7 +119,9 @@ func (s *FileTestSuite) TestNewFileMethodWithPath(c *C) {
 func (s *FileTestSuite) TestGetPass(c *C) {
 	manager := "test-manager"
 	entry := "test-manager.repo.file"
-	method1, err1 := NewFileMethodWithPath("none")
+	u, err := url.Parse("none")
+	c.Assert(err, IsNil)
+	method1, err1 := NewFileMethodWithUrl(u)
 	method2, err2 := NewFileMethod(&manager, &entry)
 	c.Assert(err1, IsNil)
 	c.Assert(err2, IsNil)
@@ -126,8 +131,8 @@ func (s *FileTestSuite) TestGetPass(c *C) {
 	})
 	defer patch.Unpatch()
 
-	resp1, err1 := method1.Get("none")
-	resp2, err2 := method2.Get("none")
+	resp1, err1 := method1.Get(u)
+	resp2, err2 := method2.Get(u)
 	c.Assert(err1, IsNil)
 	c.Assert(err2, IsNil)
 	buf1 := new(bytes.Buffer)
@@ -144,13 +149,15 @@ func (s *FileTestSuite) TestGetPass(c *C) {
 func (s *FileTestSuite) TestGetFail(c *C) {
 	manager := "test-manager"
 	entry := "test-manager.repo.file"
-	method1, err1 := NewFileMethodWithPath("none")
+	u, err := url.Parse("none")
+	c.Assert(err, IsNil)
+	method1, err1 := NewFileMethodWithUrl(u)
 	method2, err2 := NewFileMethod(&manager, &entry)
 	c.Assert(err1, IsNil)
 	c.Assert(err2, IsNil)
 
-	resp1, err1 := method1.Get("none")
-	resp2, err2 := method2.Get("none")
+	resp1, err1 := method1.Get(u)
+	resp2, err2 := method2.Get(u)
 	c.Assert(err1, NotNil)
 	c.Assert(err2, NotNil)
 

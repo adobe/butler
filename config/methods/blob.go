@@ -3,6 +3,7 @@ package methods
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 
@@ -91,32 +92,21 @@ func NewBlobMethodWithAccount(account string) (Method, error) {
 	return result, err
 }
 
-func (b BlobMethod) Get(file string) (*Response, error) {
+func (b BlobMethod) Get(u *url.URL) (*Response, error) {
 	var (
-		container string
-		object    string
-		res       Response
+		res Response
 	)
-	fileSplit := strings.Split(file, "/")
+	pathSplit := strings.Split(u.Path, "/")
 
-	// this should only be /foo/bar or /foo/bar/baz
-	if (len(fileSplit) < 2) || (len(fileSplit) > 3) {
+	if len(pathSplit) < 2 {
 		return &Response{}, errors.New("improper length for blob storage account/path")
 	}
 
-	// Check to see if the storage account is in the file name
-	if strings.HasPrefix(file, b.StorageAccount) {
-		// we have to worry about /account/container/file.txt
-		container = fileSplit[1]
-		object = fileSplit[2]
-	} else {
-		// we just need to worry about /container/file.txt
-		container = fileSplit[0]
-		object = fileSplit[1]
-	}
+	container := pathSplit[1]
+	blobFile := strings.Join(pathSplit[2:], "/")
 
 	cnt := b.BlobClient.GetContainerReference(container)
-	blob := cnt.GetBlobReference(object)
+	blob := cnt.GetBlobReference(blobFile)
 	r, err := blob.Get(nil)
 	if err != nil {
 		return &Response{statusCode: 504}, err

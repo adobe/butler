@@ -41,6 +41,7 @@ var (
 	HttpRetries             = 4
 	HttpRetryWaitMin        = 5
 	HttpRetryWaitMax        = 10
+	ButlerTesting           = false
 )
 
 // Monitor is the empty structure to be used for starting up the monitor
@@ -139,6 +140,7 @@ func main() {
 		configHttpRetryWaitMax = flag.String("http.retry_wait_max", fmt.Sprintf("%v", HttpRetryWaitMax), "The maximum amount of time to wait before attemping to retry the http config get operation.")
 		configS3Region         = flag.String("s3.region", "", "The S3 Region that the config file resides.")
 		configLogLevel         = flag.String("log.level", "info", "The butler log level. Log levels are: debug, info, warn, error, fatal, panic.")
+		butlerTest             = flag.Bool("test", false, "Are we testing butler? (probably not!)")
 	)
 	flag.Parse()
 	newConfigLogLevel := environment.GetVar(*configLogLevel)
@@ -148,6 +150,13 @@ func main() {
 	if *versionFlag {
 		fmt.Fprintf(os.Stdout, "butler %s\n", version)
 		os.Exit(0)
+	}
+
+	// If ButlerTesting is true, then we're going to behave a little differently. We're going to treat butler as a one shot to test
+	// some main butler functionality
+	if *butlerTest {
+		log.Warnf("Butler testing mode enabled (eg: oneshot mode).")
+		ButlerTesting = true
 	}
 
 	if *configPath == "" {
@@ -236,8 +245,11 @@ func main() {
 		err = bc.Handler()
 
 		if err != nil {
-			log.Infof("Cannot retrieve butler configuration. err=%s", err.Error())
-			log.Infof("Sleeping 5 seconds.")
+			if ButlerTesting {
+				log.Fatalf("Cannot retrieve butler configuration. err=%s ButlerTesting=%#v", err.Error(), ButlerTesting)
+			}
+			log.Warnf("Cannot retrieve butler configuration. err=%s", err.Error())
+			log.Warnf("Sleeping 5 seconds.")
 			time.Sleep(5 * time.Second)
 		} else {
 			break
@@ -256,5 +268,9 @@ func main() {
 	log.Debugf("main(): doing initial run of butler configuration management handler")
 	bc.RunCMHandler()
 
-	<-sched.Start()
+	if ButlerTesting {
+		os.Exit(0)
+	} else {
+		<-sched.Start()
+	}
 }

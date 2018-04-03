@@ -558,8 +558,12 @@ func GetManagerOpts(entry string, bc *ConfigSettings) (*ManagerOpts, error) {
 		// shouldn't get this, but hey.
 		managerName = "unconfigured"
 	}
+
 	methodOpts := fmt.Sprintf("%s.%s", entry, MgrOpts.Method)
 	mopts, err := methods.New(&managerName, MgrOpts.Method, &methodOpts)
+	if err != nil {
+		return &ManagerOpts{}, err
+	}
 	MgrOpts.Opts = mopts
 
 	return &MgrOpts, nil

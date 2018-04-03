@@ -193,8 +193,50 @@ The command line option looks like this:
 Refer to the contrib/ directory for more information about the butler.toml configuration file, and all its features.
 
 ## Building
-## Pushing
-You need to `export ARTIFACTORY_USER="<YOUR ARTIFACTORY USERNAME>"` prior to doing your push. You may want to just have this environment variable inside of your dot.profile.  Make push-butler-<whatever> requires this environment variable to be set to whatever your artifactory login is.
+
+## Testing
+Butler has some unit testing, and some acceptance testing.
+
+The unit testing is using the check.v1 testing package (gopkg.in/check.v1). The code coverage is not very impressive, but we continue to add test cases as we go. If you want to run the unit tests, just run `make test-unit`.
+
+The acceptance testing tries to do some tests of how butler operates overall. You can provide a the butler binary with a configuration file, and run it with the `-test` flag. What this tells butler to do is to just perform a full config operation once. If there are percieved failures, it'll quit out with unix status code 1. For example, if it's unable to parse a configuration, or get some variables that it needs, it will exit out. It should also, hopefully, catch bugs which aren't caught in the unit testing, where panics may get invoked from calls that are made from functions that cannot be easily unit tested, but could be caught when running against actual configuration.
+
+Out of the box, it tests some http:// https:// file:// endoints, which it can handle internally.
+
+There are two additional scripts which can test against s3:// and blob:// storage. For both of these, you must set the appropriate environment variables for authenticating to the respective AWS or Azure storage service.
+### Blob Testing
+To test against Blob storage, you will need to export two environment variables:
+1. `BUTLER_BLOB_TEST_CONFIGS`
+1. `BUTLER_BLOB_TEST_RESPONSES`
+
+`BUTLER_BLOB_TEST_CONFIGS` is a space delimited list of urls to test against.
+`BUTLER_BLOB_TEST_RESPONSES` is a space delimited list of return codes which are expected against the list of delimited urls.
+
+Here is an example:
+```
+export BUTLER_BLOB_TEST_CONFIGS="blob://stegentestblobva7/butler/butler1.toml blob://stegentestblobva7/butler/butler2.toml blob://stegentestblobva7/butler/butler3.toml"
+export BUTLER_BLOB_TEST_RESPONSES="0 0 1"
+```
+
+The actual script that gets executed is `./files/tests/scripts/azure.sh`
+
+### S3 Testing
+To test against S3 storage, you will need to export two environment variables:
+1. `BUTLER_S3_TEST_CONFIGS`
+1. `BUTLER_S3_TEST_RESPONSES`
+
+`BUTLER_S3_TEST_CONFIGS` is a space delimited list of urls to test against.
+`BUTLER_S3_TEST_RESPONSES` is a space delimited list of return codes which are expected against the list of delimited urls.
+
+Here is an example:
+```
+export BUTLER_S3_TEST_CONFIGS="s3://stegen-test-bucket/butler1.toml s3://stegen-test-bucket/butler2.toml s3://stegen-test-bucket/butler3.toml"
+export BUTLER_S3_TEST_RESPONSES="0 1 1"
+```
+
+The actual script that gets executed is `./files/tests/scripts/s3.sh`
+
+If you want to run the acceptance testing, just run `make test-accept`.
 
 ## Health Checks
 butler provides DCOS health checks by exposing an http service with a /health-check endpoint. It exposes various configuration, and realtime information in JSON format regarding the butler process.

@@ -1,18 +1,18 @@
+SHELL=/bin/bash
+.PHONY: test
 export SERVICE_NAME=butler
 export BUILDER_TAG?=$(or $(sha),$(SERVICE_NAME)-builder)
-export TESTER_TAG?=$(or $(sha),$(SERVICE_NAME)-tester)
+export UNIT_TESTER_TAG?=$(or $(sha),$(SERVICE_NAME)-unittester)
+export ACCEPT_TESTER_TAG?=$(or $(sha),$(SERVICE_NAME)-accepttester)
 
 IMAGE_TAG=$(SERVICE_NAME)-img
 
 GO:=go
 pkgs=$(shell $(GO) list ./... | egrep -v "(vendor)")
 
-export ARTIFACTORY_USER=$(shell echo "$$ARTIFACTORY_USER")
-export ARTIFACTORY_REPO=butler
-export ARTIFACTORY_VERSION=1.1.12
-export VERSION=v$(ARTIFACTORY_VERSION)
-export ARTIFACTORY_PROD_HOST=docker-ethos-core-univ-release.dr-uw2.adobeitc.com
-export ARTIFACTORY_DEV_HOST=docker-ethos-core-univ-dev.dr-uw2.adobeitc.com
+export DOCKERHUB_USER=$(shell echo "$$DOCKERHUB_USER")
+export BUTLER_VERSION=1.1.13
+export VERSION=v$(BUTLER_VERSION)
 
 default: ci
 
@@ -26,55 +26,47 @@ build:
 
 build-local:
 	@$(GO) fmt $(pkgs)
-	@$(GO) build
+	@$(GO) build -ldflags "-X main.version=v1.1.12"
 
-pre-deploy-build: test
+pre-deploy-build: test-unit
 
 post-deploy-build:
 	@echo "Nothing is defined in post-deploy-build step"
 
-test:
-	@docker build --build-arg VERSION=$(VERSION) -t $(TESTER_TAG) -f Dockerfile-test .
-	@docker run -i $(TESTER_TAG)
+test: test-unit test-accept
+test-unit:
+	@docker build --build-arg VERSION=$(VERSION) -t $(UNIT_TESTER_TAG) -f Dockerfile-testunit .
+	@docker run -i $(UNIT_TESTER_TAG)
 
-enter-test:
-	@./files/enter_test_container.sh
+test-accept:
+	@docker build --build-arg VERSION=$(VERSION) -t $(ACCEPT_TESTER_TAG) -f Dockerfile-testaccept .
+	@docker run -v `pwd`/files/certs:/certs -v `pwd`/files/tests:/www --env-file <(env | egrep "(^BUT|AWS)") -i $(ACCEPT_TESTER_TAG)
+
+enter-test-unit:
+	@./files/enter_unit_test_container.sh
+
+enter-test-accept:
+	@./files/enter_accept_test_container.sh
 
 test-local:
 	@go test $(pkgs) -check.vv -v
 
-build-$(ARTIFACTORY_REPO):
-	@docker build --build-arg VERSION=$(VERSIO) -t $(ARTIFACTORY_REPO):$(ARTIFACTORY_VERSION) .
+build-$(SERVICE_NAME):
+	@docker build --build-arg VERSION=$(VERSION) -t $(SERVICE_NAME):$(BUTLER_VERSION) .
 
-push-$(ARTIFACTORY_REPO)-release: DOCKER_IMAGE_ID = $(shell docker images -q $(ARTIFACTORY_REPO):$(ARTIFACTORY_VERSION))
-push-$(ARTIFACTORY_REPO)-release: build-$(ARTIFACTORY_REPO)
+push-dockerhub: DOCKER_IMAGE_ID = $(shell docker images -q $(SERVICE_NAME):$(BUTLER_VERSION))
+push-dockerhub: build-$(SERVICE_NAME)
 	@printf "Enter DockerHub "
-	@docker login -u $(ARTIFACTORY_USER) $(ARTIFACTORY_PROD_HOST)
-	docker tag $(DOCKER_IMAGE_ID) $(ARTIFACTORY_PROD_HOST)/ethos/$(ARTIFACTORY_REPO):$(ARTIFACTORY_VERSION)
-	docker push $(ARTIFACTORY_PROD_HOST)/ethos/$(ARTIFACTORY_REPO):$(ARTIFACTORY_VERSION)
-
-push-$(ARTIFACTORY_REPO)-dev: DOCKER_IMAGE_ID = $(shell docker images -q $(ARTIFACTORY_REPO):$(ARTIFACTORY_VERSION))
-push-$(ARTIFACTORY_REPO)-dev: build-$(ARTIFACTORY_REPO)
-	@printf "Enter DockerHub "
-	@docker login -u $(ARTIFACTORY_USER) $(ARTIFACTORY_DEV_HOST)
-	docker tag $(DOCKER_IMAGE_ID) $(ARTIFACTORY_DEV_HOST)/ethos/$(ARTIFACTORY_REPO):$(ARTIFACTORY_VERSION)
-	docker push $(ARTIFACTORY_DEV_HOST)/ethos/$(ARTIFACTORY_REPO):$(ARTIFACTORY_VERSION)
-
-push-butler-dockerhub: DOCKER_IMAGE_ID = $(shell docker images -q $(ARTIFACTORY_REPO):$(ARTIFACTORY_VERSION))
-push-butler-dockerhub: build-$(ARTIFACTORY_REPO)
-	@printf "Enter DockerHub "
-	@docker login -u $(ARTIFACTORY_USER)
-	docker tag $(DOCKER_IMAGE_ID) $(ARTIFACTORY_USER)/$(ARTIFACTORY_REPO):$(ARTIFACTORY_VERSION)
-	docker push $(ARTIFACTORY_USER)/$(ARTIFACTORY_REPO):$(ARTIFACTORY_VERSION)
+	@docker login -u $(DOCKERHUB_USER)
+	docker tag $(DOCKER_IMAGE_ID) $(DOCKERHUB_USER)/$(SERVICE_NAME):$(BUTLER_VERSION)
+	docker push $(DOCKERHUB_USER)/$(SERVICE_NAME):$(BUTLER_VERSION)
 
 help:
 	@printf "Usage:\n\n"
 	@printf "make\t\t\t\tBuilds butler, for use in CI.\n"
 	@printf "make build-local\t\tBuilds a local binary of butler.\n"
-	@printf "make build-$(ARTIFACTORY_REPO)\t\tBuilds butler locally, for use in pushing to artifactory.\n"
-	@printf "make push-$(ARTIFACTORY_REPO)-dev\t\tPushes butler to $(ARTIFACTORY_DEV_HOST).\n"
-	@printf "make push-$(ARTIFACTORY_REPO)-release\tPushes butler to $(ARTIFACTORY_PROD_HOST).\n"
-	@printf "make push-butler-dockerhub\tPushes butler to DockerHub (If necessary).\n"
+	@printf "make build-$(SERVICE_NAME)\t\tBuilds butler locally, for use in pushing to artifactory.\n"
+	@printf "make push-dockerhub\t\tPushes butler to DockerHub (If necessary).\n"
 	@printf "make run\t\t\tRun butler on local system.\n"
 	@printf "make start-alertmanager\t\tRun a local alertmanager instance for testing.\n"
 	@printf "make start-prometheus\t\tRun a local prometheus v1 instance for testing.\n"

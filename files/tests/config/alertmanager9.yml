@@ -1,0 +1,5 @@
+#butlerstart
+global:
+  slack_api_url: 'https://localhost'
+templates:
+#butlerend

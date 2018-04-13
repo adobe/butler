@@ -542,6 +542,14 @@ process_virtual_memory_bytes 2.39341568e+08
 [master]
 [13:04]pts/11:16(stegen@woden):[~/git/ethos/butler]% 
 ```
+### Contributing
+
+Contributions are welcomed! Read the [Contributing Guide](CONTRIBUTING.md) for more information.
+
+### Licensing
+
+This project is licensed under the Apache V2 License. See [LICENSE](LICENSE) for more information.
+
 [workflow-diagram]: https://git.corp.adobe.com/TechOps-IAO/butler/raw/master/contrib/diagrams/png/Butler%20Workflow.png
 [elements-diagram]: https://git.corp.adobe.com/TechOps-IAO/butler/raw/master/contrib/diagrams/png/Butler%20Elements.png
 [butler-logo]: https://git.corp.adobe.com/TechOps-IAO/butler/raw/master/contrib/images/butler.png

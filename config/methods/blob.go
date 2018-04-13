@@ -27,9 +27,13 @@ import (
 )
 
 type BlobMethod struct {
-	StorageAccount string                    `mapstructure:"storage-account-name" json:"storage-account-name"`
-	AzureClient    storage.Client            `json:"-"`
-	BlobClient     storage.BlobStorageClient `json:"-"`
+	StorageAccount       string                    `mapstructure:"storage-account-name" json:"storage-account-name"`
+	AccountName          string                    `mapstructure:"account-name" json:"account-name,omitempty"`
+	AccountKey           string                    `mapstructure:"account-key" json:"-"`
+	SecondaryAccountName string                    `mapstructure:"secondary-account-name" json:"secondary-account-name,omitempty"`
+	SecondaryAccountKey  string                    `mapstructure:"secondary-account-key" json:"-"`
+	AzureClient          storage.Client            `json:"-"`
+	BlobClient           storage.BlobStorageClient `json:"-"`
 }
 
 func NewBlobMethod(manager *string, entry *string) (Method, error) {

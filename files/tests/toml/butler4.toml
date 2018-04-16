@@ -1,0 +1,8 @@
+title = "butler configuration"
+
+[globals]
+  config-managers = ["alertmanager"]
+  scheduler-interval = "15"
+  exit-on-config-failure = "false"
+  status-file = "/var/tmp/butler.status"
+#butlerend

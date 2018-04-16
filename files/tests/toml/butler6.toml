@@ -1,0 +1,48 @@
+#butlerstart
+title = "butler configuration"
+
+[globals]
+  config-managers = ["alertmanager"]
+  scheduler-interval = "15"
+  exit-on-config-failure = "false"
+  status-file = "/var/tmp/butler.status"
+
+[alertmanager]
+  repos = ["repo1.domain.com"]
+  clean-files = "true"
+  mustache-subs = [""]
+  enable-cache = "true"
+  cache-path = "/opt/cache/alertmanager"
+  dest-path = "/opt/butler/alertmanager"
+  primary-config-name = "alertmanager.yml"
+  manager-timeout-ok = "true"
+
+#  [alertmanager.repo1.domain.com]
+#    method = "http"
+#    repo-path = "/butler/configs/alertmanager"
+#    primary-config = ["dx_alertmanager.yml"]
+#    additional-config = [""]
+#    content-type = "text"
+#
+#  [alertmanager.repo1.domain.com.http]
+#    retries = "3"
+#    retry-wait-min = "5"
+#    retry-wait-max = "10"
+#    timeout = "10"
+#
+#  [alertmanager.reloader]
+#    method = "http"
+#
+#    [alertmanager.reloader.http]
+#      host = "env:PROM_HOST"
+#      port = "9093"
+#      uri = "/-/reload"
+#      method = "post"
+#      payload = "{}"
+#      content-type = "application/json"
+#      # retry info and timeouts
+#      retries = "5"
+#      retry-wait-min = "5"
+#      retry-wait-max = "10"
+#      timeout = "10"
+#butlerend

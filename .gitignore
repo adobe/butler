@@ -2,6 +2,6 @@ butler
 env
 *.swp
 *.key
-*.toml
+#*.toml
 *.bak
- .idea
+*.idea

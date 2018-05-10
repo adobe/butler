@@ -2,7 +2,7 @@
 ![Butler Logo][butler-logo]
 
 ## Butler Configuration Management System (BCMS) Overview
-The butler tool is designed to grab any configuration files, defined in its configuration file, from a remote location/repository via http(s) and side load them onto another locally running container.
+The butler tool is designed to grab any configuration files, defined in its configuration file, from a remote location/repository via http(s)/s3(AWS)/blob(Azure)/file/etcd and side load them onto another locally running container.
 
 The butler configuration file is a [TOML](https://github.com/toml-lang/toml) formatted file. You can store the file locally (using a mounted filesystem), or on a remote server. The proper formatting for the config file can be found [here](https://git.corp.adobe.com/TechOps-IAO/butler/tree/master/contrib)
 
@@ -27,6 +27,8 @@ Usage of ./butler:
     	Full remote path to butler configuration file (eg: full URL scheme://path).
   -config.retrieve-interval int
     	The interval, in seconds, to retrieve new butler configuration files. (default 300)
+  -etcd.endpoints string
+    	The endpoints to connect to etcd.
   -http.retries int
     	The number of http retries for GET requests to obtain the butler configuration files (default 4)
   -http.retry_wait_max int
@@ -47,7 +49,7 @@ Usage of ./butler:
 
 ```
 
-Valid schemes are: blob (Azure), file, http (or https), and s3 (AWS)
+Valid schemes are: blob (Azure), etcd, file, http (or https), and s3 (AWS)
 
 ### Use of Environment Variables
 Butler supports the usre of environment variables. Any field that is prefixed with `env:` will be looked up in the environment. This will work for all command line options, and MOST configuration file options.
@@ -76,6 +78,28 @@ INFO[2017-10-11T14:24:29+01:00] Starting butler version v1.0.0
 ```
 When you execute butler with the above arguments, you are asking butler to grab its configuration file from http://localhost/butler/config/butler.toml, and try to re-retrieve and refresh it every 10 seconds. It will also use the default log level of INFO. If you need more verbosity to your output, specify `debug` as the logging level argument.
 
+#### etcd CLI
+```
+[12:34]pts/16:3(stegen@woden):[~/git/ethos/butler]% ./butler -config.path etcd://etcd.mesos/butler/butler.toml -etcd.endpoints http://etcd.mesos:1026 -log.level info
+INFO[2018-05-10T11:34:05Z] Starting butler version v1.2.0
+INFO[2018-05-10T11:34:05Z] Config::Init(): initializing butler config.
+WARN[2018-05-10T11:34:05Z] ButlerConfig::Init() Above \"NewHttpMethod(): could not convert\" warnings may be safely disregarded.
+INFO[2018-05-10T11:34:05Z] Config::Init(): butler config initialized.
+INFO[2018-05-10T11:34:05Z] ButlerConfig::Handler(): entering.
+INFO[2018-05-10T11:34:05Z] Config::RunCMHandler(): entering
+^C
+[12:34]pts/16:4(stegen@woden):[~/git/ethos/butler]%
+```
+
+You can grab the butler.toml directly from etcd, and you can also create a repo which utilizes etcd within the butler.toml. Refer to [this example](https://git.corp.adobe.com/copernicus/butler/blob/master/contrib/butler.toml.etcdtest)
+
+You can easily add the files into etcd by the following commands:
+```
+etcdctl --endpoint http://etcd.mesos:1026 mkdir /butler
+etcdctl --endpoint http://etcd.mesos:1026 set /butler/butler.toml "$(cat /tmp/butler.toml)"
+```
+Note that this should support both etcd v2 and v3.
+
 #### S3 CLI
 ```
 [14:24]pts/12:21(stegen@woden):[~/git/ethos/butler]% ./butler -config.path s3://s3-bucket/config/butler.toml -config.retrieve-interval 10 -log.level info -s3.region <aws-region>
@@ -95,6 +119,7 @@ The following environment variable is optional
 1. `BUTLER_STORAGE_ACCOUNT`- This is the name of the Azure Storage Account. You can either specify this in the environment, or you can specify it in the butler.toml configuration file. See the example file for reference under `./contrib/butler.toml.sample`.
 
 The command line option looks like this:
+
 `[14:24]pts/12:21(stegen@woden):[~/git/ethos/butler]% ./butler -config.path blob://azure-storage-account/azure-blob-container/butler.toml -config.retrieve-interval 10 -log.level info`
 
 ### DCOS Deployment JSON

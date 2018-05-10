@@ -13,10 +13,11 @@ governing permissions and limitations under the License.
 package methods
 
 import (
-	log "github.com/sirupsen/logrus"
 	"io"
 	"net/url"
 	"strings"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type Method interface {
@@ -49,6 +50,8 @@ func New(manager *string, method string, entry *string) (Method, error) {
 		return NewFileMethod(manager, entry)
 	case "blob":
 		return NewBlobMethod(manager, entry)
+	case "etcd":
+		return NewEtcdMethod(manager, entry)
 	default:
 		return NewGenericMethod(manager, entry)
 	}

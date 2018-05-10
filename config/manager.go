@@ -25,8 +25,9 @@ import (
 	"git.corp.adobe.com/TechOps-IAO/butler/config/reloaders"
 	"git.corp.adobe.com/TechOps-IAO/butler/stats"
 
-	log "github.com/sirupsen/logrus"
 	"strings"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type Manager struct {
@@ -327,7 +328,7 @@ func (bmo *ManagerOpts) GetAdditionalRemoteConfigFiles() []string {
 // Really need to come up with a better method for this.
 func (bmo *ManagerOpts) DownloadConfigFile(file string) *os.File {
 	switch bmo.Method {
-	case "blob", "file", "http", "https", "s3", "S3":
+	case "blob", "file", "http", "https", "s3", "S3", "etcd":
 		tmpFile, err := ioutil.TempFile("/tmp", "bcmsfile")
 		if err != nil {
 			msg := fmt.Sprintf("ManagerOpts::DownloadConfigFile(): could not create temporary file. err=%v", err)

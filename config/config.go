@@ -31,7 +31,7 @@ import (
 
 var (
 	ConfigSchedulerInterval = 300
-	ValidSchemes            = []string{"blob", "file", "http", "https", "s3", "S3"}
+	ValidSchemes            = []string{"blob", "file", "http", "https", "s3", "S3", "etcd"}
 )
 
 // butlerHeader and butlerFooter represent the strings that need to be matched
@@ -86,7 +86,7 @@ func (c *ConfigClient) Get(val *url.URL) (*methods.Response, error) {
 		err      error
 	)
 	switch val.Scheme {
-	case "blob", "file", "http", "https", "s3", "S3":
+	case "blob", "file", "http", "https", "s3", "S3", "etcd":
 		response, err = c.Method.Get(val)
 	default:
 		response = &methods.Response{}

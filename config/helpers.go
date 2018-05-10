@@ -532,7 +532,7 @@ func GetManagerOpts(entry string, bc *ConfigSettings) (*ManagerOpts, error) {
 	}
 
 	switch MgrOpts.Method {
-	case "blob", "file", "http", "https", "s3", "S3":
+	case "blob", "file", "http", "https", "s3", "S3", "etcd":
 		break
 	default:
 		msg := fmt.Sprintf("unknown manager.method=%v", MgrOpts.Method)
@@ -770,6 +770,8 @@ func NewConfigClient(scheme string) (*ConfigClient, error) {
 		c.Scheme = "file"
 	case "blob":
 		c.Scheme = "blob"
+	case "etcd":
+		c.Scheme = "etcd"
 	default:
 		errMsg := fmt.Sprintf("Unsupported butler config scheme: %s", scheme)
 		return &ConfigClient{}, errors.New(errMsg)

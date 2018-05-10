@@ -47,8 +47,9 @@ type ButlerConfig struct {
 	RetryWaitMax            int
 	Scheduler               *gocron.Scheduler
 	// some s3 specific stuff
-	S3Region string
-	S3Bucket string
+	S3Region  string
+	S3Bucket  string
+	Endpoints []string
 }
 
 func (bc *ButlerConfig) SetScheme(s string) error {
@@ -111,6 +112,11 @@ func (bc *ButlerConfig) SetTimeout(t int) error {
 
 func (bc *ButlerConfig) SetRegion(r string) error {
 	bc.S3Region = r
+	return nil
+}
+
+func (bc *ButlerConfig) SetEndpoints(e []string) error {
+	bc.Endpoints = e
 	return nil
 }
 
@@ -209,7 +215,13 @@ func (bc *ButlerConfig) Init() error {
 		if err != nil {
 			return err
 		}
+	case "etcd":
+		client.Method, err = methods.NewEtcdMethodWithEndpoints(bc.Endpoints)
+		if err != nil {
+			return err
+		}
 	}
+
 	bc.Client = client
 	bc.Config = NewConfigSettings()
 

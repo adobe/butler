@@ -21,7 +21,7 @@ GO:=go
 pkgs=$(shell $(GO) list ./... | egrep -v "(vendor)")
 
 export DOCKERHUB_USER=$(shell echo "$$DOCKERHUB_USER")
-export BUTLER_VERSION=1.1.13
+export BUTLER_VERSION=1.2.0
 export VERSION=v$(BUTLER_VERSION)
 
 default: ci
@@ -36,7 +36,7 @@ build:
 
 build-local:
 	@$(GO) fmt $(pkgs)
-	@$(GO) build -ldflags "-X main.version=v1.1.12"
+	@$(GO) build -ldflags "-X main.version=$(VERSION)"
 
 pre-deploy-build: test-unit
 

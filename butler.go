@@ -151,6 +151,7 @@ func main() {
 		configHttpRetryWaitMin = flag.String("http.retry_wait_min", fmt.Sprintf("%v", HttpRetryWaitMin), "The minimum amount of time to wait before attemping to retry the http config get operation.")
 		configHttpRetryWaitMax = flag.String("http.retry_wait_max", fmt.Sprintf("%v", HttpRetryWaitMax), "The maximum amount of time to wait before attemping to retry the http config get operation.")
 		configS3Region         = flag.String("s3.region", "", "The S3 Region that the config file resides.")
+		configEtcdEndpoints    = flag.String("etcd.endpoints", "", "The endpoints to connect to etcd.")
 		configLogLevel         = flag.String("log.level", "info", "The butler log level. Log levels are: debug, info, warn, error, fatal, panic.")
 		butlerTest             = flag.Bool("test", false, "Are we testing butler? (probably not!)")
 	)
@@ -230,6 +231,13 @@ func main() {
 		bc.SetRegion(newConfigS3Region)
 	case "blob":
 		os.Setenv("BUTLER_STORAGE_ACCOUNT", bc.Url.Host)
+	case "etcd":
+		if *configEtcdEndpoints == "" {
+			log.Fatalf("You must provide a valid -etcd.endpoints for use with the etcd downloader.")
+		}
+		newConfigEtcdEndpoints := environment.GetVar(*configEtcdEndpoints)
+		log.Debugf("main(): setting etcd endpoints=%v", newConfigEtcdEndpoints)
+		bc.SetEndpoints(strings.Split(newConfigEtcdEndpoints, ","))
 	}
 
 	// Set the butler configuration retrieval interval

@@ -91,7 +91,7 @@ INFO[2018-05-10T11:34:05Z] Config::RunCMHandler(): entering
 [12:34]pts/16:4(stegen@woden):[~/git/ethos/butler]%
 ```
 
-You can grab the butler.toml directly from etcd, and you can also create a repo which utilizes etcd within the butler.toml. Refer to [this example](https://git.corp.adobe.com/copernicus/butler/blob/master/contrib/butler.toml.etcdtest)
+You can grab the butler.toml directly from etcd, and you can also create a repo which utilizes etcd within the butler.toml. Refer to [this example](https://git.corp.adobe.com/TechOps-IAO/butler/blob/master/contrib/butler.toml.etcdtest).
 
 You can easily add the files into etcd by the following commands:
 ```

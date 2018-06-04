@@ -1,8 +1,8 @@
-# butler
+# Butler CMS
 ![Butler Logo][butler-logo]
 
-## Butler Configuration Management System (BCMS) Overview
-The butler tool is designed to grab any configuration files, defined in its configuration file, from a remote location/repository via http(s)/s3(AWS)/blob(Azure)/file/etcd and side load them onto another locally running container.
+## Butler CMS (Configuration Management System) Overview
+The Butler CMS (butler) tool is designed to grab any configuration files, defined in its configuration file, from a remote location/repository via http(s)/s3(AWS)/blob(Azure)/file/etcd and side load them onto another locally running container.
 
 The butler configuration file is a [TOML](https://github.com/toml-lang/toml) formatted file. You can store the file locally (using a mounted filesystem), or on a remote server. The proper formatting for the config file can be found [here](https://git.corp.adobe.com/TechOps-IAO/butler/tree/master/contrib)
 

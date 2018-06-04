@@ -53,7 +53,6 @@ func (c *ConfigClient) SetTimeout(val int) {
 	switch c.Scheme {
 	case "http", "https":
 		log.Debugf("ConfigClient::SetTimeout(): setting timeout to %v", val)
-		log.Debugf("ConfigClient::SetTimeout(): c=%#v", c)
 		c.HttpClient.HTTPClient.Timeout = time.Duration(val) * time.Second
 	}
 }

@@ -150,6 +150,9 @@ func main() {
 		configHttpRetries      = flag.String("http.retries", fmt.Sprintf("%v", HttpRetries), "The number of http retries for GET requests to obtain the butler configuration files")
 		configHttpRetryWaitMin = flag.String("http.retry_wait_min", fmt.Sprintf("%v", HttpRetryWaitMin), "The minimum amount of time to wait before attemping to retry the http config get operation.")
 		configHttpRetryWaitMax = flag.String("http.retry_wait_max", fmt.Sprintf("%v", HttpRetryWaitMax), "The maximum amount of time to wait before attemping to retry the http config get operation.")
+		configHttpAuthToken    = flag.String("http.auth_token", "", "HTTP auth token to use for HTTP authentication.")
+		configHttpAuthType     = flag.String("http.auth_type", "", "HTTP auth type (eg: basic / digest) to use. If empty (by default) do not use HTTP authentication.")
+		configHttpAuthUser     = flag.String("http.auth_user", "", "HTTP auth user to use for HTTP authentication")
 		configS3Region         = flag.String("s3.region", "", "The S3 Region that the config file resides.")
 		configEtcdEndpoints    = flag.String("etcd.endpoints", "", "The endpoints to connect to etcd.")
 		configLogLevel         = flag.String("log.level", "info", "The butler log level. Log levels are: debug, info, warn, error, fatal, panic.")
@@ -176,7 +179,7 @@ func main() {
 		log.Fatal("You must provide a -config.path for a path to the butler configuration.")
 	}
 
-	log.Infof("Starting butler version %s", version)
+	log.Infof("Starting Butler CMS version %s", version)
 
 	newUrl, err := url.Parse(environment.GetVar(*configPath))
 	if err != nil || newUrl.Scheme == "" {
@@ -194,6 +197,22 @@ func main() {
 
 	switch bc.Url.Scheme {
 	case "http", "https":
+		newConfigHttpAuthType := strings.ToLower(environment.GetVar(*configHttpAuthType))
+		if newConfigHttpAuthType != "" {
+			if environment.GetVar(*configHttpAuthUser) != "" && environment.GetVar(*configHttpAuthToken) != "" {
+			} else {
+				log.Fatalf("HTTP Authentication enabled, but insufficient authentication details provided.")
+			}
+			switch newConfigHttpAuthType {
+			case "basic", "digest":
+				bc.SetHttpAuthType(newConfigHttpAuthType)
+				bc.SetHttpAuthToken(*configHttpAuthToken)
+				bc.SetHttpAuthUser(*configHttpAuthUser)
+				break
+			default:
+				log.Fatalf("Unsupported HTTP Authentication Type: %s", newConfigHttpAuthType)
+			}
+		}
 		// Set the HTTP Timeout
 		newConfigHttpTimeout, _ := strconv.Atoi(environment.GetVar(*configHttpTimeout))
 		if newConfigHttpTimeout == 0 {

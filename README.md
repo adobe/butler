@@ -21,31 +21,39 @@ There are various ways that you can run butler. We will ultimately deploy butler
 
 ### Command Line Usage
 ```
-[14:22]pts/12:16(stegen@woden):[~/git/ethos/butler]% ./butler -h
+[16:06]pts/22:49(stegen@woden):[~]%
 Usage of ./butler:
   -config.path string
     	Full remote path to butler configuration file (eg: full URL scheme://path).
-  -config.retrieve-interval int
-    	The interval, in seconds, to retrieve new butler configuration files. (default 300)
+  -config.retrieve-interval string
+    	The interval, in seconds, to retrieve new butler configuration files. (default "300")
   -etcd.endpoints string
     	The endpoints to connect to etcd.
-  -http.retries int
-    	The number of http retries for GET requests to obtain the butler configuration files (default 4)
-  -http.retry_wait_max int
-    	The maximum amount of time to wait before attemping to retry the http config get operation. (default 10)
-  -http.retry_wait_min int
-    	The minimum amount of time to wait before attemping to retry the http config get operation. (default 5)
-  -http.timeout int
-    	The http timeout, in seconds, for GET requests to obtain the butler configuration file. (default 10)
+  -http.auth_token string
+    	HTTP auth token to use for HTTP authentication.
+  -http.auth_type string
+    	HTTP auth type (eg: basic / digest) to use. If empty (by default) do not use HTTP authentication.
+  -http.auth_user string
+    	HTTP auth user to use for HTTP authentication
+  -http.retries string
+    	The number of http retries for GET requests to obtain the butler configuration files (default "4")
+  -http.retry_wait_max string
+    	The maximum amount of time to wait before attemping to retry the http config get operation. (default "10")
+  -http.retry_wait_min string
+    	The minimum amount of time to wait before attemping to retry the http config get operation. (default "5")
+  -http.timeout string
+    	The http timeout, in seconds, for GET requests to obtain the butler configuration file. (default "10")
   -log.level string
     	The butler log level. Log levels are: debug, info, warn, error, fatal, panic. (default "info")
   -s3.region string
     	The S3 Region that the config file resides.
+  -test
+    	Are we testing butler? (probably not!)
   -version
     	Print version information.
 
-[master]
-[14:22]pts/12:17(stegen@woden):[~/git/ethos/butler]%
+[16:08]pts/22:50(stegen@woden):[~]%
+
 
 ```
 
@@ -69,26 +77,34 @@ You should get the gist at this point. Refer to the butler.toml.sample configura
 ### Example Command Line Usage
 #### HTTP/HTTPS CLI
 ```
-[14:24]pts/12:21(stegen@woden):[~/git/ethos/butler]% ./butler -config.path http://localhost/butler/config/butler.toml -config.retrieve-interval 10 -log.level info
-INFO[2017-10-11T14:24:29+01:00] Starting butler version v1.0.0
+[14:24]pts/12:21(stegen@woden):[~]% ./butler -config.path http://localhost/butler/config/butler.toml -config.retrieve-interval 10 -log.level info
+INFO[2017-10-11T14:24:29+01:00] Starting Butler CMS version v1.2.1
 ^C
 
 [master]
-[14:24]pts/12:22(stegen@woden):[~/git/ethos/butler]%
+[14:24]pts/12:22(stegen@woden):[~]%
 ```
 When you execute butler with the above arguments, you are asking butler to grab its configuration file from http://localhost/butler/config/butler.toml, and try to re-retrieve and refresh it every 10 seconds. It will also use the default log level of INFO. If you need more verbosity to your output, specify `debug` as the logging level argument.
 
+##### HTTP/HTTPS CLI Authentication
+Butler CMS supports both Basic and Digest based HTTP authentication. If your butler.toml is behind an authenticated webserver, then on the CLI you must provide the following flags:
+1. `-http.auth_type` - This is the backend authentication type. Choose either `basic` or `digest`.
+1. `-http.auth_user` - This is the user to authenticate as.
+1. `-http.auth_token` - This is the authentication tokne.
+
+With any of these flags, they can be retrieved form the environment. Refer to the "Use of Environment Variables" section for more information.
+
 #### etcd CLI
 ```
-[12:34]pts/16:3(stegen@woden):[~/git/ethos/butler]% ./butler -config.path etcd://etcd.mesos/butler/butler.toml -etcd.endpoints http://etcd.mesos:1026 -log.level info
-INFO[2018-05-10T11:34:05Z] Starting butler version v1.2.0
+[12:34]pts/16:3(stegen@woden):[~]% ./butler -config.path etcd://etcd.mesos/butler/butler.toml -etcd.endpoints http://etcd.mesos:1026 -log.level info
+INFO[2018-05-10T11:34:05Z] Starting Butler CMS version v1.2.1
 INFO[2018-05-10T11:34:05Z] Config::Init(): initializing butler config.
 WARN[2018-05-10T11:34:05Z] ButlerConfig::Init() Above \"NewHttpMethod(): could not convert\" warnings may be safely disregarded.
 INFO[2018-05-10T11:34:05Z] Config::Init(): butler config initialized.
 INFO[2018-05-10T11:34:05Z] ButlerConfig::Handler(): entering.
 INFO[2018-05-10T11:34:05Z] Config::RunCMHandler(): entering
 ^C
-[12:34]pts/16:4(stegen@woden):[~/git/ethos/butler]%
+[12:34]pts/16:4(stegen@woden):[~]%
 ```
 
 You can grab the butler.toml directly from etcd, and you can also create a repo which utilizes etcd within the butler.toml. Refer to [this example](https://git.corp.adobe.com/TechOps-IAO/butler/blob/master/contrib/butler.toml.etcdtest).
@@ -102,12 +118,12 @@ Note that this should support both etcd v2 and v3.
 
 #### S3 CLI
 ```
-[14:24]pts/12:21(stegen@woden):[~/git/ethos/butler]% ./butler -config.path s3://s3-bucket/config/butler.toml -config.retrieve-interval 10 -log.level info -s3.region <aws-region>
-INFO[2017-10-11T14:24:29+01:00] Starting butler version v1.0.0
+[14:24]pts/12:21(stegen@woden):[~]% ./butler -config.path s3://s3-bucket/config/butler.toml -config.retrieve-interval 10 -log.level info -s3.region <aws-region>
+INFO[2017-10-11T14:24:29+01:00] Starting Butler CMS version v1.2.1
 ^C
 
 [master]
-[14:24]pts/12:22(stegen@woden):[~/git/ethos/butler]%
+[14:24]pts/12:22(stegen@woden):[~]%
 ```
 When you execute butler with the above arguments, you are asking butler to grab its configuration file from S3 storage using bucket `s3-bucket`, file key `config/butler.toml` and the aws-region as specified by `s3.region`, and try to re-retrieve and refresh it every 10 seconds. It will also use the default log level of INFO. If you need more verbosity to your output, specify `debug` as the logging level argument.
 
@@ -120,7 +136,7 @@ The following environment variable is optional
 
 The command line option looks like this:
 
-`[14:24]pts/12:21(stegen@woden):[~/git/ethos/butler]% ./butler -config.path blob://azure-storage-account/azure-blob-container/butler.toml -config.retrieve-interval 10 -log.level info`
+`[14:24]pts/12:21(stegen@woden):[~]% ./butler -config.path blob://azure-storage-account/azure-blob-container/butler.toml -config.retrieve-interval 10 -log.level info`
 
 ### DCOS Deployment JSON
 ```
@@ -266,7 +282,7 @@ If you want to run the acceptance testing, just run `make test-accept`.
 ## Health Checks
 butler provides DCOS health checks by exposing an http service with a /health-check endpoint. It exposes various configuration, and realtime information in JSON format regarding the butler process.
 ```
-[12:54]pts/11:13(stegen@woden):[~/git/ethos/butler]% http get localhost:8080/health-check
+[12:54]pts/11:13(stegen@woden):[~]% http get localhost:8080/health-check
 HTTP/1.1 200 OK
 Content-Type: application/json
 Date: Thu, 12 Oct 2017 10:44:50 GMT
@@ -424,12 +440,12 @@ Transfer-Encoding: chunked
 }
 
 [master]
-[13:02]pts/11:14(stegen@woden):[~/git/ethos/butler]% 
+[13:02]pts/11:14(stegen@woden):[~]%
 ```
 ## Prometheus Metrics
 butler provides native Prometheus of the butler go binary by exposing an http service with a /metrics endpoint. This includes both butler specific metric information (prefixed with `butler_`), and internal go and process related metrics (prefixed with `go_` and `process_`)
 ```
-[13:04]pts/11:15(stegen@woden):[~/git/ethos/butler]% http get localhost:8080/metrics 
+[13:04]pts/11:15(stegen@woden):[~]% http get localhost:8080/metrics 
 HTTP/1.1 200 OK
 Content-Encoding: gzip
 Content-Length: 1381
@@ -565,7 +581,7 @@ process_virtual_memory_bytes 2.39341568e+08
 
 
 [master]
-[13:04]pts/11:16(stegen@woden):[~/git/ethos/butler]% 
+[13:04]pts/11:16(stegen@woden):[~]%
 ```
 ### Contributing
 

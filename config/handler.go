@@ -32,8 +32,7 @@ import (
 )
 
 type ButlerConfig struct {
-	Url *url.URL
-	//Url                     string
+	Url                     *url.URL
 	Client                  *ConfigClient
 	Config                  *ConfigSettings
 	FirstRun                bool
@@ -46,6 +45,10 @@ type ButlerConfig struct {
 	RetryWaitMin            int
 	RetryWaitMax            int
 	Scheduler               *gocron.Scheduler
+	// some http specific stuff
+	HttpAuthType  string
+	HttpAuthUser  string
+	HttpAuthToken string
 	// some s3 specific stuff
 	S3Region  string
 	S3Bucket  string
@@ -107,6 +110,21 @@ func (bc *ButlerConfig) GetInterval() int {
 func (bc *ButlerConfig) SetTimeout(t int) error {
 	log.Debugf("Config::SetTimeout(): setting bc.Timeout=%v", t)
 	bc.Timeout = t
+	return nil
+}
+
+func (bc *ButlerConfig) SetHttpAuthType(t string) error {
+	bc.HttpAuthType = t
+	return nil
+}
+
+func (bc *ButlerConfig) SetHttpAuthToken(t string) error {
+	bc.HttpAuthToken = t
+	return nil
+}
+
+func (bc *ButlerConfig) SetHttpAuthUser(t string) error {
+	bc.HttpAuthUser = t
 	return nil
 }
 
@@ -197,6 +215,12 @@ func (bc *ButlerConfig) Init() error {
 		client.SetRetryMax(bc.Retries)
 		client.SetRetryWaitMin(bc.RetryWaitMin)
 		client.SetRetryWaitMax(bc.RetryWaitMax)
+		// this is a bit hokey
+		m := method.(methods.HttpMethod)
+		m.AuthType = bc.HttpAuthType
+		m.AuthToken = bc.HttpAuthToken
+		m.AuthUser = bc.HttpAuthUser
+		client.Method = m
 	case "s3", "S3":
 		pathSplit := strings.Split(bc.Url.Path, "/")
 		bucket := pathSplit[0]

@@ -301,6 +301,9 @@ Currently http/https are the only reloader options that are supported. The optio
 1. retry-wait-min
 1. retry-wait-max
 1. timeout
+1. auth-type
+1. auth-user
+1. auth-token
 
 #### host
 The `host` option is the host that the http connection will utilise.
@@ -330,6 +333,15 @@ The `retry-wait-max` option is the maximum amount of time, in seconds, to HOLD O
 
 #### timeout
 The `timeout` option is the amount of time, in seconds, until the http connection times out.
+
+#### auth-type
+The `auth-type` option is where you can define the authentication type to attempt when butler tries to retrieve configs from a repo. The valid auth-type options are `basic` and `digest`.
+
+#### auth-user
+The `auth-user` option defines what the user is that should be used when trying to authenticate to the repository.
+
+#### auth-token
+The `auth-token` option defines what password/token should be used when trying to authenticate to the repository.
 
 
 ### FILE Retrieval Options

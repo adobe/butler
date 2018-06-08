@@ -87,9 +87,9 @@ type HttpMethod struct {
 	RetryWaitMax string                `mapstructure:"retry-wait-max" json:"retry-wait-max"`
 	RetryWaitMin string                `mapstructure:"retry-wait-min" json:"retry-wait-min"`
 	Timeout      string                `mapstructure:"timeout" json:"timeout"`
-	AuthType     string                `mapstructure:"auth-type" json"auth-type"`
-	AuthToken    string                `mapstructure:"auth-token" json:"auth-token"`
-	AuthUser     string                `mapstructure:"auth-user" json:"auth-user"`
+	AuthType     string                `mapstructure:"auth-type" json"auth-type,omitempty"`
+	AuthToken    string                `mapstructure:"auth-token" json:"-"`
+	AuthUser     string                `mapstructure:"auth-user" json:"auth-user,omitempty"`
 }
 
 func (h HttpMethod) Get(u *url.URL) (*Response, error) {
@@ -137,6 +137,8 @@ func (h HttpMethod) Get(u *url.URL) (*Response, error) {
 			res.statusCode = r.StatusCode
 			return &res, err
 		}
+	case "token-key":
+		req.Header.Set("Authorization", fmt.Sprintf("Token token=%s, key=%s", authUser, authToken))
 	default:
 		break
 	}

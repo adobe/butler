@@ -151,7 +151,7 @@ func main() {
 		configHttpRetryWaitMin = flag.String("http.retry_wait_min", fmt.Sprintf("%v", HttpRetryWaitMin), "The minimum amount of time to wait before attemping to retry the http config get operation.")
 		configHttpRetryWaitMax = flag.String("http.retry_wait_max", fmt.Sprintf("%v", HttpRetryWaitMax), "The maximum amount of time to wait before attemping to retry the http config get operation.")
 		configHttpAuthToken    = flag.String("http.auth_token", "", "HTTP auth token to use for HTTP authentication.")
-		configHttpAuthType     = flag.String("http.auth_type", "", "HTTP auth type (eg: basic / digest) to use. If empty (by default) do not use HTTP authentication.")
+		configHttpAuthType     = flag.String("http.auth_type", "", "HTTP auth type (eg: basic / digest / token-key) to use. If empty (by default) do not use HTTP authentication.")
 		configHttpAuthUser     = flag.String("http.auth_user", "", "HTTP auth user to use for HTTP authentication")
 		configS3Region         = flag.String("s3.region", "", "The S3 Region that the config file resides.")
 		configEtcdEndpoints    = flag.String("etcd.endpoints", "", "The endpoints to connect to etcd.")
@@ -204,7 +204,7 @@ func main() {
 				log.Fatalf("HTTP Authentication enabled, but insufficient authentication details provided.")
 			}
 			switch newConfigHttpAuthType {
-			case "basic", "digest":
+			case "basic", "digest", "token-key":
 				bc.SetHttpAuthType(newConfigHttpAuthType)
 				bc.SetHttpAuthToken(*configHttpAuthToken)
 				bc.SetHttpAuthUser(*configHttpAuthUser)

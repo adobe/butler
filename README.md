@@ -32,7 +32,7 @@ Usage of ./butler:
   -http.auth_token string
     	HTTP auth token to use for HTTP authentication.
   -http.auth_type string
-    	HTTP auth type (eg: basic / digest) to use. If empty (by default) do not use HTTP authentication.
+    	HTTP auth type (eg: basic / digest / token-key) to use. If empty (by default) do not use HTTP authentication.
   -http.auth_user string
     	HTTP auth user to use for HTTP authentication
   -http.retries string
@@ -88,11 +88,16 @@ When you execute butler with the above arguments, you are asking butler to grab 
 
 ##### HTTP/HTTPS CLI Authentication
 Butler CMS supports both Basic and Digest based HTTP authentication. If your butler.toml is behind an authenticated webserver, then on the CLI you must provide the following flags:
-1. `-http.auth_type` - This is the backend authentication type. Choose either `basic` or `digest`.
+1. `-http.auth_type` - This is the backend authentication type. Choose either `basic`, `digest`, or `token-key`.
 1. `-http.auth_user` - This is the user to authenticate as.
-1. `-http.auth_token` - This is the authentication tokne.
+1. `-http.auth_token` - This is the authentication token.
 
 With any of these flags, they can be retrieved form the environment. Refer to the "Use of Environment Variables" section for more information.
+
+###### Authentication Types
+1. basic - This is your standard `Authorization: basic` header.
+1. digest - This is your sandard `Authorization: digest` header.
+1. token-key - This is a custom `Authorization: token=foo, key=bar` header. Use -http.auth_user field for token and -http.auth_token field for the key.
 
 #### etcd CLI
 ```

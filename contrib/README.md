@@ -335,13 +335,16 @@ The `retry-wait-max` option is the maximum amount of time, in seconds, to HOLD O
 The `timeout` option is the amount of time, in seconds, until the http connection times out.
 
 #### auth-type
-The `auth-type` option is where you can define the authentication type to attempt when butler tries to retrieve configs from a repo. The valid auth-type options are `basic` and `digest`.
+The `auth-type` option is where you can define the authentication type to attempt when butler tries to retrieve configs from a repo. The valid auth-type options are `basic` and `digest` `token-key`.
+Refer to the main Butler CMS [README](README.md) for details on the differences and usage of the fields.
 
 #### auth-user
 The `auth-user` option defines what the user is that should be used when trying to authenticate to the repository.
+For `token-key` authentication, use this field for the token section.
 
 #### auth-token
 The `auth-token` option defines what password/token should be used when trying to authenticate to the repository.
+For `token-key` authentication, use this field for the key section.
 
 
 ### FILE Retrieval Options

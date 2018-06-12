@@ -138,7 +138,7 @@ func (h HttpMethod) Get(u *url.URL) (*Response, error) {
 			return &res, err
 		}
 	case "token-key":
-		req.Header.Set("Authorization", fmt.Sprintf("Token token=%s, key=%s", authUser, authToken))
+		req.Header.Set("Authorization", fmt.Sprintf("Token token=%s, key=%s", authToken, authUser))
 	default:
 		break
 	}

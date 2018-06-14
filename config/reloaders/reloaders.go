@@ -17,7 +17,7 @@ import (
 	"errors"
 	"fmt"
 
-	log "github.com/sirupsen/logrus"
+	//log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -48,15 +48,25 @@ func New(entry string) (Reloader, error) {
 	// No reloader has been defined. We'll assume that is OK
 	// but will let the upstream know and they can handle it
 	if result == nil {
-		return NewGenericReloaderWithCustomError(entry, "error", errors.New("no reloader has been defined"))
+		return NewGenericReloaderWithCustomError(entry, "error", errors.New("no reloader has been defined for manager"))
 	}
+
+	// reloader is defined, but there's no method
+	if result["method"] == nil {
+		return NewGenericReloaderWithCustomError(entry, "error", errors.New("no reloader has been defined for manager"))
+	}
+
 	method := result["method"].(string)
 	jsonRes, err := json.Marshal(result[method])
 	if err != nil {
 		return NewGenericReloader(entry, method, []byte(entry))
 	}
 
-	log.Debugf("reloaders.New() method=%v", method)
+	// there are no reloader configuration options for the specified method
+	if _, ok := result[method]; !ok {
+		return NewGenericReloaderWithCustomError(entry, "error", errors.New("no reloader configuration has been defined for manager"))
+	}
+
 	switch method {
 	case "http", "https":
 		return NewHttpReloader(entry, method, jsonRes)

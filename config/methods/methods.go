@@ -17,7 +17,7 @@ import (
 	"net/url"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
+	//log "github.com/sirupsen/logrus"
 )
 
 type Method interface {
@@ -40,7 +40,7 @@ func (r Response) GetResponseStatusCode() int {
 
 func New(manager *string, method string, entry *string) (Method, error) {
 	method = strings.ToLower(method)
-	log.Debugf("methods.New() manager=%v method=%v entry=%v", manager, method, entry)
+	//log.Debugf("methods.New() manager=%v method=%v entry=%v", manager, method, entry)
 	switch method {
 	case "http", "https":
 		return NewHttpMethod(manager, entry)

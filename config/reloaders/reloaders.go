@@ -26,6 +26,7 @@ type Reloader interface {
 	GetMethod() string
 	GetOpts() ReloaderOpts
 	SetOpts(ReloaderOpts) bool
+	SetCounter(int) Reloader
 }
 
 type ReloaderOpts interface {

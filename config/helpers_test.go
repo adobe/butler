@@ -41,17 +41,17 @@ some text
 some more text`)
 	var testTextConfigBad3 = []byte(`some text
 some more text`)
-	c.Assert(runTextValidate(bytes.NewReader(testTextConfigGood)), IsNil)
-	c.Assert(runTextValidate(bytes.NewReader(testTextConfigBad1)), NotNil)
-	c.Assert(runTextValidate(bytes.NewReader(testTextConfigBad2)), NotNil)
-	c.Assert(runTextValidate(bytes.NewReader(testTextConfigBad3)), NotNil)
+	c.Assert(runTextValidate(bytes.NewReader(testTextConfigGood), "test-manager"), IsNil)
+	c.Assert(runTextValidate(bytes.NewReader(testTextConfigBad1), "test-manager"), NotNil)
+	c.Assert(runTextValidate(bytes.NewReader(testTextConfigBad2), "test-manager"), NotNil)
+	c.Assert(runTextValidate(bytes.NewReader(testTextConfigBad3), "test-manager"), NotNil)
 }
 
 func (s *ConfigTestSuite) TestrunJsonValidate(c *C) {
 	var testJsonConfigGood = []byte(`{"foo": "bar", "baz": ["one", "two", "three"] }`)
 	var testJsonConfigBad = []byte(`{"foo": "bar", ["one", "two", "three"] }`)
-	c.Assert(runJsonValidate(bytes.NewReader(testJsonConfigGood)), IsNil)
-	c.Assert(runJsonValidate(bytes.NewReader(testJsonConfigBad)), NotNil)
+	c.Assert(runJsonValidate(bytes.NewReader(testJsonConfigGood), "test-manager"), IsNil)
+	c.Assert(runJsonValidate(bytes.NewReader(testJsonConfigBad), "test-manager"), NotNil)
 }
 
 func (s *ConfigTestSuite) TestrunYamlValidate(c *C) {
@@ -76,9 +76,9 @@ http_200x:
     http:
   icmp:
     prober:icmp`)
-	c.Assert(runYamlValidate(bytes.NewReader(testYamlConfigGood)), IsNil)
-	c.Assert(runYamlValidate(bytes.NewReader(testYamlConfigBad1)), NotNil)
-	c.Assert(runYamlValidate(bytes.NewReader(testYamlConfigBad2)), NotNil)
+	c.Assert(runYamlValidate(bytes.NewReader(testYamlConfigGood), "test-manager"), IsNil)
+	c.Assert(runYamlValidate(bytes.NewReader(testYamlConfigBad1), "test-manager"), NotNil)
+	c.Assert(runYamlValidate(bytes.NewReader(testYamlConfigBad2), "test-manager"), NotNil)
 }
 
 func (s *ConfigTestSuite) TestgetFileExtension(c *C) {

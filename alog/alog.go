@@ -41,7 +41,7 @@ func (r *ApacheLogRecord) Log() {
 	requestLine := fmt.Sprintf("%s %s %s", r.method, r.uri, r.protocol)
 	msg := fmt.Sprintf(ApacheFormatPattern, r.ip, timeFormatted, requestLine, r.status, r.responseBytes,
 		r.elapsedTime.Seconds())
-	log.Infof(strings.TrimSpace(msg))
+	log.Debugf(strings.TrimSpace(msg))
 }
 
 func (r *ApacheLogRecord) Write(p []byte) (int, error) {

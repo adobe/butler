@@ -190,6 +190,7 @@ func (c *ConfigSettings) ParseConfig(config []byte) error {
 	for _, m := range c.Managers {
 		for _, u := range m.Repos {
 			opts := fmt.Sprintf("%s.%s", m.Name, u)
+			m.ManagerOpts[opts].SetParentManager(m.Name)
 			baseRemotePath := fmt.Sprintf("%s://%s%s", m.ManagerOpts[opts].Method, u, m.ManagerOpts[opts].RepoPath)
 			for _, f := range m.ManagerOpts[opts].PrimaryConfig {
 				fullRemotePath := fmt.Sprintf("%s/%s", baseRemotePath, f)

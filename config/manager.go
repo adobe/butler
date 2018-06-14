@@ -63,6 +63,7 @@ type ManagerOpts struct {
 	AdditionalConfigsFullLocalPaths []string       `json:"-"`
 	ContentType                     string         `mapstructure:"content-type" json:"content-type"`
 	Opts                            methods.Method `json:"opts"`
+	parentManager                   string         `json:"-"`
 }
 
 func (bm *Manager) Reload() error {
@@ -71,7 +72,7 @@ func (bm *Manager) Reload() error {
 		log.Warnf("Manager::Reload(): No reloader defined for %s manager. Moving on...", bm.Name)
 		return nil
 	} else {
-		return bm.Reloader.Reload()
+		return bm.Reloader.SetCounter(cmHandlerCounter).Reload()
 	}
 }
 
@@ -82,6 +83,7 @@ func (bm *Manager) DownloadPrimaryConfigFiles(c chan ChanEvent) error {
 	)
 
 	Chan = NewConfigChanEvent()
+	Chan.Manager = bm.Name
 	PrimaryConfigName = fmt.Sprintf("%s/%s", bm.DestPath, bm.PrimaryConfigName)
 	Chan.ConfigFile = &PrimaryConfigName
 
@@ -138,7 +140,7 @@ func (bm *Manager) DownloadPrimaryConfigFiles(c chan ChanEvent) error {
 			// we did not get a correct configuration, or that there is an
 			// issue with the upstream
 			filename := opts.GetPrimaryRemoteConfigFiles()[i]
-			if err := ValidateConfig(NewValidateOpts().WithContentType(opts.ContentType).WithFileName(filename).WithData(f)); err != nil {
+			if err := ValidateConfig(NewValidateOpts().WithContentType(opts.ContentType).WithFileName(filename).WithData(f).WithManager(bm.Name)); err != nil {
 				log.Errorf("%s for %s.", err.Error(), u)
 				stats.SetButlerConfigVal(stats.FAILURE, opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i])
 
@@ -168,6 +170,7 @@ func (bm *Manager) DownloadAdditionalConfigFiles(c chan ChanEvent) error {
 	)
 
 	Chan = NewConfigChanEvent()
+	Chan.Manager = bm.Name
 	IsModified = false
 	_ = IsModified
 
@@ -214,7 +217,7 @@ func (bm *Manager) DownloadAdditionalConfigFiles(c chan ChanEvent) error {
 			// we did not get a correct configuration, or that there is an
 			// issue with the upstream
 			filename := opts.GetAdditionalRemoteConfigFiles()[i]
-			if err := ValidateConfig(NewValidateOpts().WithContentType(opts.ContentType).WithFileName(filename).WithData(f)); err != nil {
+			if err := ValidateConfig(NewValidateOpts().WithContentType(opts.ContentType).WithFileName(filename).WithData(f).WithManager(bm.Name)); err != nil {
 				stats.SetButlerConfigVal(stats.FAILURE, opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i])
 
 				// Set this stats global as failure here, since we aren't sure whether or not it was a parse error or
@@ -301,6 +304,11 @@ func (bmo *ManagerOpts) AppendAdditionalConfigFile(c string) error {
 	return nil
 }
 
+func (bmo *ManagerOpts) SetParentManager(c string) error {
+	bmo.parentManager = c
+	return nil
+}
+
 func (bmo *ManagerOpts) GetPrimaryConfigUrls() []string {
 	return bmo.PrimaryConfigsFullUrls
 }
@@ -331,7 +339,7 @@ func (bmo *ManagerOpts) DownloadConfigFile(file string) *os.File {
 	case "blob", "file", "http", "https", "s3", "S3", "etcd":
 		tmpFile, err := ioutil.TempFile("/tmp", "bcmsfile")
 		if err != nil {
-			msg := fmt.Sprintf("ManagerOpts::DownloadConfigFile(): could not create temporary file. err=%v", err)
+			msg := fmt.Sprintf("ManagerOpts::DownloadConfigFile()[count=%v][manager=%v]: could not create temporary file. err=%v", cmHandlerCounter, bmo.parentManager, err)
 			log.Fatal(msg)
 		}
 
@@ -358,7 +366,7 @@ func (bmo *ManagerOpts) DownloadConfigFile(file string) *os.File {
 		if err != nil {
 			tmpFile.Close()
 			os.Remove(tmpFile.Name())
-			log.Errorf("ManagerOpts::DownloadConfigFile(): Could not parse file %s to *url.URL, err=%s", file, err.Error())
+			log.Errorf("ManagerOpts::DownloadConfigFile()[count=%v][manager=%v]: Could not parse file %s to *url.URL, err=%s", cmHandlerCounter, bmo.parentManager, file, err.Error())
 			tmpFile = nil
 			return tmpFile
 		}
@@ -367,7 +375,7 @@ func (bmo *ManagerOpts) DownloadConfigFile(file string) *os.File {
 		if err != nil {
 			tmpFile.Close()
 			os.Remove(tmpFile.Name())
-			log.Errorf("ManagerOpts::DownloadConfigFile(): Could not download from %s, err=%s", file, err.Error())
+			log.Errorf("ManagerOpts::DownloadConfigFile()[count=%v][manager=%v]: Could not download from %s, err=%s", cmHandlerCounter, bmo.parentManager, file, err.Error())
 			tmpFile = nil
 			return tmpFile
 		}
@@ -377,7 +385,7 @@ func (bmo *ManagerOpts) DownloadConfigFile(file string) *os.File {
 		if response.GetResponseStatusCode() != 200 {
 			tmpFile.Close()
 			os.Remove(tmpFile.Name())
-			log.Errorf("ManagerOpts::DownloadConfigFile(): Did not receive 200 response code for %s. code=%v", file, response.GetResponseStatusCode())
+			log.Errorf("ManagerOpts::DownloadConfigFile()[count=%v][manager=%v]: Did not receive 200 response code for %s. code=%v", cmHandlerCounter, bmo.parentManager, file, response.GetResponseStatusCode())
 			tmpFile = nil
 			return tmpFile
 		}
@@ -386,7 +394,7 @@ func (bmo *ManagerOpts) DownloadConfigFile(file string) *os.File {
 		if err != nil {
 			tmpFile.Close()
 			os.Remove(tmpFile.Name())
-			log.Errorf("ManagerOpts::DownloadConfigFile(): Could not copy to %s, err=%s", file, err.Error())
+			log.Errorf("ManagerOpts::DownloadConfigFile()[count=%v][manager=%v]: Could not copy to %s, err=%s", cmHandlerCounter, bmo.parentManager, file, err.Error())
 			tmpFile = nil
 			return tmpFile
 		}

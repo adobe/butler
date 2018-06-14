@@ -48,3 +48,7 @@ func (r GenericReloader) SetOpts(opts ReloaderOpts) bool {
 	r.Opts = opts.(GenericReloaderOpts)
 	return true
 }
+
+func (r GenericReloader) SetCounter(c int) Reloader {
+	return r
+}

@@ -280,6 +280,7 @@ func main() {
 	// Going to do this in an endless loop until we initially
 	// grab a configuration file.
 	for {
+                log.Infof("main(): Loading initial butler configuration.")
 		log.Debugf("main(): running first bc.Handler()")
 		err = bc.Handler()
 
@@ -287,10 +288,11 @@ func main() {
 			if ButlerTesting {
 				log.Fatalf("Cannot retrieve butler configuration. err=%s ButlerTesting=%#v", err.Error(), ButlerTesting)
 			}
-			log.Warnf("Cannot retrieve butler configuration. err=%s", err.Error())
-			log.Warnf("Sleeping 5 seconds.")
+			//log.Error("Cannot retrieve butler configuration. err=%s", err.Error())
+			log.Warnf("main(): Sleeping 5 seconds.")
 			time.Sleep(5 * time.Second)
 		} else {
+                       log.Infof("main(): Loaded initial butler configuration.")
 			break
 		}
 	}

@@ -77,6 +77,8 @@ func (b *ConfigSettings) GetAllConfigLocalPaths(mgr string) []string {
 type ConfigGlobals struct {
 	Managers             []string `mapstructure:"config-managers" json:"-"`
 	SchedulerInterval    int      `json:"scheduler-interval"`
+	CfgEnableHttpLog     string   `mapstructure:"enable-http-log" json:"-"`
+	EnableHttpLog        bool     `json:"enable-http-log"`
 	CfgSchedulerInterval string   `mapstructure:"scheduler-interval" json:"-"`
 	CfgExitOnFailure     string   `mapstructure:"exit-on-config-failure" json:"-"`
 	ExitOnFailure        bool     `json:"exit-on-failure"`

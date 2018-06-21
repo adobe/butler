@@ -33,6 +33,7 @@ There are four options that must be configured in the globals section. These opt
 1. scheduler-interval
 1. exit-on-config-failure
 1. status-file
+1. enable-http-log
 
 ### config-manager
 The `config-manager` option is an array of managers for butler to handle configuration for. The manager name can be an arbitrary name, but you have to maintain consistency in the name while configuring the manager sub sections. What is more important is how you configure the the Handler and Reloader options of hte manager.
@@ -71,6 +72,16 @@ It should be readable and writable by the user that butler runs as.
 
 #### Default Value
 /var/tmp/butler.status
+
+#### Example
+`status-file = "/var/tmp/butler.status"`
+
+### enable-http-log
+The `enable-http-log` option is a string boolean value which configures whether or not butler will log http requests to its stderr output, on top of all the other logs that
+it prints. It logs in the standard Apache log format.
+
+#### Default Value
+"true"
 
 #### Example
 `status-file = "/var/tmp/butler.status"`

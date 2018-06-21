@@ -21,7 +21,7 @@ GO:=go
 pkgs=$(shell $(GO) list ./... | egrep -v "(vendor)")
 
 export DOCKERHUB_USER=$(shell echo "$$DOCKERHUB_USER")
-export BUTLER_VERSION=1.2.2
+export BUTLER_VERSION=1.2.3
 export VERSION=v$(BUTLER_VERSION)
 
 default: ci

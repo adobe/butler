@@ -143,6 +143,18 @@ func (c *ConfigSettings) ParseConfig(config []byte) error {
 		Config.Globals.StatusFile = "/var/tmp/butler.status"
 	}
 
+	envEnableHttpLog := strings.ToLower(environment.GetVar(Config.Globals.CfgEnableHttpLog))
+	if envEnableHttpLog == "true" {
+		Config.Globals.EnableHttpLog = true
+		// enable http logging
+	} else if envEnableHttpLog == "false" {
+		Config.Globals.EnableHttpLog = false
+		// disable http logging
+	} else {
+		Config.Globals.EnableHttpLog = true
+		// enable http logging
+	}
+
 	log.Debugf("ConfigSettings::ParseConfig(): globals.config-managers=%#v", Config.Globals.Managers)
 	log.Debugf("ConfigSettings::ParseConfig(): len(globals.config-managers)=%v", len(Config.Globals.Managers))
 

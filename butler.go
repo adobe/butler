@@ -86,7 +86,7 @@ func (m *Monitor) Start() {
 	mux := http.DefaultServeMux
 	mux.HandleFunc("/health-check", m.MonitorHandler)
 	mux.Handle("/metrics", promhttp.Handler())
-	loggingHandler := alog.NewApacheLoggingHandler(mux)
+	loggingHandler := alog.NewApacheLoggingHandler(mux, m.Config)
 
 	server := &http.Server{
 		Handler: loggingHandler,
@@ -280,7 +280,7 @@ func main() {
 	// Going to do this in an endless loop until we initially
 	// grab a configuration file.
 	for {
-                log.Infof("main(): Loading initial butler configuration.")
+		log.Infof("main(): Loading initial butler configuration.")
 		log.Debugf("main(): running first bc.Handler()")
 		err = bc.Handler()
 
@@ -292,7 +292,7 @@ func main() {
 			log.Warnf("main(): Sleeping 5 seconds.")
 			time.Sleep(5 * time.Second)
 		} else {
-                       log.Infof("main(): Loaded initial butler configuration.")
+			log.Infof("main(): Loaded initial butler configuration.")
 			break
 		}
 	}

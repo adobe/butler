@@ -97,9 +97,6 @@ func (s S3Method) Get(u *url.URL) (*Response, error) {
 		response Response
 	)
 
-	// stegen
-	log.Debugf("S3Method::Get(): u=%#v", u)
-
 	tmpFile, err := ioutil.TempFile("/tmp", "s3pcmsfile")
 	if err != nil {
 		return &Response{}, errors.New(fmt.Sprintf("S3Method::Get(): could not create temp file err=%v", err))

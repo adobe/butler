@@ -31,7 +31,7 @@ import (
 
 var (
 	ConfigSchedulerInterval = 300
-	ValidSchemes            = []string{"blob", "file", "http", "https", "s3", "S3"}
+	ValidSchemes            = []string{"blob", "file", "http", "https", "s3", "S3", "etcd"}
 )
 
 // butlerHeader and butlerFooter represent the strings that need to be matched
@@ -53,7 +53,6 @@ func (c *ConfigClient) SetTimeout(val int) {
 	switch c.Scheme {
 	case "http", "https":
 		log.Debugf("ConfigClient::SetTimeout(): setting timeout to %v", val)
-		log.Debugf("ConfigClient::SetTimeout(): c=%#v", c)
 		c.HttpClient.HTTPClient.Timeout = time.Duration(val) * time.Second
 	}
 }
@@ -86,7 +85,7 @@ func (c *ConfigClient) Get(val *url.URL) (*methods.Response, error) {
 		err      error
 	)
 	switch val.Scheme {
-	case "blob", "file", "http", "https", "s3", "S3":
+	case "blob", "file", "http", "https", "s3", "S3", "etcd":
 		response, err = c.Method.Get(val)
 	default:
 		response = &methods.Response{}
@@ -144,6 +143,18 @@ func (c *ConfigSettings) ParseConfig(config []byte) error {
 		Config.Globals.StatusFile = "/var/tmp/butler.status"
 	}
 
+	envEnableHttpLog := strings.ToLower(environment.GetVar(Config.Globals.CfgEnableHttpLog))
+	if envEnableHttpLog == "true" {
+		Config.Globals.EnableHttpLog = true
+		// enable http logging
+	} else if envEnableHttpLog == "false" {
+		Config.Globals.EnableHttpLog = false
+		// disable http logging
+	} else {
+		Config.Globals.EnableHttpLog = true
+		// enable http logging
+	}
+
 	log.Debugf("ConfigSettings::ParseConfig(): globals.config-managers=%#v", Config.Globals.Managers)
 	log.Debugf("ConfigSettings::ParseConfig(): len(globals.config-managers)=%v", len(Config.Globals.Managers))
 
@@ -191,6 +202,7 @@ func (c *ConfigSettings) ParseConfig(config []byte) error {
 	for _, m := range c.Managers {
 		for _, u := range m.Repos {
 			opts := fmt.Sprintf("%s.%s", m.Name, u)
+			m.ManagerOpts[opts].SetParentManager(m.Name)
 			baseRemotePath := fmt.Sprintf("%s://%s%s", m.ManagerOpts[opts].Method, u, m.ManagerOpts[opts].RepoPath)
 			for _, f := range m.ManagerOpts[opts].PrimaryConfig {
 				fullRemotePath := fmt.Sprintf("%s/%s", baseRemotePath, f)

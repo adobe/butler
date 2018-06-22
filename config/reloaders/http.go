@@ -69,8 +69,6 @@ func NewHttpReloader(manager string, method string, entry []byte) (Reloader, err
 	opts.Client.RetryWaitMax = time.Duration(newRetryWaitMax) * time.Second
 	opts.Client.RetryWaitMin = time.Duration(newRetryWaitMin) * time.Second
 
-	log.Debugf("NewHttpReloader(): opts=%#v", opts)
-
 	// Let's populate some environment variables
 	opts.Host = environment.GetVar(opts.Host)
 	opts.ContentType = environment.GetVar(opts.ContentType)
@@ -90,6 +88,7 @@ func NewHttpReloader(manager string, method string, entry []byte) (Reloader, err
 
 type HttpReloader struct {
 	Manager string           `json:"-"`
+	Counter int              `json:"-"`
 	Method  string           `mapstructure:"method" json:"method"`
 	Opts    HttpReloaderOpts `json:"opts"`
 }
@@ -117,59 +116,58 @@ func (h HttpReloader) Reload() error {
 		err error
 	)
 
-	log.Debugf("HttpReloader::Reload(): reloading manager using http")
+	log.Debugf("HttpReloader::Reload()[count=%v][manager=%v]: reloading manager using http", h.Counter, h.Manager)
 	o := h.GetOpts().(HttpReloaderOpts)
 	c := o.GetClient()
 	// Set the reloader retry policy
 	c.CheckRetry = h.ReloaderRetryPolicy
 	newPort, _ := strconv.Atoi(environment.GetVar(o.Port))
 	if newPort == 0 {
-		log.Warnf("HttpReloader::Reload(): could not convert %v to integer for port, defaulting to 0. This is probably undesired.", o.Port)
+		log.Warnf("HttpReloader::Reload()[count=%v][manager=%v]: could not convert %v to integer for port, defaulting to 0. This is probably undesired.", h.Counter, h.Manager, o.Port)
 	}
 	reloadUrl := fmt.Sprintf("%s://%s:%d%s", h.Method, o.Host, newPort, o.Uri)
 
 	switch o.Method {
 	case "post":
-		log.Debugf("HttpReloader::Reload(): posting up!")
+		log.Debugf("HttpReloader::Reload()[count=%v][manager=%v]: posting up!", h.Counter, h.Manager)
 		resp, err := c.Post(reloadUrl, o.ContentType, strings.NewReader(o.Payload))
 		if err != nil {
-			msg := fmt.Sprintf("HttpReloader::Reload(): err=%v", err.Error())
+			msg := fmt.Sprintf("HttpReloader::Reload()[count=%v][manager=%v]: err=%v", h.Counter, h.Manager, err.Error())
 			log.Errorf(msg)
 			return NewReloaderError().WithMessage(err.Error()).WithCode(1)
 		}
 		if resp.StatusCode == 200 {
-			log.Infof("HttpReloader::Reload(): successfully reloaded config. http_code=%d", int(resp.StatusCode))
+			log.Infof("HttpReloader::Reload()[count=%v][manager=%v]: successfully reloaded config. http_code=%d", h.Counter, h.Manager, int(resp.StatusCode))
 			// at this point error should be nil, so things are OK
 		} else {
-			msg := fmt.Sprintf("HttpReloader::Reload(): received bad response from server. http_code=%d", int(resp.StatusCode))
+			msg := fmt.Sprintf("HttpReloader::Reload()[count=%v][manager=%v]: received bad response from server. http_code=%d", h.Counter, h.Manager, int(resp.StatusCode))
 			log.Errorf(msg)
 			// at this point we should raise an error
 			return NewReloaderError().WithMessage("received bad response from server").WithCode(resp.StatusCode)
 		}
 	case "get":
-		log.Debugf("HttpReloader::Reload(): getting up!")
+		log.Debugf("HttpReloader::Reload()[count=%v][manager=%v]: getting up!", h.Counter, h.Manager)
 		resp, err := c.Get(reloadUrl)
 		if err != nil {
-			msg := fmt.Sprintf("HttpReloader::Reload(): err=%v", err.Error())
+			msg := fmt.Sprintf("HttpReloader::Reload()[count=%v][manager=%v]: err=%v", h.Counter, h.Manager, err.Error())
 			log.Errorf(msg)
 			return NewReloaderError().WithMessage(err.Error()).WithCode(1)
 		}
 		if resp.StatusCode == 200 {
-			log.Infof("HttpReloader::Reload(): successfully reloaded config. http_code=%d", int(resp.StatusCode))
+			log.Infof("HttpReloader::Reload()[count=%v][manager=%v]: successfully reloaded config. http_code=%d", h.Counter, h.Manager, int(resp.StatusCode))
 			// at this point error should be nil, so things are OK
 		} else {
-			msg := fmt.Sprintf("HttpReloader::Reload(): received bad response from server. http_code=%d", int(resp.StatusCode))
+			msg := fmt.Sprintf("HttpReloader::Reload()[count=%v][manager=%v]: received bad response from server. http_code=%d", h.Counter, h.Manager, int(resp.StatusCode))
 			log.Errorf(msg)
 			// at this point we should raise an error
 			return NewReloaderError().WithMessage("received bad response from server").WithCode(resp.StatusCode)
 		}
 	default:
-		msg := fmt.Sprintf("HttpReloader::Reload(): \"%s\" is not a supported reload method", o.Method)
+		msg := fmt.Sprintf("HttpReloader::Reload()[count=%v][manager=%v]: \"%s\" is not a supported reload method", h.Counter, h.Manager, o.Method)
 		return errors.New(msg)
 	}
 
 	return err
-
 }
 
 func (h *HttpReloader) ReloaderRetryPolicy(resp *http.Response, err error) (bool, error) {
@@ -197,4 +195,9 @@ func (h HttpReloader) GetOpts() ReloaderOpts {
 func (h HttpReloader) SetOpts(opts ReloaderOpts) bool {
 	h.Opts = opts.(HttpReloaderOpts)
 	return true
+}
+
+func (h HttpReloader) SetCounter(c int) Reloader {
+	h.Counter = c
+	return h
 }

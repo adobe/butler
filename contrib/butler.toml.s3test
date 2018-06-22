@@ -18,6 +18,11 @@ title = "Butler Configuration"
   ## Default: /var/tmp/butler.status
   status-file = "/var/tmp/butler.status"
 
+  ## Whether to enable the http log handler for butler. Some find the apache style logging
+  ## helpful, others don't.
+  ## Default: "true"
+  enable-http-log = "true"
+
 ## This is the definition for the prometheus configuration handler
 [prometheus]
   repos = ["prom.yml"]
@@ -30,7 +35,7 @@ title = "Butler Configuration"
   clean-files = "true"
 
   ## These are the mustache substitutions that we'll attempt to make on the merged prometheus.yml
-  mustache-subs = ["ethos-cluster-id=ethos01-dev-or1", "endpoint=external"]
+  mustache-subs = ["cluster-cluster-id=cluster01-dev-or1", "endpoint=external"]
 
   ## Should config caching be used
   enable-cache = "true"

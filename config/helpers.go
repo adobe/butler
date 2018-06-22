@@ -56,7 +56,6 @@ func IsValidScheme(s string) bool {
 // file and ensures that it begins with the proper header, and ends with the
 // proper footer. If it does not begin or end with the proper header/footer,
 // then an error is returned. If the file passes the checks, a nil is returned.
-//func ValidateConfig(f interface{}) error {
 func ValidateConfig(opts *ValidateOpts) error {
 	var (
 		err               error
@@ -64,7 +63,7 @@ func ValidateConfig(opts *ValidateOpts) error {
 		contentTypeSwitch string
 	)
 
-	log.Debugf("ValidateConfig(): checking content-type=%v FileName=%v", opts.ContentType, opts.FileName)
+	log.Debugf("ValidateConfig()[count=%v][manager=%v]: checking content-type=%v FileName=%v", cmHandlerCounter, opts.Manager, opts.ContentType, opts.FileName)
 	f := opts.Data
 	switch t := f.(type) {
 	case *os.File:
@@ -72,21 +71,21 @@ func ValidateConfig(opts *ValidateOpts) error {
 
 		fd, err := os.Open(newf.Name())
 		if err != nil {
-			log.Errorf("ValidateConfig(): caught error on open err=%#v", err.Error())
+			log.Errorf("ValidateConfig()[count=%v][manager=%v]: caught error on open err=%#v", cmHandlerCounter, opts.Manager, err.Error())
 			return err
 		}
 		defer fd.Close()
 
 		fi, err := fd.Stat()
 		if err != nil {
-			log.Errorf("ValidateConfig(): caught error on stat err=%#v", err.Error())
+			log.Errorf("ValidateConfig()[count=%v][manager=%v]: caught error on stat err=%#v", cmHandlerCounter, opts.Manager, err.Error())
 			return err
 		}
 
 		data := make([]byte, fi.Size())
 		_, err = fd.Read(data)
 		if err != nil {
-			log.Errorf("ValidateConfig(): caught error on fd.Read() err=%#v", err.Error())
+			log.Errorf("ValidateConfig()[count=%v][manager=%v]: caught error on fd.Read() err=%#v", cmHandlerCounter, opts.Manager, err.Error())
 			return err
 		}
 
@@ -95,7 +94,7 @@ func ValidateConfig(opts *ValidateOpts) error {
 		newf := f.([]byte)
 		file = bytes.NewReader(newf)
 	default:
-		return errors.New(fmt.Sprintf("ValidateConfig(): unknown file type %s for %s", t, f))
+		return errors.New(fmt.Sprintf("ValidateConfig()[count=%v][manager=%v]: unknown file type %s for %s", cmHandlerCounter, opts.Manager, t, f))
 	}
 
 	if opts.ContentType == "auto" {
@@ -106,24 +105,24 @@ func ValidateConfig(opts *ValidateOpts) error {
 
 	switch contentTypeSwitch {
 	case "text":
-		err = runTextValidate(file)
+		err = runTextValidate(file, opts.Manager)
 	case "json":
-		err = runJsonValidate(file)
+		err = runJsonValidate(file, opts.Manager)
 	case "yaml":
-		err = runYamlValidate(file)
+		err = runYamlValidate(file, opts.Manager)
 	default:
 		err = errors.New(fmt.Sprintf("unknown content type %s", opts.ContentType))
 	}
 
 	if err != nil {
-		log.Errorf("ValidateConfig(): returning err=%#v for content-type=%v and FileName=%v", err, opts.ContentType, opts.FileName)
+		log.Errorf("ValidateConfig()[count=%v][manager=%v]: returning err=%v for content-type=%v and FileName=%v", cmHandlerCounter, opts.Manager, err.Error(), opts.ContentType, opts.FileName)
 		return err
 	}
 
 	// let's rewrite a sanitized temporary config file
 	err = removeButlerHeaderFooter(opts.Data)
 	if err != nil {
-		log.Errorf("ValidateConfig(): returning err=%#v for content-type=%v and FileName=%v", err, opts.ContentType, opts.FileName)
+		log.Errorf("ValidateConfig()[count=%v][manager=%v]: returning err=%v for content-type=%v and FileName=%v", cmHandlerCounter, opts.Manager, err.Error(), opts.ContentType, opts.FileName)
 	}
 	return err
 }
@@ -185,7 +184,7 @@ func removeButlerHeaderFooter(file interface{}) error {
 	return nil
 }
 
-func runTextValidate(f *bytes.Reader) error {
+func runTextValidate(f *bytes.Reader, m string) error {
 	var (
 		//err error
 		configLine    string
@@ -217,17 +216,17 @@ func runTextValidate(f *bytes.Reader) error {
 	}
 
 	if !isValidHeader && !isValidFooter {
-		return errors.New("Invalid butler header and footer")
+		return errors.New(fmt.Sprintf("runTextValidate()[count=%v][manager=%v]: Invalid butler header and footer", cmHandlerCounter, m))
 	} else if !isValidHeader {
-		return errors.New("Invalid butler header")
+		return errors.New(fmt.Sprintf("runTextValidate()[count=%v][manager=%v]: Invalid butler header", cmHandlerCounter, m))
 	} else if !isValidFooter {
-		return errors.New("Invalid butler footer")
+		return errors.New(fmt.Sprintf("runTextValidate()[count=%v][manager=%v]: Invalid butler footer", cmHandlerCounter, m))
 	} else {
 		return nil
 	}
 }
 
-func runJsonValidate(f *bytes.Reader) error {
+func runJsonValidate(f *bytes.Reader, m string) error {
 	var (
 		err  error
 		data []byte
@@ -235,19 +234,19 @@ func runJsonValidate(f *bytes.Reader) error {
 
 	data, err = ioutil.ReadAll(f)
 	if err != nil {
-		msg := fmt.Sprintf("could not read data from bytes.Reader. err=%v", err.Error())
+		msg := fmt.Sprintf("runJsonValidate()[count=%v][manager=%v], could not read data from bytes.Reader. err=%v", cmHandlerCounter, m, err.Error())
 		return errors.New(msg)
 	}
 
 	_, err = gabs.ParseJSON(data)
 	if err != nil {
-		msg := fmt.Sprintf("could not Unmarshal json data into interface. err=%v", err.Error())
+		msg := fmt.Sprintf("runJsonValidate()[count=%v][manager=%v], could not Unmarshal json data into interface. err=%v", cmHandlerCounter, m, err.Error())
 		return errors.New(msg)
 	}
 	return nil
 }
 
-func runYamlValidate(f *bytes.Reader) error {
+func runYamlValidate(f *bytes.Reader, m string) error {
 	var (
 		err  error
 		data []byte
@@ -256,19 +255,19 @@ func runYamlValidate(f *bytes.Reader) error {
 
 	data, err = ioutil.ReadAll(f)
 	if err != nil {
-		msg := fmt.Sprintf("could not read data from bytes.Reader. err=%v", err.Error())
+		msg := fmt.Sprintf("runYamlValidate()[count=%v][manager=%v]: could not read data from bytes.Reader. err=%v", cmHandlerCounter, m, err.Error())
 		return errors.New(msg)
 	}
 
 	err = yaml.Unmarshal(data, &v)
 	if err != nil {
-		msg := fmt.Sprintf("could not Unmarshal yaml data into interface. err=%v", err.Error())
+		msg := fmt.Sprintf("runYamlValidate()[count=%v][manager=%v]: could not Unmarshal yaml data into interface. err=%v", cmHandlerCounter, m, err.Error())
 		return errors.New(msg)
 	}
 
-	err = runTextValidate(bytes.NewReader(data))
+	err = runTextValidate(bytes.NewReader(data), m)
 	if err != nil {
-		msg := fmt.Sprintf("could not verify butler header/footer for yaml data. err=%v", err.Error())
+		msg := fmt.Sprintf("runYamlValidate()[count=%v][manager=%v]: could not verify butler header/footer for yaml data. err=%v", cmHandlerCounter, m, err.Error())
 		return errors.New(msg)
 	}
 	return nil
@@ -356,19 +355,19 @@ func RenderConfigMustache(f *os.File, subs map[string]string) error {
 	return nil
 }
 
-func CompareAndCopy(source string, dest string) bool {
+func CompareAndCopy(source string, dest string, m string) bool {
 	// Let's compare the source and destination files
 	cmp := equalfile.New(nil, equalfile.Options{})
 	equal, err := cmp.CompareFile(source, dest)
 	if !equal {
 		if err != nil {
-			log.Errorf("helpers.CompareAndCopy(): caught error from compare. source=%v dest=%v err=%#v", source, dest, err)
+			log.Errorf("helpers.CompareAndCopy()[count=%v][manager=%v]: caught error from compare. source=%v dest=%v err=%#v", cmHandlerCounter, m, source, dest, err)
 		}
-		log.Infof("helpers.CompareAndCopy(): Found difference in \"%s.\"  Updating.", dest)
+		log.Infof("helpers.CompareAndCopy()[count=%v][manager=%v]: Found difference in \"%s.\"  Updating.", cmHandlerCounter, m, dest)
 		err = CopyFile(source, dest)
 		if err != nil {
 			stats.SetButlerWriteVal(stats.FAILURE, stats.GetStatsLabel(dest))
-			log.Errorf("helpers.CompareAndCopy(): could not copy source=%v to dest=%v. err=%#v", source, dest, err)
+			log.Errorf("helpers.CompareAndCopy()[count=%v][manager=%v]: could not copy source=%v to dest=%v. err=%#v", cmHandlerCounter, m, source, dest, err)
 			return false
 		}
 		stats.SetButlerWriteVal(stats.SUCCESS, stats.GetStatsLabel(dest))
@@ -435,7 +434,7 @@ func CopyFile(src string, dst string) error {
 // caches those files into memory. It returns an error
 // on the event of error
 func CacheConfigs(manager string, files []string) error {
-	log.Infof("helpers.CacheConfig(): Storing known good configurations to cache for \"%s\" manager.", manager)
+	log.Infof("helpers.CacheConfig()[count=%v][manager=%v]: Storing known good configurations to cache.", cmHandlerCounter, manager)
 	if ConfigCache == nil {
 		ConfigCache = make(map[string]map[string][]byte)
 	}
@@ -443,14 +442,14 @@ func CacheConfigs(manager string, files []string) error {
 	for _, file := range files {
 		out, err := ioutil.ReadFile(file)
 		if err != nil {
-			msg := fmt.Sprintf("helpers.CacheConfig(): Could not store %s to cache for \"%s\" manager. err=%s", file, manager, err.Error())
+			msg := fmt.Sprintf("helpers.CacheConfig()[count=%v][manager=%v]: Could not store %s to cache. err=%s", cmHandlerCounter, manager, file, err.Error())
 			log.Errorf(msg)
 			return errors.New(msg)
 		} else {
 			ConfigCache[manager][file] = out
 		}
 	}
-	log.Infof("helpers.CacheConfig(): Done storing known good configurations to cache for \"%s\" manager.", manager)
+	log.Infof("helpers.CacheConfig()[count=%v][manager=%v]: Done storing known good configurations to cache.", cmHandlerCounter, manager)
 	stats.SetButlerKnownGoodCachedVal(stats.SUCCESS, manager)
 	stats.SetButlerKnownGoodRestoredVal(stats.FAILURE, manager)
 	return nil
@@ -464,38 +463,38 @@ func RestoreCachedConfigs(manager string, files []string, cleanFiles bool) error
 	// If we do not have a good configuration cache, then there's nothing for us to do.
 	if ConfigCache == nil {
 		if cleanFiles {
-			log.Infof("helpers.RestoreCachedConfigs(): No current known good configurations in cache for \"%s\" manager. Cleaning configuration...", manager)
+			log.Infof("helpers.RestoreCachedConfigs()[count=%v][manager=%v]: No current known good configurations in cache. Cleaning configuration...", cmHandlerCounter, manager)
 			for _, file := range files {
-				log.Warnf("helpers.RestoreCachedConfigs(): Removing bad %s configuration file %s.", manager, file)
+				log.Warnf("helpers.RestoreCachedConfigs()[count=%v][manager=%v]: Removing bad configuration file %s.", cmHandlerCounter, manager, file)
 				os.Remove(file)
 			}
-			log.Infof("helpers.RestoreCachedConfigs(): Done cleaning broken configuration for \"%s\" manager. Returning...", manager)
+			log.Infof("helpers.RestoreCachedConfigs()[count=%v][manager=%v]: Done cleaning broken configuration. Returning...", cmHandlerCounter, manager)
 		}
 		stats.SetButlerKnownGoodCachedVal(stats.FAILURE, manager)
 		stats.SetButlerKnownGoodRestoredVal(stats.FAILURE, manager)
 		return nil
 	}
 
-	log.Warnf("helpers.RestoreCachedConfigs(): Restoring known good configurations from cache for \"%s\" manager.", manager)
+	log.Warnf("helpers.RestoreCachedConfigs()[count=%v][manager=%v]: Restoring known good configurations from cache.", cmHandlerCounter, manager)
 	for _, file := range files {
 		fileData := ConfigCache[manager][file]
 
 		f, err := os.OpenFile(file, os.O_WRONLY|os.O_TRUNC, 0644)
 		if err != nil {
-			log.Errorf("helpers.RestoreCachedConfigs(): Could not open %s for writing! err=%s.", file, err.Error())
+			log.Errorf("helpers.RestoreCachedConfigs()[count=%v][manager=%v]: Could not open %s for writing! err=%s.", cmHandlerCounter, manager, file, err.Error())
 			continue
 		} else {
 			count, err := f.Write(fileData)
 			if err != nil {
-				log.Errorf("helpers.RestoreCachedConfigs(): Could not write to %s! err=%s.", file, err.Error())
+				log.Errorf("helpers.RestoreCachedConfigs()[count=%v][manager=%v]: Could not write to %s! err=%s.", cmHandlerCounter, manager, file, err.Error())
 				continue
 			} else {
 				f.Close()
-				log.Warnf("helpers.RestoreCachedConfigs(): Wrote %d bytes for %s.", count, file)
+				log.Warnf("helpers.RestoreCachedConfigs()[count=%v][manager=%v]: Wrote %d bytes for %s.", cmHandlerCounter, manager, count, file)
 			}
 		}
 	}
-	log.Warnf("helpers.RestoreCachedConfigs(): Done restoring known good configurations from cache for \"%s\" manager.", manager)
+	log.Warnf("helpers.RestoreCachedConfigs()[count=%v][manager=%v]: Done restoring known good configurations from cache.", cmHandlerCounter, manager)
 	stats.SetButlerKnownGoodCachedVal(stats.FAILURE, manager)
 	stats.SetButlerKnownGoodRestoredVal(stats.SUCCESS, manager)
 	return nil
@@ -532,7 +531,7 @@ func GetManagerOpts(entry string, bc *ConfigSettings) (*ManagerOpts, error) {
 	}
 
 	switch MgrOpts.Method {
-	case "blob", "file", "http", "https", "s3", "S3":
+	case "blob", "file", "http", "https", "s3", "S3", "etcd":
 		break
 	default:
 		msg := fmt.Sprintf("unknown manager.method=%v", MgrOpts.Method)
@@ -653,16 +652,16 @@ func GetConfigManager(entry string, bc *ConfigSettings) error {
 
 	reloader, err := reloaders.New(entry)
 	if err != nil {
-		log.Warnf("helpers.GetConfigManager(): No reloader has been defined for the \"%s\" manager.", entry)
+		log.Warnf("helpers.GetConfigManager()[count=%v][manager=%v]: %v.", cmHandlerCounter, entry, err.Error())
 		reloader = nil
 		// If we've got no reloader for this manager, then there is no need to cache
-		log.Debugf("helpers.GetConfigManager(): No reloader has been defined for \"%s\" manager. Setting EnableCache to false", entry)
+		log.Debugf("helpers.GetConfigManager()[count=%v][manager=%v]: No reloader has been defined for manager. Setting EnableCache to false", cmHandlerCounter, entry)
 		Mgr.EnableCache = false
 	}
 
 	Mgr.MustacheSubs, err = ParseMustacheSubs(Mgr.MustacheSubsArray)
 	if err != nil {
-		log.Debugf("helpers.GetConfigManager(): could not get mustache subs. err=%s", err.Error())
+		log.Debugf("helpers.GetConfigManager()[count=%v][manager=%v]: could not get mustache subs. err=%s", cmHandlerCounter, entry, err.Error())
 		return err
 	}
 	m := bc.Managers[entry]
@@ -770,6 +769,8 @@ func NewConfigClient(scheme string) (*ConfigClient, error) {
 		c.Scheme = "file"
 	case "blob":
 		c.Scheme = "blob"
+	case "etcd":
+		c.Scheme = "etcd"
 	default:
 		errMsg := fmt.Sprintf("Unsupported butler config scheme: %s", scheme)
 		return &ConfigClient{}, errors.New(errMsg)

@@ -77,6 +77,8 @@ func (b *ConfigSettings) GetAllConfigLocalPaths(mgr string) []string {
 type ConfigGlobals struct {
 	Managers             []string `mapstructure:"config-managers" json:"-"`
 	SchedulerInterval    int      `json:"scheduler-interval"`
+	CfgEnableHttpLog     string   `mapstructure:"enable-http-log" json:"-"`
+	EnableHttpLog        bool     `json:"enable-http-log"`
 	CfgSchedulerInterval string   `mapstructure:"scheduler-interval" json:"-"`
 	CfgExitOnFailure     string   `mapstructure:"exit-on-config-failure" json:"-"`
 	ExitOnFailure        bool     `json:"exit-on-failure"`
@@ -86,8 +88,9 @@ type ConfigGlobals struct {
 
 type ValidateOpts struct {
 	ContentType string
-	FileName    string
 	Data        interface{}
+	FileName    string
+	Manager     string
 }
 
 func NewValidateOpts() *ValidateOpts {
@@ -106,5 +109,10 @@ func (o *ValidateOpts) WithData(d interface{}) *ValidateOpts {
 
 func (o *ValidateOpts) WithFileName(f string) *ValidateOpts {
 	o.FileName = f
+	return o
+}
+
+func (o *ValidateOpts) WithManager(m string) *ValidateOpts {
+	o.Manager = m
 	return o
 }

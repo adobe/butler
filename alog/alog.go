@@ -18,6 +18,8 @@ import (
 	"strings"
 	"time"
 
+	"git.corp.adobe.com/TechOps-IAO/butler/config"
+
 	log "github.com/sirupsen/logrus"
 )
 
@@ -27,7 +29,7 @@ const (
 
 type ApacheLogRecord struct {
 	http.ResponseWriter
-
+	log                   bool
 	ip                    string
 	time                  time.Time
 	method, uri, protocol string
@@ -41,7 +43,9 @@ func (r *ApacheLogRecord) Log() {
 	requestLine := fmt.Sprintf("%s %s %s", r.method, r.uri, r.protocol)
 	msg := fmt.Sprintf(ApacheFormatPattern, r.ip, timeFormatted, requestLine, r.status, r.responseBytes,
 		r.elapsedTime.Seconds())
-	log.Infof(strings.TrimSpace(msg))
+	if r.log {
+		log.Infof(strings.TrimSpace(msg))
+	}
 }
 
 func (r *ApacheLogRecord) Write(p []byte) (int, error) {
@@ -57,11 +61,13 @@ func (r *ApacheLogRecord) WriteHeader(status int) {
 
 type ApacheLoggingHandler struct {
 	handler http.Handler
+	config  *config.ButlerConfig
 }
 
-func NewApacheLoggingHandler(handler http.Handler) http.Handler {
+func NewApacheLoggingHandler(handler http.Handler, config *config.ButlerConfig) http.Handler {
 	return &ApacheLoggingHandler{
 		handler: handler,
+		config:  config,
 	}
 }
 
@@ -73,6 +79,7 @@ func (h *ApacheLoggingHandler) ServeHTTP(rw http.ResponseWriter, r *http.Request
 
 	record := &ApacheLogRecord{
 		ResponseWriter: rw,
+		log:            h.config.Config.Globals.EnableHttpLog,
 		ip:             clientIP,
 		time:           time.Time{},
 		method:         r.Method,

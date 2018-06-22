@@ -40,6 +40,7 @@ type ConfigChanEvent struct {
 	HasChanged bool
 	TmpFile    *os.File
 	ConfigFile *string
+	Manager    string
 	Repo       map[string]*RepoFileEvent
 }
 
@@ -200,7 +201,7 @@ func (c *ConfigChanEvent) CopyPrimaryConfigFiles(opts map[string]*ManagerOpts) b
 	}
 	out.Sync()
 	out.Close()
-	return CompareAndCopy(c.TmpFile.Name(), *c.ConfigFile)
+	return CompareAndCopy(c.TmpFile.Name(), *c.ConfigFile, c.Manager)
 }
 
 func (c *ConfigChanEvent) CopyAdditionalConfigFiles(destDir string) bool {
@@ -212,7 +213,7 @@ func (c *ConfigChanEvent) CopyAdditionalConfigFiles(destDir string) bool {
 
 	for _, f := range c.GetTmpFileMap() {
 		destFile := fmt.Sprintf("%s/%s", destDir, f.Name)
-		if CompareAndCopy(f.File, destFile) {
+		if CompareAndCopy(f.File, destFile, c.Manager) {
 			IsModified = true
 		}
 	}

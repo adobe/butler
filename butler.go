@@ -86,7 +86,7 @@ func (m *Monitor) Start() {
 	mux := http.DefaultServeMux
 	mux.HandleFunc("/health-check", m.MonitorHandler)
 	mux.Handle("/metrics", promhttp.Handler())
-	loggingHandler := alog.NewApacheLoggingHandler(mux)
+	loggingHandler := alog.NewApacheLoggingHandler(mux, m.Config)
 
 	server := &http.Server{
 		Handler: loggingHandler,
@@ -150,7 +150,11 @@ func main() {
 		configHttpRetries      = flag.String("http.retries", fmt.Sprintf("%v", HttpRetries), "The number of http retries for GET requests to obtain the butler configuration files")
 		configHttpRetryWaitMin = flag.String("http.retry_wait_min", fmt.Sprintf("%v", HttpRetryWaitMin), "The minimum amount of time to wait before attemping to retry the http config get operation.")
 		configHttpRetryWaitMax = flag.String("http.retry_wait_max", fmt.Sprintf("%v", HttpRetryWaitMax), "The maximum amount of time to wait before attemping to retry the http config get operation.")
+		configHttpAuthToken    = flag.String("http.auth_token", "", "HTTP auth token to use for HTTP authentication.")
+		configHttpAuthType     = flag.String("http.auth_type", "", "HTTP auth type (eg: basic / digest / token-key) to use. If empty (by default) do not use HTTP authentication.")
+		configHttpAuthUser     = flag.String("http.auth_user", "", "HTTP auth user to use for HTTP authentication")
 		configS3Region         = flag.String("s3.region", "", "The S3 Region that the config file resides.")
+		configEtcdEndpoints    = flag.String("etcd.endpoints", "", "The endpoints to connect to etcd.")
 		configLogLevel         = flag.String("log.level", "info", "The butler log level. Log levels are: debug, info, warn, error, fatal, panic.")
 		butlerTest             = flag.Bool("test", false, "Are we testing butler? (probably not!)")
 	)
@@ -175,7 +179,7 @@ func main() {
 		log.Fatal("You must provide a -config.path for a path to the butler configuration.")
 	}
 
-	log.Infof("Starting butler version %s", version)
+	log.Infof("Starting Butler CMS version %s", version)
 
 	newUrl, err := url.Parse(environment.GetVar(*configPath))
 	if err != nil || newUrl.Scheme == "" {
@@ -193,6 +197,22 @@ func main() {
 
 	switch bc.Url.Scheme {
 	case "http", "https":
+		newConfigHttpAuthType := strings.ToLower(environment.GetVar(*configHttpAuthType))
+		if newConfigHttpAuthType != "" {
+			if environment.GetVar(*configHttpAuthUser) != "" && environment.GetVar(*configHttpAuthToken) != "" {
+			} else {
+				log.Fatalf("HTTP Authentication enabled, but insufficient authentication details provided.")
+			}
+			switch newConfigHttpAuthType {
+			case "basic", "digest", "token-key":
+				bc.SetHttpAuthType(newConfigHttpAuthType)
+				bc.SetHttpAuthToken(*configHttpAuthToken)
+				bc.SetHttpAuthUser(*configHttpAuthUser)
+				break
+			default:
+				log.Fatalf("Unsupported HTTP Authentication Type: %s", newConfigHttpAuthType)
+			}
+		}
 		// Set the HTTP Timeout
 		newConfigHttpTimeout, _ := strconv.Atoi(environment.GetVar(*configHttpTimeout))
 		if newConfigHttpTimeout == 0 {
@@ -230,6 +250,13 @@ func main() {
 		bc.SetRegion(newConfigS3Region)
 	case "blob":
 		os.Setenv("BUTLER_STORAGE_ACCOUNT", bc.Url.Host)
+	case "etcd":
+		if *configEtcdEndpoints == "" {
+			log.Fatalf("You must provide a valid -etcd.endpoints for use with the etcd downloader.")
+		}
+		newConfigEtcdEndpoints := environment.GetVar(*configEtcdEndpoints)
+		log.Debugf("main(): setting etcd endpoints=%v", newConfigEtcdEndpoints)
+		bc.SetEndpoints(strings.Split(newConfigEtcdEndpoints, ","))
 	}
 
 	// Set the butler configuration retrieval interval
@@ -253,6 +280,7 @@ func main() {
 	// Going to do this in an endless loop until we initially
 	// grab a configuration file.
 	for {
+		log.Infof("main(): Loading initial butler configuration.")
 		log.Debugf("main(): running first bc.Handler()")
 		err = bc.Handler()
 
@@ -260,10 +288,11 @@ func main() {
 			if ButlerTesting {
 				log.Fatalf("Cannot retrieve butler configuration. err=%s ButlerTesting=%#v", err.Error(), ButlerTesting)
 			}
-			log.Warnf("Cannot retrieve butler configuration. err=%s", err.Error())
-			log.Warnf("Sleeping 5 seconds.")
+			//log.Error("Cannot retrieve butler configuration. err=%s", err.Error())
+			log.Warnf("main(): Sleeping 5 seconds.")
 			time.Sleep(5 * time.Second)
 		} else {
+			log.Infof("main(): Loaded initial butler configuration.")
 			break
 		}
 	}

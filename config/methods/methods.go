@@ -13,10 +13,11 @@ governing permissions and limitations under the License.
 package methods
 
 import (
-	log "github.com/sirupsen/logrus"
 	"io"
 	"net/url"
 	"strings"
+
+	//log "github.com/sirupsen/logrus"
 )
 
 type Method interface {
@@ -39,7 +40,7 @@ func (r Response) GetResponseStatusCode() int {
 
 func New(manager *string, method string, entry *string) (Method, error) {
 	method = strings.ToLower(method)
-	log.Debugf("methods.New() manager=%v method=%v entry=%v", manager, method, entry)
+	//log.Debugf("methods.New() manager=%v method=%v entry=%v", manager, method, entry)
 	switch method {
 	case "http", "https":
 		return NewHttpMethod(manager, entry)
@@ -49,6 +50,8 @@ func New(manager *string, method string, entry *string) (Method, error) {
 		return NewFileMethod(manager, entry)
 	case "blob":
 		return NewBlobMethod(manager, entry)
+	case "etcd":
+		return NewEtcdMethod(manager, entry)
 	default:
 		return NewGenericMethod(manager, entry)
 	}

@@ -21,7 +21,7 @@ import (
 	"strings"
 	"time"
 
-	"git.corp.adobe.com/TechOps-IAO/butler/environment"
+	"github.com/adobe/butler/environment"
 
 	"github.com/coreos/etcd/client"
 	log "github.com/sirupsen/logrus"

@@ -4,7 +4,7 @@
 ## Butler CMS (Configuration Management System) Overview
 The Butler CMS (butler) tool is designed to grab any configuration files, defined in its configuration file, from a remote location/repository via http(s)/s3(AWS)/blob(Azure)/file/etcd and side load them onto another locally running container.
 
-The butler configuration file is a [TOML](https://github.com/toml-lang/toml) formatted file. You can store the file locally (using a mounted filesystem), or on a remote server. The proper formatting for the config file can be found [here](https://git.corp.adobe.com/TechOps-IAO/butler/tree/master/contrib)
+The butler configuration file is a [TOML](https://github.com/toml-lang/toml) formatted file. You can store the file locally (using a mounted filesystem), or on a remote server. The proper formatting for the config file can be found [here](https://github.com/adobe/butler/tree/master/contrib)
 
 ### Butler at 30,000 feet
 Here is a quick diagram that contains all the elements of what butler does, and how it is intended to interact with other systems.
@@ -112,7 +112,7 @@ INFO[2018-05-10T11:34:05Z] Config::RunCMHandler(): entering
 [12:34]pts/16:4(stegen@woden):[~]%
 ```
 
-You can grab the butler.toml directly from etcd, and you can also create a repo which utilizes etcd within the butler.toml. Refer to [this example](https://git.corp.adobe.com/TechOps-IAO/butler/blob/master/contrib/butler.toml.etcdtest).
+You can grab the butler.toml directly from etcd, and you can also create a repo which utilizes etcd within the butler.toml. Refer to [this example](https://github.com/adobe/butler/blob/master/contrib/butler.toml.etcdtest).
 
 You can easily add the files into etcd by the following commands:
 ```
@@ -151,7 +151,7 @@ The command line option looks like this:
   "cmd": null,
   "args": [
     "-config.path",
-    "http://10.14.210.14/cgit/adobe-platform/ethos-monitoring/plain/oncluster/butler.toml"
+    "http://server/butler.toml"
   ],
   "user": null,
   "env": null,
@@ -165,7 +165,7 @@ The command line option looks like this:
     [
       "hostname",
       "LIKE",
-      "10.14.211.16"
+      "1.2.3.4"
     ],
     [
       "hostname",
@@ -179,7 +179,7 @@ The command line option looks like this:
   "maxLaunchDelaySeconds": 3600,
   "container": {
     "docker": {
-      "image": "docker-ethos-core-univ-dev.dr-uw2.adobeitc.com/ethos/butler:x.y.z",
+      "image": "matthsmi/butler:x.y.z",
       "forcePullImage": false,
       "privileged": false,
       "parameters": [
@@ -596,6 +596,6 @@ Contributions are welcomed! Read the [Contributing Guide](CONTRIBUTING.md) for m
 
 This project is licensed under the Apache V2 License. See [LICENSE](LICENSE) for more information.
 
-[workflow-diagram]: https://git.corp.adobe.com/TechOps-IAO/butler/raw/master/contrib/diagrams/png/Butler%20Workflow.png
-[elements-diagram]: https://git.corp.adobe.com/TechOps-IAO/butler/raw/master/contrib/diagrams/png/Butler%20Elements.png
-[butler-logo]: https://git.corp.adobe.com/TechOps-IAO/butler/raw/master/contrib/images/butler.png
+[workflow-diagram]: https://github.com/adobe/butler/raw/master/contrib/diagrams/png/Butler%20Workflow.png
+[elements-diagram]: https://github.com/adobe/butler/raw/master/contrib/diagrams/png/Butler%20Elements.png
+[butler-logo]: https://github.com/adobe/butler/raw/master/contrib/images/butler.png

@@ -151,7 +151,7 @@ The command line option looks like this:
   "cmd": null,
   "args": [
     "-config.path",
-    "http://10.14.210.14/cgit/adobe-platform/ethos-monitoring/plain/oncluster/butler.toml"
+    "http://server/butler.toml"
   ],
   "user": null,
   "env": null,
@@ -165,7 +165,7 @@ The command line option looks like this:
     [
       "hostname",
       "LIKE",
-      "10.14.211.16"
+      "1.2.3.4"
     ],
     [
       "hostname",
@@ -179,7 +179,7 @@ The command line option looks like this:
   "maxLaunchDelaySeconds": 3600,
   "container": {
     "docker": {
-      "image": "docker-ethos-core-univ-dev.dr-uw2.adobeitc.com/ethos/butler:x.y.z",
+      "image": "matthsmi/butler:x.y.z",
       "forcePullImage": false,
       "privileged": false,
       "parameters": [

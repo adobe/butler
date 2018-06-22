@@ -19,7 +19,7 @@ import (
 	"io/ioutil"
 	"net/url"
 
-	"git.corp.adobe.com/TechOps-IAO/butler/environment"
+	"github.com/adobe/butler/environment"
 
 	//log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"

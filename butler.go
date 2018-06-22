@@ -25,9 +25,9 @@ import (
 	"strings"
 	"time"
 
-	"git.corp.adobe.com/TechOps-IAO/butler/alog"
-	"git.corp.adobe.com/TechOps-IAO/butler/config"
-	"git.corp.adobe.com/TechOps-IAO/butler/environment"
+	"github.com/adobe/butler/alog"
+	"github.com/adobe/butler/config"
+	"github.com/adobe/butler/environment"
 
 	"github.com/jasonlvhit/gocron"
 	log "github.com/sirupsen/logrus"

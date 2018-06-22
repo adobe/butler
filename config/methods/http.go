@@ -26,8 +26,8 @@ import (
 	"strings"
 	"time"
 
-	"git.corp.adobe.com/TechOps-IAO/butler/environment"
-	"git.corp.adobe.com/TechOps-IAO/butler/stats"
+	"github.com/adobe/butler/environment"
+	"github.com/adobe/butler/stats"
 
 	"github.com/hashicorp/go-retryablehttp"
 	log "github.com/sirupsen/logrus"

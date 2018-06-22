@@ -19,7 +19,7 @@ import (
 	"os"
 	"strings"
 
-	"git.corp.adobe.com/TechOps-IAO/butler/environment"
+	"github.com/adobe/butler/environment"
 
 	"github.com/Azure/azure-sdk-for-go/storage"
 	//log "github.com/sirupsen/logrus"

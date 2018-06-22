@@ -20,7 +20,7 @@ import (
 	"net/url"
 	"os"
 
-	"git.corp.adobe.com/TechOps-IAO/butler/environment"
+	"github.com/adobe/butler/environment"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"

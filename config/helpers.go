@@ -23,10 +23,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"git.corp.adobe.com/TechOps-IAO/butler/config/methods"
-	"git.corp.adobe.com/TechOps-IAO/butler/config/reloaders"
-	"git.corp.adobe.com/TechOps-IAO/butler/environment"
-	"git.corp.adobe.com/TechOps-IAO/butler/stats"
+	"github.com/adobe/butler/config/methods"
+	"github.com/adobe/butler/config/reloaders"
+	"github.com/adobe/butler/environment"
+	"github.com/adobe/butler/stats"
 
 	"github.com/Jeffail/gabs"
 	"github.com/hashicorp/go-retryablehttp"

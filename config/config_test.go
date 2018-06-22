@@ -22,7 +22,7 @@ import (
 	"strings"
 	"testing"
 
-	"git.corp.adobe.com/TechOps-IAO/butler/config/reloaders"
+	"github.com/adobe/butler/config/reloaders"
 
 	"github.com/bouk/monkey"
 	log "github.com/sirupsen/logrus"

@@ -21,9 +21,9 @@ import (
 	"os"
 	"time"
 
-	"git.corp.adobe.com/TechOps-IAO/butler/config/methods"
-	"git.corp.adobe.com/TechOps-IAO/butler/config/reloaders"
-	"git.corp.adobe.com/TechOps-IAO/butler/stats"
+	"github.com/adobe/butler/config/methods"
+	"github.com/adobe/butler/config/reloaders"
+	"github.com/adobe/butler/stats"
 
 	"strings"
 

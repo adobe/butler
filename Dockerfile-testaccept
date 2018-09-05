@@ -14,8 +14,6 @@ LABEL maintaner="Stegen Smith <matthsmi@adobe.com>"
 ARG VERSION=$VERSION
 ENV VERSION=$VERSION
 
-RUN apk update && apk add bash ca-certificates curl git nginx
-
 ### required for test
 COPY ./files/doit.sh /doit.sh
 COPY ./files/build_test_accept.sh /root/build.sh
@@ -33,5 +31,7 @@ COPY ./environment/*.go /root/butler/environment
 COPY ./alog/*.go /root/butler/alog
 COPY ./vendor /root/butler/vendor
 ### required to build
+
+RUN apk update && apk add bash build-base ca-certificates curl git nginx
 
 CMD ["/doit.sh"]

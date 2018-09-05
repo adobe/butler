@@ -28,6 +28,6 @@ COPY ./alog/*.go /root/butler/alog
 COPY ./vendor /root/butler/vendor
 ### required to build
 
-RUN apk update && apk add bash ca-certificates git
+RUN apk update && apk add bash build-base ca-certificates git
 
 CMD ["/doit.sh"]

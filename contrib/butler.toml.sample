@@ -23,6 +23,27 @@ title = "Butler Configuration"
   ## Default: "true"
   enable-http-log = "true"
 
+  ## Specify that HTTP protocol and Port for the /metrics and /health-check  
+  ## to respond on.
+  ##
+  ## http-proto can be either "http" or "https". If you specify "https,"
+  ## then you must also specify the http-tls-cert and http-tls-key options.
+  ## 
+  ## http-port can be any port that you want the http server to bind on, but
+  ## quotated.
+  ## 
+  ## The default for http-proto is: "http"
+  ## The default for http-port is: "8080"
+  ## 
+  ## There is no default for http-tls-cert, or http-tls-key, and it must be
+  ## specified if http-proto is set to "https"
+  ##
+  http-proto = "http"
+  http-port = "8080"
+  http-tls-cert = "/path/to/butler.crt"
+  http-tls-key = "/path/to/butler.key"
+  
+
 ## This is the definition for the prometheus configuration handler
 [prometheus]
   repos = ["repo1.domain.com", "repo2.domain.com", "azure-repo"]

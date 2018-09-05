@@ -88,6 +88,10 @@ type ConfigGlobals struct {
 	HttpProto            string   `json:"http-proto"`
 	CfgHttpPort          string   `mapstructure:"http-port" json:"-"`
 	HttpPort             int      `json:"http-port"`
+	CfgHttpTlsCert       string   `mapstructure:"http-tls-cert" json:"-"`
+	HttpTlsCert          string   `json:"http-tls-cert"`
+	CfgHttpTlsKey        string   `mapstructure:"http-tls-key" json:"-"`
+	HttpTlsKey           string   `json:"http-tls-key"`
 }
 
 type ValidateOpts struct {

@@ -164,12 +164,22 @@ func (c *ConfigSettings) ParseConfig(config []byte) error {
 	}
 
 	Config.Globals.HttpProto = strings.ToLower(environment.GetVar(Config.Globals.CfgHttpProto))
-	if Config.Globals.HttpProto != "http" || Config.Globals.HttpProto != "https" {
+	if (Config.Globals.HttpProto != "http") && (Config.Globals.HttpProto != "https") {
 		Config.Globals.HttpProto = "http"
 	}
 
-	log.Debugf("ConfigSettings::ParseConfig(): globals.config-managers=%#v", Config.Globals.Managers)
-	log.Debugf("ConfigSettings::ParseConfig(): len(globals.config-managers)=%v", len(Config.Globals.Managers))
+	if Config.Globals.HttpProto == "https" {
+		Config.Globals.HttpTlsCert = environment.GetVar(Config.Globals.CfgHttpTlsCert)
+		Config.Globals.HttpTlsKey = environment.GetVar(Config.Globals.CfgHttpTlsKey)
+		if (Config.Globals.HttpTlsCert == "") || (Config.Globals.HttpTlsKey == "") {
+			if Config.Globals.ExitOnFailure {
+				log.Fatalf("ConfigSetings::ParseConfig(): globlals.http-proto set to \"https\" but no cert and/or key defined! exiting...")
+			} else {
+				log.Debugf("ConfigSetings::ParseConfig(): globlals.http-proto set to \"https\" but no cert and/or key defined")
+				return errors.New("globals.http-proto set to https but no tls options defined.")
+			}
+		}
+	}
 
 	// If there are no entries for config-managers, then the Unmarshal will create an empty array
 	if len(Config.Globals.Managers) < 1 {

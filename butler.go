@@ -92,7 +92,7 @@ func (m *Monitor) Start() {
 		Handler: loggingHandler,
 	}
 
-	listener, err := net.Listen("tcp", ":8080")
+	listener, err := net.Listen("tcp", fmt.Sprintf(":%v", m.Config.Config.Globals.HttpPort))
 	if err != nil {
 		log.Fatalf("Error creating listener: %s", err.Error())
 	}
@@ -272,10 +272,6 @@ func main() {
 		log.Fatalf("Cannot initialize butler config. err=%s", err.Error())
 	}
 
-	// Start up the monitor web server
-	monitor := NewMonitor(bc)
-	monitor.Start()
-
 	// Do initial grab of butler configuration file.
 	// Going to do this in an endless loop until we initially
 	// grab a configuration file.
@@ -296,6 +292,10 @@ func main() {
 			break
 		}
 	}
+
+	// Start up the monitor web server after we grab the monitor config values
+	monitor := NewMonitor(bc)
+	monitor.Start()
 
 	sched := gocron.NewScheduler()
 	log.Debugf("main(): starting scheduler...")

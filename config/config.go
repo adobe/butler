@@ -155,6 +155,19 @@ func (c *ConfigSettings) ParseConfig(config []byte) error {
 		// enable http logging
 	}
 
+	// Let's determine the http proto and the port
+	envHttpPort, _ := strconv.Atoi(environment.GetVar(Config.Globals.CfgHttpPort))
+	if envHttpPort == 0 {
+		Config.Globals.HttpPort = 8080
+	} else {
+		Config.Globals.HttpPort = envHttpPort
+	}
+
+	Config.Globals.HttpProto = strings.ToLower(environment.GetVar(Config.Globals.CfgHttpProto))
+	if Config.Globals.HttpProto != "http" || Config.Globals.HttpProto != "https" {
+		Config.Globals.HttpProto = "http"
+	}
+
 	log.Debugf("ConfigSettings::ParseConfig(): globals.config-managers=%#v", Config.Globals.Managers)
 	log.Debugf("ConfigSettings::ParseConfig(): len(globals.config-managers)=%v", len(Config.Globals.Managers))
 

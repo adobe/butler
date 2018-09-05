@@ -13,6 +13,7 @@ governing permissions and limitations under the License.
 package main
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -83,6 +84,10 @@ type MonitorOutput struct {
 
 // Start turns up the http server for monitoring butler.
 func (m *Monitor) Start() {
+	var (
+		err      error
+		listener net.Listener
+	)
 	mux := http.DefaultServeMux
 	mux.HandleFunc("/health-check", m.MonitorHandler)
 	mux.Handle("/metrics", promhttp.Handler())
@@ -92,9 +97,22 @@ func (m *Monitor) Start() {
 		Handler: loggingHandler,
 	}
 
-	listener, err := net.Listen("tcp", fmt.Sprintf(":%v", m.Config.Config.Globals.HttpPort))
-	if err != nil {
-		log.Fatalf("Error creating listener: %s", err.Error())
+	if m.Config.Config.Globals.HttpProto == "https" {
+		cer, err := tls.LoadX509KeyPair(m.Config.Config.Globals.HttpTlsCert, m.Config.Config.Globals.HttpTlsKey)
+		if err != nil {
+			log.Fatalf("Error loading ssl certificate/key data: %s", err.Error())
+		}
+		config := &tls.Config{Certificates: []tls.Certificate{cer}}
+		listener, err = tls.Listen("tcp", fmt.Sprintf(":%v", m.Config.Config.Globals.HttpPort), config)
+		if err != nil {
+			log.Fatalf("Error creating listener: %s", err.Error())
+		}
+	} else {
+		listener, err = net.Listen("tcp", fmt.Sprintf(":%v", m.Config.Config.Globals.HttpPort))
+
+		if err != nil {
+			log.Fatalf("Error creating listener: %s", err.Error())
+		}
 	}
 	go server.Serve(listener)
 }

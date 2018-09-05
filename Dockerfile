@@ -8,7 +8,7 @@
 # OF ANY KIND, either express or implied. See the License for the specific language
 # governing permissions and limitations under the License.
 
-FROM alpine:3.5
+FROM alpine:3.8
 LABEL maintainer="Stegen Smith <matthsmi@adobe.com>"
 
 RUN apk update && apk add bash ca-certificates

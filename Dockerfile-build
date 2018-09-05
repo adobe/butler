@@ -8,7 +8,7 @@
 # OF ANY KIND, either express or implied. See the License for the specific language
 # governing permissions and limitations under the License.
 
-FROM golang:1.8.1-alpine
+FROM golang:1.11.0-alpine3.8
 LABEL maintaner="Stegen Smith <matthsmi@adobe.com>"
 
 ARG VERSION=$VERSION

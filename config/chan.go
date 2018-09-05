@@ -168,7 +168,7 @@ func (c *ConfigChanEvent) CopyPrimaryConfigFiles(opts map[string]*ManagerOpts) b
 
 	out, err := os.OpenFile(c.TmpFile.Name(), os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
-		log.Infof("ConfigChanEvent::CopyPrimaryConfigFiles(): Could not process and merge new %s err=%s.", c.ConfigFile, err.Error())
+		log.Infof("ConfigChanEvent::CopyPrimaryConfigFiles(): Could not process and merge new %v err=%s.", c.ConfigFile, err.Error())
 		stats.SetButlerConfigVal(stats.FAILURE, "local", stats.GetStatsLabel(*c.ConfigFile))
 		c.CleanTmpFiles()
 		return false
@@ -179,7 +179,7 @@ func (c *ConfigChanEvent) CopyPrimaryConfigFiles(opts map[string]*ManagerOpts) b
 				if t.Name == f {
 					in, err := os.Open(t.File)
 					if err != nil {
-						log.Infof("ConfigChanEvent::CopyPrimaryConfigFiles(): Could not process and merge new %s err=%s.", c.ConfigFile, err.Error())
+						log.Infof("ConfigChanEvent::CopyPrimaryConfigFiles(): Could not process and merge new %v err=%s.", c.ConfigFile, err.Error())
 						stats.SetButlerConfigVal(stats.FAILURE, "local", stats.GetStatsLabel(t.Name))
 						c.CleanTmpFiles()
 						out.Close()
@@ -187,7 +187,7 @@ func (c *ConfigChanEvent) CopyPrimaryConfigFiles(opts map[string]*ManagerOpts) b
 					}
 					_, err = io.Copy(out, in)
 					if err != nil {
-						log.Infof("ConfigChanEvent::CopyPrimaryConfigFiles(): Could not process and merge new %s err=%s.", c.ConfigFile, err.Error())
+						log.Infof("ConfigChanEvent::CopyPrimaryConfigFiles(): Could not process and merge new %v err=%s.", c.ConfigFile, err.Error())
 						stats.SetButlerConfigVal(stats.FAILURE, "local", stats.GetStatsLabel(t.Name))
 						c.CleanTmpFiles()
 						out.Close()

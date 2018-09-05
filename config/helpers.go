@@ -181,7 +181,6 @@ func removeButlerHeaderFooter(file interface{}) error {
 	default:
 		return nil
 	}
-	return nil
 }
 
 func runTextValidate(f *bytes.Reader, m string) error {

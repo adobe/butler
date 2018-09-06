@@ -24,19 +24,19 @@ mv /root/butler/vendor .
 mv /root/butler/*.go .
 
 ## make butler directories
-mkdir -p stats config alog environment config/methods config/reloaders
+mkdir -p internal/stats config internal/alog internal/environment config/methods config/reloaders
 
 ## move stats files
-mv /root/butler/stats/*.go stats
+mv /root/butler/internal/stats/*.go internal/stats
 
 ## move config files
 mv /root/butler/config/*.go config
 
 ## move environment files
-mv /root/butler/environment/*.go environment
+mv /root/butler/internal/environment/*.go internal/environment
 
 ## move alog files
-mv /root/butler/alog/*.go alog
+mv /root/butler/internal/alog/*.go internal/alog
 
 ## move config/methods files
 mv /root/butler/config/methods/*.go config/methods

@@ -13,6 +13,7 @@ governing permissions and limitations under the License.
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"flag"
@@ -26,9 +27,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/adobe/butler/alog"
+	"github.com/adobe/butler/internal/alog"
 	"github.com/adobe/butler/config"
-	"github.com/adobe/butler/environment"
+	"github.com/adobe/butler/internal/environment"
 
 	"github.com/jasonlvhit/gocron"
 	log "github.com/sirupsen/logrus"
@@ -61,6 +62,8 @@ var (
 // health check and prometheus metrics http endpoints.
 type Monitor struct {
 	Config *config.ButlerConfig
+	mux    *http.ServeMux
+	server *http.Server
 }
 
 // NewMonitor returns a Monitor structure which is used to bring up the
@@ -87,15 +90,25 @@ func (m *Monitor) Start() {
 	var (
 		err      error
 		listener net.Listener
+		mux      *http.ServeMux
+		server   *http.Server
 	)
-	mux := http.DefaultServeMux
-	mux.HandleFunc("/health-check", m.MonitorHandler)
-	mux.Handle("/metrics", promhttp.Handler())
-	loggingHandler := alog.NewApacheLoggingHandler(mux, m.Config)
-
-	server := &http.Server{
-		Handler: loggingHandler,
+	if m.mux == nil {
+		mux = http.DefaultServeMux
+		mux.HandleFunc("/health-check", m.MonitorHandler)
+		mux.Handle("/metrics", promhttp.Handler())
+		m.mux = mux
 	}
+
+	if m.Config.Config.Globals.EnableHttpLog {
+		loggingHandler := alog.NewApacheLoggingHandler(mux, m.Config)
+		server = &http.Server{
+			Handler: loggingHandler,
+		}
+	} else {
+		server = &http.Server{}
+	}
+	m.server = server
 
 	if m.Config.Config.Globals.HttpProto == "https" {
 		cer, err := tls.LoadX509KeyPair(m.Config.Config.Globals.HttpTlsCert, m.Config.Config.Globals.HttpTlsKey)
@@ -115,6 +128,27 @@ func (m *Monitor) Start() {
 		}
 	}
 	go server.Serve(listener)
+}
+
+func (m *Monitor) Stop() error {
+	timeout := 5
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
+	defer cancel()
+	if m.server != nil {
+		err := m.server.Shutdown(ctx)
+
+		if err != nil {
+			return err
+		} else {
+			m.server = nil
+		}
+	}
+	return nil
+}
+func (m *Monitor) Update(bc *config.ButlerConfig) {
+	m.Config = bc
+	m.Stop()
+	m.Start()
 }
 
 // MonitorHandler is the handler function for the /health-check monitor

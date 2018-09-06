@@ -18,7 +18,7 @@ import (
 	"os"
 	"sort"
 
-	"github.com/adobe/butler/stats"
+	"github.com/adobe/butler/internal/stats"
 
 	log "github.com/sirupsen/logrus"
 )

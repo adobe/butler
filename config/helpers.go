@@ -25,8 +25,8 @@ import (
 
 	"github.com/adobe/butler/config/methods"
 	"github.com/adobe/butler/config/reloaders"
-	"github.com/adobe/butler/environment"
-	"github.com/adobe/butler/stats"
+	"github.com/adobe/butler/internal/environment"
+	"github.com/adobe/butler/internal/stats"
 
 	"github.com/Jeffail/gabs"
 	"github.com/hashicorp/go-retryablehttp"

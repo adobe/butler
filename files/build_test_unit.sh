@@ -47,6 +47,7 @@ mv /root/butler/config/methods/*.go config/methods
 ## move config/reloaders files
 mv /root/butler/config/reloaders/*.go config/reloaders
 
+cd $BUTLER_GO_PATH
 go test -check.vv -coverprofile=/tmp/coverage-main.out
 ret=$?
 
@@ -78,7 +79,15 @@ if [ $ret -ne 0 ]; then
     exit $ret
 fi
 
-cd $BUTLER_GO_PATH/stats
+cd $BUTLER_GO_PATH/internal/monitor
+go test -check.vv -coverprofile=/tmp/coverage-monitor.out
+ret=$?
+
+if [ $ret -ne 0 ]; then
+    exit $ret
+fi
+
+cd $BUTLER_GO_PATH/internal/stats
 go test -check.vv -coverprofile=/tmp/coverage-stats.out
 ret=$?
 
@@ -108,5 +117,10 @@ fi
 
 if [ -f /tmp/coverage-stats.out ]; then
     go tool cover -func /tmp/coverage-stats.out
+    echo
+fi
+
+if [ -f /tmp/coverage-monitor.out ]; then
+    go tool cover -func /tmp/coverage-monitor.out
     echo
 fi

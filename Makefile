@@ -21,13 +21,15 @@ GO:=go
 pkgs=$(shell $(GO) list ./... | egrep -v "(vendor)")
 
 export DOCKERHUB_USER=$(shell echo "$$DOCKERHUB_USER")
-export BUTLER_VERSION=1.2.4
+export BUTLER_VERSION=1.3.0
 export VERSION=v$(BUTLER_VERSION)
 
 default: ci
 
 ci: build
 	@echo "Success"
+
+all: build test
 
 build:
 	@docker build --build-arg VERSION=$(VERSION) -t $(BUILDER_TAG) -f Dockerfile-build .

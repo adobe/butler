@@ -21,7 +21,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/adobe/butler/config/methods"
+	"github.com/adobe/butler/internal/methods"
 	"github.com/adobe/butler/internal/environment"
 
 	"github.com/hashicorp/go-retryablehttp"

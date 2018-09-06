@@ -21,16 +21,18 @@ fi
 mkdir -p $BUTLER_GO_PATH
 cd $BUTLER_GO_PATH
 mv /root/butler/vendor .
-mv /root/butler/*.go .
 
 ## make butler directories
-mkdir -p internal/monitor internal/stats config internal/alog internal/environment config/methods config/reloaders
+mkdir -p cmd/butler internal/monitor internal/stats internal/config internal/alog internal/environment internal/methods internal/reloaders
+
+## move butler main
+mv /root/butler/cmd/butler/*.go cmd/butler
 
 ## move stats files
 mv /root/butler/internal/stats/*.go internal/stats
 
 ## move config files
-mv /root/butler/config/*.go config
+mv /root/butler/internal/config/*.go internal/config
 
 ## move environment files
 mv /root/butler/internal/environment/*.go internal/environment
@@ -41,13 +43,13 @@ mv /root/butler/internal/alog/*.go internal/alog
 ## move monitor files
 mv /root/butler/internal/monitor/*.go internal/monitor
 
-## move config/methods files
-mv /root/butler/config/methods/*.go config/methods
+## move internal/methods files
+mv /root/butler/internal/methods/*.go internal/methods
 
-## move config/reloaders files
-mv /root/butler/config/reloaders/*.go config/reloaders
+## move internal/reloaders files
+mv /root/butler/internal/reloaders/*.go internal/reloaders
 
-cd $BUTLER_GO_PATH
+cd $BUTLER_GO_PATH/cmd/butler
 go test -check.vv -coverprofile=/tmp/coverage-main.out
 ret=$?
 
@@ -55,7 +57,7 @@ if [ $ret -ne 0 ]; then
     exit $ret
 fi
 
-cd $BUTLER_GO_PATH/config
+cd $BUTLER_GO_PATH/internal/config
 go test -check.vv -coverprofile=/tmp/coverage-config.out
 ret=$?
 
@@ -63,7 +65,7 @@ if [ $ret -ne 0 ]; then
     exit $ret
 fi
 
-cd $BUTLER_GO_PATH/config/methods
+cd $BUTLER_GO_PATH/internal/methods
 go test -check.vv -coverprofile=/tmp/coverage-config-methods.out
 ret=$?
 
@@ -71,7 +73,7 @@ if [ $ret -ne 0 ]; then
     exit $ret
 fi
 
-cd $BUTLER_GO_PATH/config/reloaders
+cd $BUTLER_GO_PATH/internal/reloaders
 go test -check.vv -coverprofile=/tmp/coverage-config-reloaders.out
 ret=$?
 

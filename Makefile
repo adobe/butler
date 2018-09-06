@@ -29,7 +29,7 @@ default: ci
 ci: build
 	@echo "Success"
 
-all: build test
+all: build test push-dockerhub
 
 build:
 	@docker build --build-arg VERSION=$(VERSION) -t $(BUILDER_TAG) -f Dockerfile-build .

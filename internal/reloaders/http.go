@@ -14,7 +14,7 @@ package reloaders
 
 import (
 	"encoding/json"
-	"errors"
+	//"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -113,7 +113,9 @@ func (h *HttpReloaderOpts) GetClient() *retryablehttp.Client {
 
 func (h HttpReloader) Reload() error {
 	var (
-		err error
+		err  error
+		req  *retryablehttp.Request
+		resp *http.Response
 	)
 
 	log.Debugf("HttpReloader::Reload()[count=%v][manager=%v]: reloading manager using http", h.Counter, h.Manager)
@@ -128,43 +130,34 @@ func (h HttpReloader) Reload() error {
 	reloadUrl := fmt.Sprintf("%s://%s:%d%s", h.Method, o.Host, newPort, o.Uri)
 
 	switch o.Method {
-	case "post":
-		log.Debugf("HttpReloader::Reload()[count=%v][manager=%v]: posting up!", h.Counter, h.Manager)
-		resp, err := c.Post(reloadUrl, o.ContentType, strings.NewReader(o.Payload))
-		if err != nil {
-			msg := fmt.Sprintf("HttpReloader::Reload()[count=%v][manager=%v]: err=%v", h.Counter, h.Manager, err.Error())
-			log.Errorf(msg)
-			return NewReloaderError().WithMessage(err.Error()).WithCode(1)
-		}
-		if resp.StatusCode == 200 {
-			log.Infof("HttpReloader::Reload()[count=%v][manager=%v]: successfully reloaded config. http_code=%d", h.Counter, h.Manager, int(resp.StatusCode))
-			// at this point error should be nil, so things are OK
-		} else {
-			msg := fmt.Sprintf("HttpReloader::Reload()[count=%v][manager=%v]: received bad response from server. http_code=%d", h.Counter, h.Manager, int(resp.StatusCode))
-			log.Errorf(msg)
-			// at this point we should raise an error
-			return NewReloaderError().WithMessage("received bad response from server").WithCode(resp.StatusCode)
-		}
-	case "get":
-		log.Debugf("HttpReloader::Reload()[count=%v][manager=%v]: getting up!", h.Counter, h.Manager)
-		resp, err := c.Get(reloadUrl)
-		if err != nil {
-			msg := fmt.Sprintf("HttpReloader::Reload()[count=%v][manager=%v]: err=%v", h.Counter, h.Manager, err.Error())
-			log.Errorf(msg)
-			return NewReloaderError().WithMessage(err.Error()).WithCode(1)
-		}
-		if resp.StatusCode == 200 {
-			log.Infof("HttpReloader::Reload()[count=%v][manager=%v]: successfully reloaded config. http_code=%d", h.Counter, h.Manager, int(resp.StatusCode))
-			// at this point error should be nil, so things are OK
-		} else {
-			msg := fmt.Sprintf("HttpReloader::Reload()[count=%v][manager=%v]: received bad response from server. http_code=%d", h.Counter, h.Manager, int(resp.StatusCode))
-			log.Errorf(msg)
-			// at this point we should raise an error
-			return NewReloaderError().WithMessage("received bad response from server").WithCode(resp.StatusCode)
-		}
+	case "post", "put", "patch":
+		req, err = retryablehttp.NewRequest(strings.ToUpper(o.Method), reloadUrl, strings.NewReader(o.Payload))
+		req.Header.Add("Content-Type", o.ContentType)
 	default:
-		msg := fmt.Sprintf("HttpReloader::Reload()[count=%v][manager=%v]: \"%s\" is not a supported reload method", h.Counter, h.Manager, o.Method)
-		return errors.New(msg)
+		req, err = retryablehttp.NewRequest(strings.ToUpper(o.Method), reloadUrl, nil)
+	}
+
+	if err != nil {
+		msg := fmt.Sprintf("HttpReloader::Reload()[count=%v][manager=%v]: err=%v", h.Counter, h.Manager, err.Error())
+		log.Errorf(msg)
+		return NewReloaderError().WithMessage(err.Error()).WithCode(1)
+	}
+
+	log.Debugf("HttpReloader::Reload()[count=%v][manager=%v]: %v'ing up!", h.Counter, h.Manager, o.Method)
+	resp, err = c.Do(req)
+	if err != nil {
+		msg := fmt.Sprintf("HttpReloader::Reload()[count=%v][manager=%v]: err=%v", h.Counter, h.Manager, err.Error())
+		log.Errorf(msg)
+		return NewReloaderError().WithMessage(err.Error()).WithCode(1)
+	}
+	if resp.StatusCode == 200 {
+		log.Infof("HttpReloader::Reload()[count=%v][manager=%v]: successfully reloaded config. http_code=%d", h.Counter, h.Manager, int(resp.StatusCode))
+		// at this point error should be nil, so things are OK
+	} else {
+		msg := fmt.Sprintf("HttpReloader::Reload()[count=%v][manager=%v]: received bad response from server. http_code=%d", h.Counter, h.Manager, int(resp.StatusCode))
+		log.Errorf(msg)
+		// at this point we should raise an error
+		return NewReloaderError().WithMessage("received bad response from server").WithCode(resp.StatusCode)
 	}
 
 	return err

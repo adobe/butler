@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/adobe/butler/internal/config"
 	"github.com/adobe/butler/internal/alog"
+	"github.com/adobe/butler/internal/config"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
@@ -18,22 +18,28 @@ import (
 
 // NewMonitor returns a Monitor structure which is used to bring up the
 // monitor health check and prometheus metrics http endpoints.
-func NewMonitor(bc *config.ButlerConfig, opts MonitorOpts) *Monitor {
-	return &Monitor{Config: bc,
-		opts: opts}
+func NewMonitor() *Monitor {
+	return &Monitor{}
+}
+
+func (m *Monitor) WithOpts(opts *MonitorOpts) *Monitor {
+	m.config = opts.Config
+	m.version = opts.Version
+	return m
 }
 
 // Monitor is the empty structure to be used for starting up the monitor
 // health check and prometheus metrics http endpoints.
 type Monitor struct {
-	Config *config.ButlerConfig
-	mux    *http.ServeMux
-	server *http.Server
-	opts   MonitorOpts
+	config  *config.ButlerConfig
+	mux     *http.ServeMux
+	server  *http.Server
+	version string
 }
 
 type MonitorOpts struct {
 	Version string
+	Config  *config.ButlerConfig
 }
 
 // MonitorOutput is the structure which holds the formatting which is output
@@ -64,8 +70,8 @@ func (m *Monitor) Start() {
 		m.mux = mux
 	}
 
-	if m.Config.Config.Globals.EnableHttpLog {
-		loggingHandler := alog.NewApacheLoggingHandler(mux, m.Config)
+	if m.config.Config.Globals.EnableHttpLog {
+		loggingHandler := alog.NewApacheLoggingHandler(mux, m.config)
 		server = &http.Server{
 			Handler: loggingHandler,
 		}
@@ -73,18 +79,18 @@ func (m *Monitor) Start() {
 		server = &http.Server{}
 	}
 	m.server = server
-	if m.Config.Config.Globals.HttpProto == "https" {
-		cer, err := tls.LoadX509KeyPair(m.Config.Config.Globals.HttpTlsCert, m.Config.Config.Globals.HttpTlsKey)
+	if m.config.Config.Globals.HttpProto == "https" {
+		cer, err := tls.LoadX509KeyPair(m.config.Config.Globals.HttpTlsCert, m.config.Config.Globals.HttpTlsKey)
 		if err != nil {
 			log.Fatalf("Error loading ssl certificate/key data: %s", err.Error())
 		}
 		config := &tls.Config{Certificates: []tls.Certificate{cer}}
-		listener, err = tls.Listen("tcp", fmt.Sprintf(":%v", m.Config.Config.Globals.HttpPort), config)
+		listener, err = tls.Listen("tcp", fmt.Sprintf(":%v", m.config.Config.Globals.HttpPort), config)
 		if err != nil {
 			log.Fatalf("Error creating listener: %s", err.Error())
 		}
 	} else {
-		listener, err = net.Listen("tcp", fmt.Sprintf(":%v", m.Config.Config.Globals.HttpPort))
+		listener, err = net.Listen("tcp", fmt.Sprintf(":%v", m.config.Config.Globals.HttpPort))
 
 		if err != nil {
 			log.Fatalf("Error creating listener: %s", err.Error())
@@ -109,7 +115,7 @@ func (m *Monitor) Stop() error {
 	return nil
 }
 func (m *Monitor) Update(bc *config.ButlerConfig) {
-	m.Config = bc
+	m.config = bc
 	m.Stop()
 	m.Start()
 }
@@ -119,12 +125,12 @@ func (m *Monitor) Update(bc *config.ButlerConfig) {
 // configuration options that buter gets started with, and some run time
 // information
 func (m *Monitor) MonitorHandler(w http.ResponseWriter, r *http.Request) {
-	mOut := MonitorOutput{ConfigPath: m.Config.GetPath(),
-		ConfigScheme:     m.Config.Url.Scheme,
-		RetrieveInterval: m.Config.Interval,
-		LogLevel:         m.Config.GetLogLevel(),
-		ConfigSettings:   *m.Config.Config,
-		Version:          m.opts.Version}
+	mOut := MonitorOutput{ConfigPath: m.config.GetPath(),
+		ConfigScheme:     m.config.Url.Scheme,
+		RetrieveInterval: m.config.Interval,
+		LogLevel:         m.config.GetLogLevel(),
+		ConfigSettings:   *m.config.Config,
+		Version:          m.version}
 	resp, err := json.Marshal(mOut)
 	if err != nil {
 		w.Header().Set("Content-Type", "text/html")

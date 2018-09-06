@@ -225,7 +225,7 @@ func main() {
 	}
 
 	// Start up the monitor web server after we grab the monitor config values
-	monitor := monitor.NewMonitor(bc, monitor.MonitorOpts{Version: version})
+	monitor := monitor.NewMonitor().WithOpts(&monitor.MonitorOpts{Config: bc, Version: version})
 	monitor.Start()
 
 	sched := gocron.NewScheduler()

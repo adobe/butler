@@ -34,7 +34,7 @@ all: build test push-dockerhub
 build:
 	@docker build --build-arg VERSION=$(VERSION) -t $(BUILDER_TAG) -f files/Dockerfile-build .
 	@docker run -v m2:/root/.m2 -v `pwd`:/build $(BUILDER_TAG) cp /root/butler/butler /build
-	@docker build -t $(IMAGE_TAG) -f files/Dockerfile .
+	@docker build -t $(IMAGE_TAG) .
 
 build-local:
 	@$(GO) fmt $(pkgs)

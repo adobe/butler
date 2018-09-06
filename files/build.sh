@@ -18,6 +18,6 @@ mkdir -p $BUTLER_GO_PATH
 cd $BUTLER_GO_PATH
 cp -Rp /root/butler/* .
 
-go build -ldflags "-X main.version=$VERSION"
+go build -ldflags "-X main.version=$VERSION" -o butler cmd/butler/main.go
 
 cp butler /root/butler

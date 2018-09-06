@@ -21,8 +21,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/adobe/butler/config/methods"
-	"github.com/adobe/butler/config/reloaders"
+	"github.com/adobe/butler/internal/methods"
+	"github.com/adobe/butler/internal/reloaders"
 	"github.com/adobe/butler/internal/stats"
 
 	"strings"

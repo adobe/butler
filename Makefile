@@ -32,9 +32,9 @@ ci: build
 all: build test push-dockerhub
 
 build:
-	@docker build --build-arg VERSION=$(VERSION) -t $(BUILDER_TAG) -f Dockerfile-build .
+	@docker build --build-arg VERSION=$(VERSION) -t $(BUILDER_TAG) -f files/Dockerfile-build .
 	@docker run -v m2:/root/.m2 -v `pwd`:/build $(BUILDER_TAG) cp /root/butler/butler /build
-	@docker build -t $(IMAGE_TAG) .
+	@docker build -t $(IMAGE_TAG) -f files/Dockerfile .
 
 build-local:
 	@$(GO) fmt $(pkgs)
@@ -47,11 +47,11 @@ post-deploy-build:
 
 test: test-unit test-accept
 test-unit:
-	@docker build --build-arg VERSION=$(VERSION) -t $(UNIT_TESTER_TAG) -f Dockerfile-testunit .
+	@docker build --build-arg VERSION=$(VERSION) -t $(UNIT_TESTER_TAG) -f files/Dockerfile-testunit .
 	@docker run -i $(UNIT_TESTER_TAG)
 
 test-accept:
-	@docker build --build-arg VERSION=$(VERSION) -t $(ACCEPT_TESTER_TAG) -f Dockerfile-testaccept .
+	@docker build --build-arg VERSION=$(VERSION) -t $(ACCEPT_TESTER_TAG) -f files/Dockerfile-testaccept .
 	@docker run -v `pwd`/files/certs:/certs -v `pwd`/files/tests:/www --env-file <(env | egrep "(^BUT|AWS)") -i $(ACCEPT_TESTER_TAG)
 
 enter-test-unit:

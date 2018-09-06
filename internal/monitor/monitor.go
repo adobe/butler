@@ -12,14 +12,14 @@ import (
 	"github.com/adobe/butler/config"
 	"github.com/adobe/butler/internal/alog"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	log "github.com/sirupsen/logrus"
 )
 
 // NewMonitor returns a Monitor structure which is used to bring up the
 // monitor health check and prometheus metrics http endpoints.
 func NewMonitor(bc *config.ButlerConfig, opts MonitorOpts) *Monitor {
-       return &Monitor{Config: bc,
+	return &Monitor{Config: bc,
 		opts: opts}
 }
 
@@ -29,7 +29,7 @@ type Monitor struct {
 	Config *config.ButlerConfig
 	mux    *http.ServeMux
 	server *http.Server
-	opts	MonitorOpts
+	opts   MonitorOpts
 }
 
 type MonitorOpts struct {

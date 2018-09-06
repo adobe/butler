@@ -71,8 +71,8 @@ func (s *ButlerTestSuite) SetUpSuite(c *C) {
 
 func (s *ButlerTestSuite) TestNewMonitor(c *C) {
 	bc := config.NewButlerConfig()
-	m := NewMonitor(bc, MonitorOpts{Version: "1.2.3"})
-	c.Assert(bc, Equals, m.Config)
+	m := NewMonitor().WithOpts(&MonitorOpts{Config: bc, Version: "1.2.3"})
+	c.Assert(bc, Equals, m.config)
 }
 
 func (s *ButlerTestSuite) TestStartHttp(c *C) {
@@ -84,9 +84,9 @@ func (s *ButlerTestSuite) TestStartHttp(c *C) {
 	bc.Config.Globals.HttpPort = 58532
 	bc.Config.Globals.EnableHttpLog = true
 	bc.Url = u
-	m := NewMonitor(bc, MonitorOpts{Version: "1.2.3"})
+	m := NewMonitor().WithOpts(&MonitorOpts{Config: bc, Version: "1.2.3"})
 	s.bm = m
-	c.Assert(bc, Equals, m.Config)
+	c.Assert(bc, Equals, m.config)
 	// WOW
 	s.bm.Start()
 	defer s.bm.Stop()
@@ -125,7 +125,7 @@ func (s *ButlerTestSuite) TestStartHttps(c *C) {
 	bc.Config.Globals.HttpTlsKey = tmpKey.Name()
 	bc.Url = u
 	s.bm.Update(bc)
-	c.Assert(bc, Equals, s.bm.Config)
+	c.Assert(bc, Equals, s.bm.config)
 
 	// WOWER
 	host := fmt.Sprintf("%v://127.0.0.1:%v/health-check", bc.Config.Globals.HttpProto, bc.Config.Globals.HttpPort)

@@ -84,6 +84,14 @@ type ConfigGlobals struct {
 	ExitOnFailure        bool     `json:"exit-on-failure"`
 	CfgStatusFile        string   `mapstructure:"status-file" json:"-"`
 	StatusFile           string   `json:"status-file"`
+	CfgHttpProto         string   `mapstructure:"http-proto" json:"-"`
+	HttpProto            string   `json:"http-proto"`
+	CfgHttpPort          string   `mapstructure:"http-port" json:"-"`
+	HttpPort             int      `json:"http-port"`
+	CfgHttpTlsCert       string   `mapstructure:"http-tls-cert" json:"-"`
+	HttpTlsCert          string   `json:"http-tls-cert"`
+	CfgHttpTlsKey        string   `mapstructure:"http-tls-key" json:"-"`
+	HttpTlsKey           string   `json:"http-tls-key"`
 }
 
 type ValidateOpts struct {

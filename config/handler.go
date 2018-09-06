@@ -25,7 +25,7 @@ import (
 
 	"github.com/adobe/butler/config/methods"
 	"github.com/adobe/butler/config/reloaders"
-	"github.com/adobe/butler/stats"
+	"github.com/adobe/butler/internal/stats"
 
 	"github.com/jasonlvhit/gocron"
 	log "github.com/sirupsen/logrus"

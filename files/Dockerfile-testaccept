@@ -8,26 +8,31 @@
 # OF ANY KIND, either express or implied. See the License for the specific language
 # governing permissions and limitations under the License.
 
-FROM golang:1.8.1-alpine
+FROM golang:1.11.0-alpine3.8
 LABEL maintaner="Stegen Smith <matthsmi@adobe.com>"
+
+ARG VERSION=$VERSION
+ENV VERSION=$VERSION
 
 ### required for test
 COPY ./files/doit.sh /doit.sh
-COPY ./files/build_test_unit.sh /root/build.sh
+COPY ./files/build_test_accept.sh /root/build.sh
+COPY ./files/nginx.conf-accept /etc/nginx/nginx.conf
 ### required for test
 
 ### required to build
-RUN mkdir -p /root/butler/stats /root/butler/config /root/butler/config/methods /root/butler/config/reloaders /root/butler/environment /root/butler/alog
+RUN mkdir -p /root/butler/internal/monitor /root/butler/internal/stats /root/butler/config /root/butler/config/methods /root/butler/config/reloaders /root/butler/internal/environment /root/butler/internal/alog
 COPY butler.go /root/butler/butler.go
 COPY ./config/*.go /root/butler/config/
 COPY ./config/methods/*.go /root/butler/config/methods/
 COPY ./config/reloaders/*.go /root/butler/config/reloaders/
-COPY ./stats/*.go /root/butler/stats/
-COPY ./environment/*.go /root/butler/environment
-COPY ./alog/*.go /root/butler/alog
+COPY ./internal/stats/*.go /root/butler/internal/stats/
+COPY ./internal/monitor/*.go /root/butler/internal/monitor/
+COPY ./internal/environment/*.go /root/butler/internal/environment/
+COPY ./internal/alog/*.go /root/butler/internal/alog/
 COPY ./vendor /root/butler/vendor
 ### required to build
 
-RUN apk update && apk add bash ca-certificates git
+RUN apk update && apk add bash build-base ca-certificates curl git nginx
 
 CMD ["/doit.sh"]

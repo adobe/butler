@@ -23,7 +23,7 @@ import (
 
 	"github.com/adobe/butler/config/methods"
 	"github.com/adobe/butler/config/reloaders"
-	"github.com/adobe/butler/stats"
+	"github.com/adobe/butler/internal/stats"
 
 	"strings"
 
@@ -63,7 +63,7 @@ type ManagerOpts struct {
 	AdditionalConfigsFullLocalPaths []string       `json:"-"`
 	ContentType                     string         `mapstructure:"content-type" json:"content-type"`
 	Opts                            methods.Method `json:"opts"`
-	parentManager                   string         `json:"-"`
+	parentManager                   string
 }
 
 func (bm *Manager) Reload() error {
@@ -90,7 +90,7 @@ func (bm *Manager) DownloadPrimaryConfigFiles(c chan ChanEvent) error {
 	// Create a temporary file for the merged prometheus configurations.
 	tmpFile, err := ioutil.TempFile("/tmp", "bcmsfile")
 	if err != nil {
-		msg := fmt.Sprintf("Manager::DownloadPrimaryConfigFiles(): Could not create temporary file . err=v", err.Error())
+		msg := fmt.Sprintf("Manager::DownloadPrimaryConfigFiles(): Could not create temporary file . err=%s", err.Error())
 		log.Fatal(msg)
 	}
 	Chan.TmpFile = tmpFile

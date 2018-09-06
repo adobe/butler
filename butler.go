@@ -13,11 +13,8 @@ governing permissions and limitations under the License.
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
-	"net"
-	"net/http"
 	_ "net/http/pprof"
 	"net/url"
 	"os"
@@ -25,14 +22,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/adobe/butler/alog"
 	"github.com/adobe/butler/config"
-	"github.com/adobe/butler/environment"
+	"github.com/adobe/butler/internal/environment"
+	"github.com/adobe/butler/internal/monitor"
 
 	"github.com/jasonlvhit/gocron"
 	log "github.com/sirupsen/logrus"
-
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var (
@@ -55,70 +50,6 @@ var (
 	HttpRetryWaitMax        = 10
 	ButlerTesting           = false
 )
-
-// Monitor is the empty structure to be used for starting up the monitor
-// health check and prometheus metrics http endpoints.
-type Monitor struct {
-	Config *config.ButlerConfig
-}
-
-// NewMonitor returns a Monitor structure which is used to bring up the
-// monitor health check and prometheus metrics http endpoints.
-func NewMonitor(bc *config.ButlerConfig) *Monitor {
-	return &Monitor{Config: bc}
-}
-
-// MonitorOutput is the structure which holds the formatting which is output
-// to the health check monitor. When /health-check is hit, it returns this
-// structure, which is then Marshal'd to json and provided back to the end
-// user
-type MonitorOutput struct {
-	ConfigPath       string                `json:"config-path"`
-	ConfigScheme     string                `json:"config-scheme"`
-	RetrieveInterval int                   `json:"retrieve-interval"`
-	LogLevel         log.Level             `json:"log-level"`
-	ConfigSettings   config.ConfigSettings `json:"config-settings"`
-	Version          string                `json:"version"`
-}
-
-// Start turns up the http server for monitoring butler.
-func (m *Monitor) Start() {
-	mux := http.DefaultServeMux
-	mux.HandleFunc("/health-check", m.MonitorHandler)
-	mux.Handle("/metrics", promhttp.Handler())
-	loggingHandler := alog.NewApacheLoggingHandler(mux, m.Config)
-
-	server := &http.Server{
-		Handler: loggingHandler,
-	}
-
-	listener, err := net.Listen("tcp", ":8080")
-	if err != nil {
-		log.Fatalf("Error creating listener: %s", err.Error())
-	}
-	go server.Serve(listener)
-}
-
-// MonitorHandler is the handler function for the /health-check monitor
-// endpoint. It displays the JSON Marshal'd output of all the various
-// configuration options that buter gets started with, and some run time
-// information
-func (m *Monitor) MonitorHandler(w http.ResponseWriter, r *http.Request) {
-	mOut := MonitorOutput{ConfigPath: m.Config.GetPath(),
-		ConfigScheme:     m.Config.Url.Scheme,
-		RetrieveInterval: m.Config.Interval,
-		LogLevel:         m.Config.GetLogLevel(),
-		ConfigSettings:   *m.Config.Config,
-		Version:          version}
-	resp, err := json.Marshal(mOut)
-	if err != nil {
-		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprintf(w, "Could not Marshal JSON, but I promise I'm up!")
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	fmt.Fprintf(w, string(resp))
-}
 
 func SetLogLevel(l string) log.Level {
 	switch strings.ToLower(l) {
@@ -272,10 +203,6 @@ func main() {
 		log.Fatalf("Cannot initialize butler config. err=%s", err.Error())
 	}
 
-	// Start up the monitor web server
-	monitor := NewMonitor(bc)
-	monitor.Start()
-
 	// Do initial grab of butler configuration file.
 	// Going to do this in an endless loop until we initially
 	// grab a configuration file.
@@ -296,6 +223,10 @@ func main() {
 			break
 		}
 	}
+
+	// Start up the monitor web server after we grab the monitor config values
+	monitor := monitor.NewMonitor(bc, monitor.MonitorOpts{Version: version})
+	monitor.Start()
 
 	sched := gocron.NewScheduler()
 	log.Debugf("main(): starting scheduler...")

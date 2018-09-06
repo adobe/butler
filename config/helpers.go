@@ -25,8 +25,8 @@ import (
 
 	"github.com/adobe/butler/config/methods"
 	"github.com/adobe/butler/config/reloaders"
-	"github.com/adobe/butler/environment"
-	"github.com/adobe/butler/stats"
+	"github.com/adobe/butler/internal/environment"
+	"github.com/adobe/butler/internal/stats"
 
 	"github.com/Jeffail/gabs"
 	"github.com/hashicorp/go-retryablehttp"
@@ -181,7 +181,6 @@ func removeButlerHeaderFooter(file interface{}) error {
 	default:
 		return nil
 	}
-	return nil
 }
 
 func runTextValidate(f *bytes.Reader, m string) error {

@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/adobe/butler/config/methods"
-	"github.com/adobe/butler/environment"
+	"github.com/adobe/butler/internal/environment"
 
 	"github.com/hashicorp/go-retryablehttp"
 	log "github.com/sirupsen/logrus"
@@ -155,8 +155,31 @@ func (c *ConfigSettings) ParseConfig(config []byte) error {
 		// enable http logging
 	}
 
-	log.Debugf("ConfigSettings::ParseConfig(): globals.config-managers=%#v", Config.Globals.Managers)
-	log.Debugf("ConfigSettings::ParseConfig(): len(globals.config-managers)=%v", len(Config.Globals.Managers))
+	// Let's determine the http proto and the port
+	envHttpPort, _ := strconv.Atoi(environment.GetVar(Config.Globals.CfgHttpPort))
+	if envHttpPort == 0 {
+		Config.Globals.HttpPort = 8080
+	} else {
+		Config.Globals.HttpPort = envHttpPort
+	}
+
+	Config.Globals.HttpProto = strings.ToLower(environment.GetVar(Config.Globals.CfgHttpProto))
+	if (Config.Globals.HttpProto != "http") && (Config.Globals.HttpProto != "https") {
+		Config.Globals.HttpProto = "http"
+	}
+
+	if Config.Globals.HttpProto == "https" {
+		Config.Globals.HttpTlsCert = environment.GetVar(Config.Globals.CfgHttpTlsCert)
+		Config.Globals.HttpTlsKey = environment.GetVar(Config.Globals.CfgHttpTlsKey)
+		if (Config.Globals.HttpTlsCert == "") || (Config.Globals.HttpTlsKey == "") {
+			if Config.Globals.ExitOnFailure {
+				log.Fatalf("ConfigSetings::ParseConfig(): globlals.http-proto set to \"https\" but no cert and/or key defined! exiting...")
+			} else {
+				log.Debugf("ConfigSetings::ParseConfig(): globlals.http-proto set to \"https\" but no cert and/or key defined")
+				return errors.New("globals.http-proto set to https but no tls options defined.")
+			}
+		}
+	}
 
 	// If there are no entries for config-managers, then the Unmarshal will create an empty array
 	if len(Config.Globals.Managers) < 1 {

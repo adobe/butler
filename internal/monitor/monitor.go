@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/adobe/butler/config"
+	"github.com/adobe/butler/internal/config"
 	"github.com/adobe/butler/internal/alog"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"

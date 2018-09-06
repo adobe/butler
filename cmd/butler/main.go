@@ -22,7 +22,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/adobe/butler/config"
+	"github.com/adobe/butler/internal/config"
 	"github.com/adobe/butler/internal/environment"
 	"github.com/adobe/butler/internal/monitor"
 

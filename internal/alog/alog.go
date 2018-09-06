@@ -18,7 +18,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/adobe/butler/config"
+	"github.com/adobe/butler/internal/config"
 
 	log "github.com/sirupsen/logrus"
 )

@@ -41,9 +41,19 @@ fmt:
 	@echo "> formatting go files"
 	@find . -path ./vendor -prune -o -name '*.go' -print | xargs gofmt -s -w
 
+lint:
+	@echo "> linting go files"
+	@golint $(pkgs)
+
+vet:
+	@echo "> vetting go files"
+	@go vet $(pkgs)
+
 build-local: fmt
 	@echo "> building local butler binary"
 	@$(GO) build -ldflags "-X main.version=$(VERSION)" -o butler cmd/butler/main.go
+
+check: fmt vet lint
 
 pre-deploy-build: test-unit
 

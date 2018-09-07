@@ -1,5 +1,6 @@
 # Butler CMS
-![Butler Logo][butler-logo]
+[![Go Report Card][3]][4] [![Build Status][5]][6]
+![Butler Logo][0]
 
 ## Butler CMS (Configuration Management System) Overview
 The Butler CMS (butler) tool is designed to grab any configuration files, defined in its configuration file, from a remote location/repository via http(s)/s3(AWS)/blob(Azure)/file/etcd and side load them onto another locally running container.
@@ -9,12 +10,12 @@ The butler configuration file is a [TOML](https://github.com/toml-lang/toml) for
 ### Butler at 30,000 feet
 Here is a quick diagram that contains all the elements of what butler does, and how it is intended to interact with other systems.
 
-![Butler Elements][elements-diagram]
+![Butler Elements][1]
 
 ### Butler Workflow
 To help understand more of how butler functions, here is a work flow diagram showing, in more detail, the work butler does.
 
-![Butler Workflow][workflow-diagram]
+![Butler Workflow][2]
 
 ## Usage
 There are various ways that you can run butler. We will ultimately deploy butler via DCOS, and you can run this on your local machine to do some testing.
@@ -596,6 +597,10 @@ Contributions are welcomed! Read the [Contributing Guide](CONTRIBUTING.md) for m
 
 This project is licensed under the Apache V2 License. See [LICENSE](LICENSE) for more information.
 
-[workflow-diagram]: https://github.com/adobe/butler/raw/master/contrib/diagrams/png/Butler%20Workflow.png
-[elements-diagram]: https://github.com/adobe/butler/raw/master/contrib/diagrams/png/Butler%20Elements.png
-[butler-logo]: https://github.com/adobe/butler/raw/master/contrib/images/butler.png
+[0]: https://github.com/adobe/butler/raw/master/contrib/images/butler.png
+[1]: https://github.com/adobe/butler/raw/master/contrib/diagrams/png/Butler%20Elements.png
+[2]: https://github.com/adobe/butler/raw/master/contrib/diagrams/png/Butler%20Workflow.png
+[3]: https://goreportcard.com/badge/github.com/adobe/butler
+[4]: https://goreportcard.com/report/github.com/adobe/butler
+[5]: https://travis-ci.org/adobe/butler.svg?branch=master
+[6]: https://travis-ci.org/adobe/butler

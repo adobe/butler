@@ -34,6 +34,13 @@ import (
 	"github.com/spf13/viper"
 )
 
+const (
+	defaultRetryWaitMin = 5
+	defaultRetryWaitMax = 15
+	defaultRetries      = 5
+	defaultTimeout      = 10
+)
+
 func NewHttpMethod(manager *string, entry *string) (Method, error) {
 	var (
 		err    error
@@ -49,22 +56,26 @@ func NewHttpMethod(manager *string, entry *string) (Method, error) {
 
 	newTimeout, _ := strconv.Atoi(environment.GetVar(result.Timeout))
 	if newTimeout == 0 {
-		log.Warnf("NewHttpMethod(): could not convert %v to integer for timeout, defaulting to 0. This is probably undesired.", result.Timeout)
+		log.Warnf("NewHttpMethod(): could not convert %v to integer for timeout, defaulting to %v. This is probably undesired.", result.Timeout, defaultTimeout)
+		newTimeout = defaultTimeout
 	}
 
 	newRetries, _ := strconv.Atoi(environment.GetVar(result.Retries))
 	if newRetries == 0 {
-		log.Warnf("NewHttpMethod(): could not convert %v to integer for retries, defaulting to 0. This is probably undesired.", result.Retries)
+		log.Warnf("NewHttpMethod(): could not convert %v to integer for retries, defaulting to %v. This is probably undesired.", result.Retries, defaultRetries)
+		newRetries = defaultRetries
 	}
 
 	newRetryWaitMax, _ := strconv.Atoi(environment.GetVar(result.RetryWaitMax))
 	if newRetryWaitMax == 0 {
-		log.Warnf("NewHttpMethod(): could not convert %v to integer for retry-wait-max, defaulting to 0. This is probably undesired.", result.RetryWaitMax)
+		log.Warnf("NewHttpMethod(): could not convert %v to integer for retry-wait-max, defaulting to %v. This is probably undesired.", result.RetryWaitMax, defaultRetryWaitMax)
+		newRetryWaitMax = defaultRetryWaitMax
 	}
 
 	newRetryWaitMin, _ := strconv.Atoi(environment.GetVar(result.RetryWaitMin))
 	if newRetryWaitMin == 0 {
-		log.Warnf("NewHttpMethod(): could not convert %v to integer for retry-wait-min, defaulting to 0. This is probably undesired.", result.RetryWaitMin)
+		log.Warnf("NewHttpMethod(): could not convert %v to integer for retry-wait-min, defaulting to %v. This is probably undesired.", result.RetryWaitMin, defaultRetryWaitMin)
+		newRetryWaitMin = defaultRetryWaitMin
 	}
 
 	result.Client = retryablehttp.NewClient()
@@ -87,7 +98,7 @@ type HttpMethod struct {
 	RetryWaitMax string                `mapstructure:"retry-wait-max" json:"retry-wait-max"`
 	RetryWaitMin string                `mapstructure:"retry-wait-min" json:"retry-wait-min"`
 	Timeout      string                `mapstructure:"timeout" json:"timeout"`
-	AuthType     string                `mapstructure:"auth-type" json"auth-type,omitempty"`
+	AuthType     string                `mapstructure:"auth-type" json:"auth-type,omitempty"`
 	AuthToken    string                `mapstructure:"auth-token" json:"-"`
 	AuthUser     string                `mapstructure:"auth-user" json:"auth-user,omitempty"`
 }

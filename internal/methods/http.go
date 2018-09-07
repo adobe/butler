@@ -34,7 +34,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-var (
+const (
 	defaultRetryWaitMin = 5
 	defaultRetryWaitMax = 15
 	defaultRetries      = 5

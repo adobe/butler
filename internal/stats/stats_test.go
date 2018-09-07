@@ -86,7 +86,7 @@ func (s *ButlerStatsTestSuite) TestSetButlerReloadVal(c *C) {
 	c.Assert(*metric_failure.Gauge.Value, Equals, FAILURE)
 	c.Assert(*metric_failure_ts.Gauge.Value, Equals, 0.0)
 
-	// Get timestamp for right now to compare with timestamp of SUCCESSS
+	// Get timestamp for right now to compare with timestamp of SUCCESS
 	ts_now := time.Now()
 
 	// Set it to SUCCESS
@@ -157,7 +157,7 @@ func (s *ButlerStatsTestSuite) TestSetButlerRenderVal(c *C) {
 	c.Assert(*metric_failure.Gauge.Value, Equals, FAILURE)
 	c.Assert(*metric_failure_ts.Gauge.Value, Equals, 0.0)
 
-	// Get timestamp for right now to compare with timestamp of SUCCESSS
+	// Get timestamp for right now to compare with timestamp of SUCCESS
 	ts_now := time.Now()
 
 	// Set it to SUCCESS
@@ -224,7 +224,7 @@ func (s *ButlerStatsTestSuite) TestSetButlerWriteVal(c *C) {
 	c.Assert(*metric_failure.Gauge.Value, Equals, FAILURE)
 	c.Assert(*metric_failure_ts.Gauge.Value, Equals, 0.0)
 
-	// Get timestamp for right now to compare with timestamp of SUCCESSS
+	// Get timestamp for right now to compare with timestamp of SUCCESS
 	ts_now := time.Now()
 
 	// Set it to SUCCESS

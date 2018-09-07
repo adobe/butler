@@ -17,7 +17,6 @@ import (
 
 	"testing"
 
-
 	log "github.com/sirupsen/logrus"
 )
 

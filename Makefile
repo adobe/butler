@@ -32,13 +32,18 @@ ci: build
 all: build test push-dockerhub
 
 build:
+	@echo "> building container butler binary"
 	@docker build --build-arg VERSION=$(VERSION) -t $(BUILDER_TAG) -f files/Dockerfile-build .
 	@docker run -v m2:/root/.m2 -v `pwd`:/build $(BUILDER_TAG) cp /root/butler/butler /build
 	@docker build -t $(IMAGE_TAG) .
 
-build-local:
-	@$(GO) fmt $(pkgs)
-	@$(GO) build -ldflags "-X main.version=$(VERSION)"
+fmt:
+	@echo "> formatting go files"
+	@find . -path ./vendor -prune -o -name '*.go' -print | xargs gofmt -s -w
+
+build-local: fmt
+	@echo "> building local butler binary"
+	@$(GO) build -ldflags "-X main.version=$(VERSION)" -o butler cmd/butler/main.go
 
 pre-deploy-build: test-unit
 

@@ -21,8 +21,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/adobe/butler/internal/methods"
 	"github.com/adobe/butler/internal/environment"
+	"github.com/adobe/butler/internal/methods"
 
 	"github.com/hashicorp/go-retryablehttp"
 	log "github.com/sirupsen/logrus"

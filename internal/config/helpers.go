@@ -23,9 +23,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/adobe/butler/internal/environment"
 	"github.com/adobe/butler/internal/methods"
 	"github.com/adobe/butler/internal/reloaders"
-	"github.com/adobe/butler/internal/environment"
 	"github.com/adobe/butler/internal/stats"
 
 	"github.com/Jeffail/gabs"
@@ -317,7 +317,7 @@ func ValidateMustacheSubs(Subs map[string]string) bool {
 	subEntries = make(map[string]bool)
 
 	// range over the subs and see if the keys match the required list of substitution keys
-	for k, _ := range Subs {
+	for k := range Subs {
 		if _, ok := subEntries[k]; ok {
 			subEntries[k] = true
 		}
@@ -537,12 +537,12 @@ func GetManagerOpts(entry string, bc *ConfigSettings) (*ManagerOpts, error) {
 		return &ManagerOpts{}, errors.New(msg)
 	}
 
-	for i, _ := range MgrOpts.PrimaryConfig {
+	for i := range MgrOpts.PrimaryConfig {
 		MgrOpts.PrimaryConfig[i] = filepath.Clean(environment.GetVar(MgrOpts.PrimaryConfig[i]))
 	}
 
 	var additionalConfig []string
-	for i, _ := range MgrOpts.AdditionalConfig {
+	for i := range MgrOpts.AdditionalConfig {
 		cfg := strings.TrimSpace(environment.GetVar(MgrOpts.AdditionalConfig[i]))
 		if cfg == "" {
 			continue
@@ -553,7 +553,7 @@ func GetManagerOpts(entry string, bc *ConfigSettings) (*ManagerOpts, error) {
 	MgrOpts.AdditionalConfig = additionalConfig
 
 	repoSplit := strings.Split(entry, ".")
-	MgrOpts.Repo = strings.Join(repoSplit[1:len(repoSplit)], ".")
+	MgrOpts.Repo = strings.Join(repoSplit[1:], ".")
 
 	if len(MgrOpts.PrimaryConfig) < 1 {
 		return &ManagerOpts{}, errors.New("no manager.primary-config defined")

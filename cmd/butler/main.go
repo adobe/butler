@@ -30,25 +30,20 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const (
+	defaultButlerConfigInterval = 300
+	defaultHttpRetryWaitMin     = 5
+	defaultHttpRetryWaitMax     = 15
+	defaultHttpRetries          = 5
+	defaultHttpTimeout          = 10
+)
+
 var (
-	version                 string
-	PrometheusConfig        = "prometheus.yml"
-	PrometheusConfigStatic  = "prometheus.yml"
-	AdditionalConfig        = "alerts/commonalerts.yml,alerts/tenant.yml"
-	PrometheusRootDirectory = "/opt/prometheus"
-	PrometheusHost          string
-	ButlerConfigInterval    = 300
-	ButlerConfigUrl         string
-	ConfigCache             map[string][]byte
-	AllConfigFiles          []string
-	PrometheusConfigFiles   []string
-	AdditionalConfigFiles   []string
-	MustacheSubs            map[string]string
-	HttpTimeout             = 10
-	HttpRetries             = 4
-	HttpRetryWaitMin        = 5
-	HttpRetryWaitMax        = 10
-	ButlerTesting           = false
+	version        string
+	ConfigCache    map[string][]byte
+	AllConfigFiles []string
+	MustacheSubs   map[string]string
+	butlerTesting  = false
 )
 
 func SetLogLevel(l string) log.Level {
@@ -76,11 +71,11 @@ func main() {
 		err                    error
 		versionFlag            = flag.Bool("version", false, "Print version information.")
 		configPath             = flag.String("config.path", "", "Full remote path to butler configuration file (eg: full URL scheme://path).")
-		configInterval         = flag.String("config.retrieve-interval", fmt.Sprintf("%v", ButlerConfigInterval), "The interval, in seconds, to retrieve new butler configuration files.")
-		configHttpTimeout      = flag.String("http.timeout", fmt.Sprintf("%v", HttpTimeout), "The http timeout, in seconds, for GET requests to obtain the butler configuration file.")
-		configHttpRetries      = flag.String("http.retries", fmt.Sprintf("%v", HttpRetries), "The number of http retries for GET requests to obtain the butler configuration files")
-		configHttpRetryWaitMin = flag.String("http.retry_wait_min", fmt.Sprintf("%v", HttpRetryWaitMin), "The minimum amount of time to wait before attemping to retry the http config get operation.")
-		configHttpRetryWaitMax = flag.String("http.retry_wait_max", fmt.Sprintf("%v", HttpRetryWaitMax), "The maximum amount of time to wait before attemping to retry the http config get operation.")
+		configInterval         = flag.String("config.retrieve-interval", fmt.Sprintf("%v", defaultButlerConfigInterval), "The interval, in seconds, to retrieve new butler configuration files.")
+		configHttpTimeout      = flag.String("http.timeout", fmt.Sprintf("%v", defaultHttpTimeout), "The http timeout, in seconds, for GET requests to obtain the butler configuration file.")
+		configHttpRetries      = flag.String("http.retries", fmt.Sprintf("%v", defaultHttpRetries), "The number of http retries for GET requests to obtain the butler configuration files")
+		configHttpRetryWaitMin = flag.String("http.retry_wait_min", fmt.Sprintf("%v", defaultHttpRetryWaitMin), "The minimum amount of time to wait before attemping to retry the http config get operation.")
+		configHttpRetryWaitMax = flag.String("http.retry_wait_max", fmt.Sprintf("%v", defaultHttpRetryWaitMax), "The maximum amount of time to wait before attemping to retry the http config get operation.")
 		configHttpAuthToken    = flag.String("http.auth_token", "", "HTTP auth token to use for HTTP authentication.")
 		configHttpAuthType     = flag.String("http.auth_type", "", "HTTP auth type (eg: basic / digest / token-key) to use. If empty (by default) do not use HTTP authentication.")
 		configHttpAuthUser     = flag.String("http.auth_user", "", "HTTP auth user to use for HTTP authentication")
@@ -99,11 +94,11 @@ func main() {
 		os.Exit(0)
 	}
 
-	// If ButlerTesting is true, then we're going to behave a little differently. We're going to treat butler as a one shot to test
+	// If butlerTesting is true, then we're going to behave a little differently. We're going to treat butler as a one shot to test
 	// some main butler functionality
 	if *butlerTest {
 		log.Warnf("Butler testing mode enabled (eg: oneshot mode).")
-		ButlerTesting = true
+		butlerTesting = true
 	}
 
 	if *configPath == "" {
@@ -147,7 +142,7 @@ func main() {
 		// Set the HTTP Timeout
 		newConfigHttpTimeout, _ := strconv.Atoi(environment.GetVar(*configHttpTimeout))
 		if newConfigHttpTimeout == 0 {
-			newConfigHttpTimeout = HttpTimeout
+			newConfigHttpTimeout = defaultHttpTimeout
 		}
 		log.Debugf("main(): setting HttpTimeout to %d", newConfigHttpTimeout)
 		bc.SetTimeout(newConfigHttpTimeout)
@@ -155,7 +150,7 @@ func main() {
 		// Set the HTTP Retries Counter
 		newConfigHttpRetries, _ := strconv.Atoi(environment.GetVar(*configHttpRetries))
 		if newConfigHttpRetries == 0 {
-			newConfigHttpRetries = HttpRetries
+			newConfigHttpRetries = defaultHttpRetries
 		}
 		log.Debugf("main(): setting HttpRetries to %d", newConfigHttpRetries)
 		bc.SetRetries(newConfigHttpRetries)
@@ -163,11 +158,11 @@ func main() {
 		// Set the HTTP Holdoff Values
 		newConfigHttpRetryWaitMin, _ := strconv.Atoi(environment.GetVar(*configHttpRetryWaitMin))
 		if newConfigHttpRetryWaitMin == 0 {
-			newConfigHttpRetryWaitMin = HttpRetryWaitMin
+			newConfigHttpRetryWaitMin = defaultHttpRetryWaitMin
 		}
 		newConfigHttpRetryWaitMax, _ := strconv.Atoi(environment.GetVar(*configHttpRetryWaitMax))
 		if newConfigHttpRetryWaitMax == 0 {
-			newConfigHttpRetryWaitMax = HttpRetryWaitMax
+			newConfigHttpRetryWaitMax = defaultHttpRetryWaitMax
 		}
 		log.Debugf("main(): setting RetryWaitMin[%d] and RetryWaitMax[%d]", newConfigHttpRetryWaitMin, newConfigHttpRetryWaitMax)
 		bc.SetRetryWaitMin(newConfigHttpRetryWaitMin)
@@ -193,7 +188,7 @@ func main() {
 	// Set the butler configuration retrieval interval
 	newConfigInterval, _ := strconv.Atoi(environment.GetVar(*configInterval))
 	if newConfigInterval == 0 {
-		newConfigInterval = ButlerConfigInterval
+		newConfigInterval = defaultButlerConfigInterval
 	}
 	log.Debugf("main(): setting ConfigInterval to %d", newConfigInterval)
 
@@ -212,8 +207,8 @@ func main() {
 		err = bc.Handler()
 
 		if err != nil {
-			if ButlerTesting {
-				log.Fatalf("Cannot retrieve butler configuration. err=%s ButlerTesting=%#v", err.Error(), ButlerTesting)
+			if butlerTesting {
+				log.Fatalf("Cannot retrieve butler configuration. err=%s butlerTesting=%#v", err.Error(), butlerTesting)
 			}
 			//log.Error("Cannot retrieve butler configuration. err=%s", err.Error())
 			log.Warnf("main(): Sleeping 5 seconds.")
@@ -240,7 +235,7 @@ func main() {
 	log.Debugf("main(): doing initial run of butler configuration management handler")
 	bc.RunCMHandler()
 
-	if ButlerTesting {
+	if butlerTesting {
 		os.Exit(0)
 	} else {
 		<-sched.Start()

@@ -16,7 +16,6 @@ import (
 	"io"
 	"net/url"
 	"strings"
-
 	//log "github.com/sirupsen/logrus"
 )
 

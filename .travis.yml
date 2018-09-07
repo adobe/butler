@@ -5,8 +5,11 @@ go:
 
 sudo: false
 
-install:
-  - go get ./...
+services:
+ - docker
+
+#install:
+#  - go get ./...
 
 script:
   - make test

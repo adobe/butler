@@ -140,9 +140,6 @@ if [ x${CODECOV_TOKEN} != "x" ]; then
     echo "> git rev-parse --show-toplevel"
     git rev-parse --show-toplevel
 
-    echo "> git ls-files"
-    git ls-files
-
     echo "> git rev-parse --abbrev-ref HEAD"
     git rev-parse --abbrev-ref HEAD
 
@@ -152,7 +149,7 @@ if [ x${CODECOV_TOKEN} != "x" ]; then
     echo "> git config --get remote.origin.url"
     git config --get remote.origin.url
     echo "> THERE"
-    echo "uplaoding coverage to codecov.io"
+    echo "uploading coverage to codecov.io"
     bash <(curl -s https://codecov.io/bash) -s /tmp/coverage --retry 3
     exit $?
 else

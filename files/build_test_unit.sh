@@ -135,6 +135,23 @@ done
 
 if [ x${CODECOV_TOKEN} != "x" ]; then
     cd $BUTLER_GO_PATH
+    echo "> HERE"
+
+    echo "> git rev-parse --show-toplevel"
+    git rev-parse --show-toplevel
+
+    echo "> git ls-files"
+    git ls-files
+
+    echo "> git rev-parse --abbrev-ref HEAD"
+    git rev-parse --abbrev-ref HEAD
+
+    echo "> git log -1 --format=\"%H\""
+    git log -1 --format="%H"
+
+    echo "> git config --get remote.origin.url"
+    git config --get remote.origin.url
+    echo "> THERE"
     echo "uplaoding coverage to codecov.io"
     bash <(curl -s https://codecov.io/bash) -s /tmp/coverage --retry 3
     exit $?

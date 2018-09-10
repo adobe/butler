@@ -61,16 +61,19 @@ var (
 )
 
 func (bc *ButlerConfig) SetScheme(s string) error {
+	var (
+		res error
+	)
 	scheme := strings.ToLower(s)
 	if !IsValidScheme(scheme) {
 		errMsg := fmt.Sprintf("%s is an invalid scheme", scheme)
 		log.Errorf("Config::SetScheme(): %s is an invalid scheme", scheme)
-		return errors.New(errMsg)
+		res = errors.New(errMsg)
 	} else {
 		log.Debugf("Config::SetScheme(): setting bc.Scheme=%s", scheme)
 		bc.URL.Scheme = scheme
 	}
-	return nil
+	return res
 }
 
 func (bc *ButlerConfig) SetPath(p string) error {

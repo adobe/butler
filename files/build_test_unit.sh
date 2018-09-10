@@ -21,6 +21,7 @@ fi
 mkdir -p $BUTLER_GO_PATH
 cd $BUTLER_GO_PATH
 mv /root/butler/vendor .
+mv /root/butler/.git .
 
 ## make butler directories
 mkdir -p cmd/butler internal/monitor internal/stats internal/config internal/alog internal/environment internal/methods internal/reloaders
@@ -129,12 +130,15 @@ fi
 
 touch /tmp/coverage/coverage.txt
 for i in /tmp/coverage-*; do
-  cat $i >> /tmp/coverage.txg
+  cat $i >> /tmp/coverage/coverage.txt
 done
 
 if [ x${CODECOV_TOKEN} != "x" ]; then
+    cd $BUTLER_GO_PATH
     echo "uplaoding coverage to codecov.io"
-    bash <(curl -s https://codecov.io/bash) -s /tmp/coverage
+    bash <(curl -s https://codecov.io/bash) -s /tmp/coverage --retry 3
+    exit $?
 else
    echo "Could not find CODECOV_TOKEN environment. Not uploading to codecov.io."
+   exit 0
 fi

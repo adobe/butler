@@ -30,8 +30,9 @@ COPY ./internal/monitor/*.go /root/butler/internal/monitor/
 COPY ./internal/environment/*.go /root/butler/internal/environment/
 COPY ./internal/alog/*.go /root/butler/internal/alog/
 COPY ./vendor /root/butler/vendor
+COPY ./.git/ /root/butler/.git
 ### required to build
 
-RUN apk update && apk add bash build-base ca-certificates git
+RUN apk update && apk add bash build-base ca-certificates curl git mercurial
 
 CMD ["/doit.sh"]

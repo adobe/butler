@@ -62,7 +62,7 @@ post-deploy-build:
 
 test: test-unit test-accept
 test-unit:
-	@docker build --build-arg VERSION=$(VERSION) -t $(UNIT_TESTER_TAG) -f files/Dockerfile-testunit .
+	@docker build --build-arg VERSION=$(VERSION) --build-arg CODECOV_TOKEN=$(CODECOV_TOKEN) -t $(UNIT_TESTER_TAG) -f files/Dockerfile-testunit .
 	@docker run -i $(UNIT_TESTER_TAG)
 
 test-accept:

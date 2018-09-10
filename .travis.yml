@@ -14,5 +14,6 @@ services:
 script:
   - make test
 
-after_success:
-  - bash <(curl -s https://codecov.io/bash)
+# moved this to the test script in files/
+#after_success:
+#  - bash <(curl -s https://codecov.io/bash)

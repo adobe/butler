@@ -14,8 +14,8 @@ export GOPATH=/root/go
 export PATH=/bin:/usr/bin:/usr/local/bin:/sbin:/usr/sbin:/usr/local/sbin:/usr/local/go/bin:$GOPATH/bin
 export BUTLER_GO_PATH=/root/go/src/github.com/adobe/butler
 
-if [ ! -d /tmp ]; then
-    mkdir /tmp
+if [ ! -d /tmp/coverage ]; then
+    mkdir -p /tmp/coverage
 fi
 
 mkdir -p $BUTLER_GO_PATH
@@ -125,4 +125,16 @@ fi
 if [ -f /tmp/coverage-monitor.out ]; then
     go tool cover -func /tmp/coverage-monitor.out
     echo
+fi
+
+touch /tmp/coverage/coverage.txt
+for i in /tmp/coverage-*; do
+  cat $i >> /tmp/coverage.txg
+done
+
+if [ x${CODECOV_TOKEN} != "x" ]; then
+    echo "uplaoding coverage to codecov.io"
+    bash <(curl -s https://codecov.io/bash) -s /tmp/coverage
+else
+   echo "Could not find CODECOV_TOKEN environment. Not uploading to codecov.io."
 fi

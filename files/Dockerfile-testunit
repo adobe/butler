@@ -11,6 +11,9 @@
 FROM golang:1.11.0-alpine3.8
 LABEL maintaner="Stegen Smith <matthsmi@adobe.com>"
 
+ARG CODECOV_TOKEN=$CODECOV_TOKEN
+ENV CODECOV_TOKEN=$CODECOV_TOKEN
+
 ### required for test
 COPY ./files/doit.sh /doit.sh
 COPY ./files/build_test_unit.sh /root/build.sh

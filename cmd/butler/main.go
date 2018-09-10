@@ -32,10 +32,10 @@ import (
 
 const (
 	defaultButlerConfigInterval = 300
-	defaultHttpRetryWaitMin     = 5
-	defaultHttpRetryWaitMax     = 15
-	defaultHttpRetries          = 5
-	defaultHttpTimeout          = 10
+	defaultHTTPRetryWaitMin     = 5
+	defaultHTTPRetryWaitMax     = 15
+	defaultHTTPRetries          = 5
+	defaultHTTPTimeout          = 10
 )
 
 var (
@@ -72,13 +72,13 @@ func main() {
 		versionFlag            = flag.Bool("version", false, "Print version information.")
 		configPath             = flag.String("config.path", "", "Full remote path to butler configuration file (eg: full URL scheme://path).")
 		configInterval         = flag.String("config.retrieve-interval", fmt.Sprintf("%v", defaultButlerConfigInterval), "The interval, in seconds, to retrieve new butler configuration files.")
-		configHttpTimeout      = flag.String("http.timeout", fmt.Sprintf("%v", defaultHttpTimeout), "The http timeout, in seconds, for GET requests to obtain the butler configuration file.")
-		configHttpRetries      = flag.String("http.retries", fmt.Sprintf("%v", defaultHttpRetries), "The number of http retries for GET requests to obtain the butler configuration files")
-		configHttpRetryWaitMin = flag.String("http.retry_wait_min", fmt.Sprintf("%v", defaultHttpRetryWaitMin), "The minimum amount of time to wait before attemping to retry the http config get operation.")
-		configHttpRetryWaitMax = flag.String("http.retry_wait_max", fmt.Sprintf("%v", defaultHttpRetryWaitMax), "The maximum amount of time to wait before attemping to retry the http config get operation.")
-		configHttpAuthToken    = flag.String("http.auth_token", "", "HTTP auth token to use for HTTP authentication.")
-		configHttpAuthType     = flag.String("http.auth_type", "", "HTTP auth type (eg: basic / digest / token-key) to use. If empty (by default) do not use HTTP authentication.")
-		configHttpAuthUser     = flag.String("http.auth_user", "", "HTTP auth user to use for HTTP authentication")
+		configHTTPTimeout      = flag.String("http.timeout", fmt.Sprintf("%v", defaultHTTPTimeout), "The http timeout, in seconds, for GET requests to obtain the butler configuration file.")
+		configHTTPRetries      = flag.String("http.retries", fmt.Sprintf("%v", defaultHTTPRetries), "The number of http retries for GET requests to obtain the butler configuration files")
+		configHTTPRetryWaitMin = flag.String("http.retry_wait_min", fmt.Sprintf("%v", defaultHTTPRetryWaitMin), "The minimum amount of time to wait before attemping to retry the http config get operation.")
+		configHTTPRetryWaitMax = flag.String("http.retry_wait_max", fmt.Sprintf("%v", defaultHTTPRetryWaitMax), "The maximum amount of time to wait before attemping to retry the http config get operation.")
+		configHTTPAuthToken    = flag.String("http.auth_token", "", "HTTP auth token to use for HTTP authentication.")
+		configHTTPAuthType     = flag.String("http.auth_type", "", "HTTP auth type (eg: basic / digest / token-key) to use. If empty (by default) do not use HTTP authentication.")
+		configHTTPAuthUser     = flag.String("http.auth_user", "", "HTTP auth user to use for HTTP authentication")
 		configS3Region         = flag.String("s3.region", "", "The S3 Region that the config file resides.")
 		configEtcdEndpoints    = flag.String("etcd.endpoints", "", "The endpoints to connect to etcd.")
 		configLogLevel         = flag.String("log.level", "info", "The butler log level. Log levels are: debug, info, warn, error, fatal, panic.")
@@ -107,66 +107,66 @@ func main() {
 
 	log.Infof("Starting Butler CMS version %s", version)
 
-	newUrl, err := url.Parse(environment.GetVar(*configPath))
-	if err != nil || newUrl.Scheme == "" {
+	newURL, err := url.Parse(environment.GetVar(*configPath))
+	if err != nil || newURL.Scheme == "" {
 		log.Fatalf("Cannot properly parse -config.path. -config.path must be in URL form. -config.path=%v", environment.GetVar(*configPath))
 	}
 
 	bc := config.NewButlerConfig()
-	bc.Url = newUrl
+	bc.URL = newURL
 	bc.SetLogLevel(SetLogLevel(newConfigLogLevel))
-	err = bc.SetScheme(bc.Url.Scheme)
+	err = bc.SetScheme(bc.URL.Scheme)
 	if err != nil {
-		log.Fatalf("Unsupported butler scheme. scheme=%v", bc.Url.Scheme)
+		log.Fatalf("Unsupported butler scheme. scheme=%v", bc.URL.Scheme)
 	}
-	bc.SetPath(bc.Url.Path)
+	bc.SetPath(bc.URL.Path)
 
-	switch bc.Url.Scheme {
+	switch bc.URL.Scheme {
 	case "http", "https":
-		newConfigHttpAuthType := strings.ToLower(environment.GetVar(*configHttpAuthType))
-		if newConfigHttpAuthType != "" {
-			if environment.GetVar(*configHttpAuthUser) != "" && environment.GetVar(*configHttpAuthToken) != "" {
+		newConfigHTTPAuthType := strings.ToLower(environment.GetVar(*configHTTPAuthType))
+		if newConfigHTTPAuthType != "" {
+			if environment.GetVar(*configHTTPAuthUser) != "" && environment.GetVar(*configHTTPAuthToken) != "" {
 			} else {
 				log.Fatalf("HTTP Authentication enabled, but insufficient authentication details provided.")
 			}
-			switch newConfigHttpAuthType {
+			switch newConfigHTTPAuthType {
 			case "basic", "digest", "token-key":
-				bc.SetHttpAuthType(newConfigHttpAuthType)
-				bc.SetHttpAuthToken(*configHttpAuthToken)
-				bc.SetHttpAuthUser(*configHttpAuthUser)
+				bc.SetHTTPAuthType(newConfigHTTPAuthType)
+				bc.SetHTTPAuthToken(*configHTTPAuthToken)
+				bc.SetHTTPAuthUser(*configHTTPAuthUser)
 				break
 			default:
-				log.Fatalf("Unsupported HTTP Authentication Type: %s", newConfigHttpAuthType)
+				log.Fatalf("Unsupported HTTP Authentication Type: %s", newConfigHTTPAuthType)
 			}
 		}
 		// Set the HTTP Timeout
-		newConfigHttpTimeout, _ := strconv.Atoi(environment.GetVar(*configHttpTimeout))
-		if newConfigHttpTimeout == 0 {
-			newConfigHttpTimeout = defaultHttpTimeout
+		newConfigHTTPTimeout, _ := strconv.Atoi(environment.GetVar(*configHTTPTimeout))
+		if newConfigHTTPTimeout == 0 {
+			newConfigHTTPTimeout = defaultHTTPTimeout
 		}
-		log.Debugf("main(): setting HttpTimeout to %d", newConfigHttpTimeout)
-		bc.SetTimeout(newConfigHttpTimeout)
+		log.Debugf("main(): setting HttpTimeout to %d", newConfigHTTPTimeout)
+		bc.SetTimeout(newConfigHTTPTimeout)
 
 		// Set the HTTP Retries Counter
-		newConfigHttpRetries, _ := strconv.Atoi(environment.GetVar(*configHttpRetries))
-		if newConfigHttpRetries == 0 {
-			newConfigHttpRetries = defaultHttpRetries
+		newConfigHTTPRetries, _ := strconv.Atoi(environment.GetVar(*configHTTPRetries))
+		if newConfigHTTPRetries == 0 {
+			newConfigHTTPRetries = defaultHTTPRetries
 		}
-		log.Debugf("main(): setting HttpRetries to %d", newConfigHttpRetries)
-		bc.SetRetries(newConfigHttpRetries)
+		log.Debugf("main(): setting HttpRetries to %d", newConfigHTTPRetries)
+		bc.SetRetries(newConfigHTTPRetries)
 
 		// Set the HTTP Holdoff Values
-		newConfigHttpRetryWaitMin, _ := strconv.Atoi(environment.GetVar(*configHttpRetryWaitMin))
-		if newConfigHttpRetryWaitMin == 0 {
-			newConfigHttpRetryWaitMin = defaultHttpRetryWaitMin
+		newConfigHTTPRetryWaitMin, _ := strconv.Atoi(environment.GetVar(*configHTTPRetryWaitMin))
+		if newConfigHTTPRetryWaitMin == 0 {
+			newConfigHTTPRetryWaitMin = defaultHTTPRetryWaitMin
 		}
-		newConfigHttpRetryWaitMax, _ := strconv.Atoi(environment.GetVar(*configHttpRetryWaitMax))
-		if newConfigHttpRetryWaitMax == 0 {
-			newConfigHttpRetryWaitMax = defaultHttpRetryWaitMax
+		newConfigHTTPRetryWaitMax, _ := strconv.Atoi(environment.GetVar(*configHTTPRetryWaitMax))
+		if newConfigHTTPRetryWaitMax == 0 {
+			newConfigHTTPRetryWaitMax = defaultHTTPRetryWaitMax
 		}
-		log.Debugf("main(): setting RetryWaitMin[%d] and RetryWaitMax[%d]", newConfigHttpRetryWaitMin, newConfigHttpRetryWaitMax)
-		bc.SetRetryWaitMin(newConfigHttpRetryWaitMin)
-		bc.SetRetryWaitMax(newConfigHttpRetryWaitMax)
+		log.Debugf("main(): setting RetryWaitMin[%d] and RetryWaitMax[%d]", newConfigHTTPRetryWaitMin, newConfigHTTPRetryWaitMax)
+		bc.SetRetryWaitMin(newConfigHTTPRetryWaitMin)
+		bc.SetRetryWaitMax(newConfigHTTPRetryWaitMax)
 	case "s3", "S3":
 		if *configS3Region == "" {
 			log.Fatalf("You must provide a -s3.region for use with the s3 downloader.")
@@ -175,7 +175,7 @@ func main() {
 		log.Debugf("main(): setting s3 region=%v", newConfigS3Region)
 		bc.SetRegion(newConfigS3Region)
 	case "blob":
-		os.Setenv("BUTLER_STORAGE_ACCOUNT", bc.Url.Host)
+		os.Setenv("BUTLER_STORAGE_ACCOUNT", bc.URL.Host)
 	case "etcd":
 		if *configEtcdEndpoints == "" {
 			log.Fatalf("You must provide a valid -etcd.endpoints for use with the etcd downloader.")
@@ -220,7 +220,7 @@ func main() {
 	}
 
 	// Start up the monitor web server after we grab the monitor config values
-	monitor := monitor.NewMonitor().WithOpts(&monitor.MonitorOpts{Config: bc, Version: version})
+	monitor := monitor.NewMonitor().WithOpts(&monitor.Opts{Config: bc, Version: version})
 	monitor.Start()
 
 	sched := gocron.NewScheduler()

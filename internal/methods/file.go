@@ -14,7 +14,6 @@ package methods
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/url"
@@ -44,23 +43,23 @@ func NewFileMethod(manager *string, entry *string) (Method, error) {
 		u.Path = environment.GetVar(result.Path)
 	}
 	result.Path = u.Path
-	result.Url = u
+	result.URL = u
 	return result, err
 }
 
-func NewFileMethodWithUrl(u *url.URL) (Method, error) {
+func NewFileMethodWithURL(u *url.URL) (Method, error) {
 	var (
 		err    error
 		result FileMethod
 	)
 
-	result.Url = u
+	result.URL = u
 	result.Path = u.Path
 	return result, err
 }
 
 type FileMethod struct {
-	Url  *url.URL `json:"-"`
+	URL  *url.URL `json:"-"`
 	Path string   `mapstructure:"path" json:"path"`
 }
 
@@ -74,7 +73,7 @@ func (f FileMethod) Get(u *url.URL) (*Response, error) {
 
 	if err != nil {
 		// 504 is hokey, but we need some bogus code.
-		return &Response{statusCode: 504}, errors.New(fmt.Sprintf("FileMethod.Get(): caught error read file err=%v", err.Error()))
+		return &Response{statusCode: 504}, fmt.Errorf("FileMethod.Get(): caught error read file err=%v", err.Error())
 	}
 
 	response.statusCode = 200

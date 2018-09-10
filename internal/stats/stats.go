@@ -20,8 +20,8 @@ import (
 	//log "github.com/sirupsen/logrus"
 )
 
+// Prometheus metrics
 var (
-	// Prometheus metrics
 	ButlerConfigValid       *prometheus.GaugeVec
 	ButlerContactSuccess    *prometheus.GaugeVec
 	ButlerContactTime       *prometheus.GaugeVec

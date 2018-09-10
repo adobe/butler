@@ -52,10 +52,10 @@ func (s *ButlerStatsTestSuite) TestPrometheusEnums(c *C) {
 */
 
 func (s *ButlerStatsTestSuite) TestSetButlerReloadVal(c *C) {
-	metric_success := io_prometheus_client.Metric{}
-	metric_success_ts := io_prometheus_client.Metric{}
-	metric_failure := io_prometheus_client.Metric{}
-	metric_failure_ts := io_prometheus_client.Metric{}
+	metricSuccess := io_prometheus_client.Metric{}
+	metricSuccessTs := io_prometheus_client.Metric{}
+	metricFailure := io_prometheus_client.Metric{}
+	metricFailureTs := io_prometheus_client.Metric{}
 
 	// Initial values should be nil for the variables
 	c.Assert(ButlerReloadSuccess, IsNil)
@@ -81,13 +81,13 @@ func (s *ButlerStatsTestSuite) TestSetButlerReloadVal(c *C) {
 	c.Assert(ButlerReloadTimeMetric.Desc().String(), Equals, "Desc{fqName: \"butler_localconfig_reload_time\", help: \"Time that butler successfully reload prometheus\", constLabels: {}, variableLabels: [manager]}")
 
 	// Let's get the metric values for FAILURE
-	ButlerReloadSuccessMetric.Write(&metric_failure)
-	ButlerReloadTimeMetric.Write(&metric_failure_ts)
-	c.Assert(*metric_failure.Gauge.Value, Equals, FAILURE)
-	c.Assert(*metric_failure_ts.Gauge.Value, Equals, 0.0)
+	ButlerReloadSuccessMetric.Write(&metricFailure)
+	ButlerReloadTimeMetric.Write(&metricFailureTs)
+	c.Assert(*metricFailure.Gauge.Value, Equals, FAILURE)
+	c.Assert(*metricFailureTs.Gauge.Value, Equals, 0.0)
 
 	// Get timestamp for right now to compare with timestamp of SUCCESS
-	ts_now := time.Now()
+	tsNow := time.Now()
 
 	// Set it to SUCCESS
 	SetButlerReloadVal(SUCCESS, s.TestRepo)
@@ -101,23 +101,23 @@ func (s *ButlerStatsTestSuite) TestSetButlerReloadVal(c *C) {
 	c.Assert(ButlerReloadTimeMetric, NotNil)
 	c.Assert(err, IsNil)
 
-	ButlerReloadSuccessMetric.Write(&metric_success)
-	ButlerReloadTimeMetric.Write(&metric_success_ts)
+	ButlerReloadSuccessMetric.Write(&metricSuccess)
+	ButlerReloadTimeMetric.Write(&metricSuccessTs)
 
-	c.Assert(*metric_success.Gauge.Value, Equals, SUCCESS)
+	c.Assert(*metricSuccess.Gauge.Value, Equals, SUCCESS)
 
 	// Convert the flat64 to a unix timestamp
-	ts_metric := time.Unix(int64(*metric_success_ts.Gauge.Value), 0)
+	tsMetric := time.Unix(int64(*metricSuccessTs.Gauge.Value), 0)
 
 	// The timestamps should be the same since (within a second)
-	c.Assert(ts_metric.Truncate(time.Second), Equals, ts_now.Truncate(time.Second))
+	c.Assert(tsMetric.Truncate(time.Second), Equals, tsNow.Truncate(time.Second))
 }
 
 func (s *ButlerStatsTestSuite) TestSetButlerRenderVal(c *C) {
-	metric_success := io_prometheus_client.Metric{}
-	metric_success_ts := io_prometheus_client.Metric{}
-	metric_failure := io_prometheus_client.Metric{}
-	metric_failure_ts := io_prometheus_client.Metric{}
+	metricSuccess := io_prometheus_client.Metric{}
+	metricSuccessTs := io_prometheus_client.Metric{}
+	metricFailure := io_prometheus_client.Metric{}
+	metricFailureTs := io_prometheus_client.Metric{}
 
 	// Initial values should be nil for the variables
 	c.Assert(ButlerRenderSuccess, IsNil)
@@ -152,13 +152,13 @@ func (s *ButlerStatsTestSuite) TestSetButlerRenderVal(c *C) {
 	c.Assert(ButlerRenderTimeMetric.Desc().String(), Equals, "Desc{fqName: \"butler_localconfig_render_time\", help: \"Time that butler successfully rendered the prometheus.yml\", constLabels: {}, variableLabels: [config_file repo]}")
 
 	// Let's get the metric values for FAILURE
-	ButlerRenderSuccessMetric.Write(&metric_failure)
-	ButlerRenderTimeMetric.Write(&metric_failure_ts)
-	c.Assert(*metric_failure.Gauge.Value, Equals, FAILURE)
-	c.Assert(*metric_failure_ts.Gauge.Value, Equals, 0.0)
+	ButlerRenderSuccessMetric.Write(&metricFailure)
+	ButlerRenderTimeMetric.Write(&metricFailureTs)
+	c.Assert(*metricFailure.Gauge.Value, Equals, FAILURE)
+	c.Assert(*metricFailureTs.Gauge.Value, Equals, 0.0)
 
 	// Get timestamp for right now to compare with timestamp of SUCCESS
-	ts_now := time.Now()
+	tsNow := time.Now()
 
 	// Set it to SUCCESS
 	SetButlerRenderVal(SUCCESS, s.TestRepo, s.TestLabel)
@@ -173,27 +173,27 @@ func (s *ButlerStatsTestSuite) TestSetButlerRenderVal(c *C) {
 	c.Assert(ButlerRenderTimeMetric, NotNil)
 	c.Assert(err, IsNil)
 
-	ButlerRenderSuccessMetric.Write(&metric_success)
-	ButlerRenderTimeMetric.Write(&metric_success_ts)
+	ButlerRenderSuccessMetric.Write(&metricSuccess)
+	ButlerRenderTimeMetric.Write(&metricSuccessTs)
 
 	// stegen - HOLY MOLY THIS SHOULD BE SUCCESS NOT FAILURE WHY?
-	c.Assert(*metric_success.Gauge.Value, Equals, FAILURE)
+	c.Assert(*metricSuccess.Gauge.Value, Equals, FAILURE)
 
 	// Convert the flat64 to a unix timestamp
-	ts_metric := time.Unix(int64(*metric_success_ts.Gauge.Value), 0)
+	tsMetric := time.Unix(int64(*metricSuccessTs.Gauge.Value), 0)
 
 	// The timestamps should be the same since (within a second)
 	// stegen - NEED TO FIX THIS UP!  The granularity isn't quite there...
-	//c.Assert(ts_metric.Truncate(time.Second), Equals, ts_now.Truncate(time.Second))
-	_ = ts_metric
-	_ = ts_now
+	//c.Assert(tsMetric.Truncate(time.Second), Equals, tsNow.Truncate(time.Second))
+	_ = tsMetric
+	_ = tsNow
 }
 
 func (s *ButlerStatsTestSuite) TestSetButlerWriteVal(c *C) {
-	metric_success := io_prometheus_client.Metric{}
-	metric_success_ts := io_prometheus_client.Metric{}
-	metric_failure := io_prometheus_client.Metric{}
-	metric_failure_ts := io_prometheus_client.Metric{}
+	metricSuccess := io_prometheus_client.Metric{}
+	metricSuccessTs := io_prometheus_client.Metric{}
+	metricFailure := io_prometheus_client.Metric{}
+	metricFailureTs := io_prometheus_client.Metric{}
 
 	// Initial values should be nil for the variables
 	c.Assert(ButlerWriteSuccess, IsNil)
@@ -219,13 +219,13 @@ func (s *ButlerStatsTestSuite) TestSetButlerWriteVal(c *C) {
 	c.Assert(ButlerWriteTimeMetric.Desc().String(), Equals, "Desc{fqName: \"butler_localconfig_write_time\", help: \"Time that butler successfully write the configuration\", constLabels: {}, variableLabels: [config_file]}")
 
 	// Let's get the metric values for FAILURE
-	ButlerWriteSuccessMetric.Write(&metric_failure)
-	ButlerWriteTimeMetric.Write(&metric_failure_ts)
-	c.Assert(*metric_failure.Gauge.Value, Equals, FAILURE)
-	c.Assert(*metric_failure_ts.Gauge.Value, Equals, 0.0)
+	ButlerWriteSuccessMetric.Write(&metricFailure)
+	ButlerWriteTimeMetric.Write(&metricFailureTs)
+	c.Assert(*metricFailure.Gauge.Value, Equals, FAILURE)
+	c.Assert(*metricFailureTs.Gauge.Value, Equals, 0.0)
 
 	// Get timestamp for right now to compare with timestamp of SUCCESS
-	ts_now := time.Now()
+	tsNow := time.Now()
 
 	// Set it to SUCCESS
 	SetButlerWriteVal(SUCCESS, s.TestRepo)
@@ -239,16 +239,16 @@ func (s *ButlerStatsTestSuite) TestSetButlerWriteVal(c *C) {
 	c.Assert(ButlerWriteTimeMetric, NotNil)
 	c.Assert(err, IsNil)
 
-	ButlerWriteSuccessMetric.Write(&metric_success)
-	ButlerWriteTimeMetric.Write(&metric_success_ts)
+	ButlerWriteSuccessMetric.Write(&metricSuccess)
+	ButlerWriteTimeMetric.Write(&metricSuccessTs)
 
-	c.Assert(*metric_success.Gauge.Value, Equals, SUCCESS)
+	c.Assert(*metricSuccess.Gauge.Value, Equals, SUCCESS)
 
 	// Convert the flat64 to a unix timestamp
-	ts_metric := time.Unix(int64(*metric_success_ts.Gauge.Value), 0)
+	tsMetric := time.Unix(int64(*metricSuccessTs.Gauge.Value), 0)
 
 	// The timestamps should be the same since (within a second)
-	c.Assert(ts_metric.Truncate(time.Second), Equals, ts_now.Truncate(time.Second))
+	c.Assert(tsMetric.Truncate(time.Second), Equals, tsNow.Truncate(time.Second))
 }
 
 func (s *ButlerStatsTestSuite) TestGetStatsLabel(c *C) {

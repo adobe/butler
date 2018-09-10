@@ -32,7 +32,7 @@ import (
 )
 
 type ButlerConfig struct {
-	Url                     *url.URL
+	URL                     *url.URL
 	Client                  *ConfigClient
 	Config                  *ConfigSettings
 	FirstRun                bool
@@ -46,9 +46,9 @@ type ButlerConfig struct {
 	RetryWaitMax            int
 	Scheduler               *gocron.Scheduler
 	// some http specific stuff
-	HttpAuthType  string
-	HttpAuthUser  string
-	HttpAuthToken string
+	HTTPAuthType  string
+	HTTPAuthUser  string
+	HTTPAuthToken string
 	// some s3 specific stuff
 	S3Region  string
 	S3Bucket  string
@@ -68,7 +68,7 @@ func (bc *ButlerConfig) SetScheme(s string) error {
 		return errors.New(errMsg)
 	} else {
 		log.Debugf("Config::SetScheme(): setting bc.Scheme=%s", scheme)
-		bc.Url.Scheme = scheme
+		bc.URL.Scheme = scheme
 	}
 	return nil
 }
@@ -76,12 +76,12 @@ func (bc *ButlerConfig) SetScheme(s string) error {
 func (bc *ButlerConfig) SetPath(p string) error {
 	newPath := filepath.Clean(p)
 	log.Debugf("Config::SetPath(): setting bc.Path=%s", newPath)
-	bc.Url.Path = newPath
+	bc.URL.Path = newPath
 	return nil
 }
 
 func (bc *ButlerConfig) GetPath() string {
-	return bc.Url.Path
+	return bc.URL.Path
 }
 
 func (bc *ButlerConfig) SetInterval(t int) error {
@@ -118,18 +118,18 @@ func (bc *ButlerConfig) SetTimeout(t int) error {
 	return nil
 }
 
-func (bc *ButlerConfig) SetHttpAuthType(t string) error {
-	bc.HttpAuthType = t
+func (bc *ButlerConfig) SetHTTPAuthType(t string) error {
+	bc.HTTPAuthType = t
 	return nil
 }
 
-func (bc *ButlerConfig) SetHttpAuthToken(t string) error {
-	bc.HttpAuthToken = t
+func (bc *ButlerConfig) SetHTTPAuthToken(t string) error {
+	bc.HTTPAuthToken = t
 	return nil
 }
 
-func (bc *ButlerConfig) SetHttpAuthUser(t string) error {
-	bc.HttpAuthUser = t
+func (bc *ButlerConfig) SetHTTPAuthUser(t string) error {
+	bc.HTTPAuthUser = t
 	return nil
 }
 
@@ -194,11 +194,11 @@ func (bc *ButlerConfig) Init() error {
 	log.Infof("Config::Init(): initializing butler config.")
 	var err error
 
-	method, err := methods.New(nil, bc.Url.Scheme, nil)
+	method, err := methods.New(nil, bc.URL.Scheme, nil)
 	if err != nil {
 		if err.Error() == "Generic method handler is not very useful" {
 			log.Errorf("Config::Init(): could not initialize butler config (check if using valid scheme). err=%s", err.Error())
-			return errors.New(fmt.Sprintf("\"%s\" is an invalid config retrieval method.", bc.Url.Scheme))
+			return fmt.Errorf("\"%s\" is an invalid config retrieval method.", bc.URL.Scheme)
 
 		} else {
 			log.Errorf("Config::Init(): could not initialize butler config. err=%s", err.Error())
@@ -207,40 +207,40 @@ func (bc *ButlerConfig) Init() error {
 	}
 	log.Warnf("ButlerConfig::Init() Above \"NewHttpMethod(): could not convert\" warnings may be safely disregarded.")
 
-	client, err := NewConfigClient(bc.Url.Scheme)
+	client, err := NewConfigClient(bc.URL.Scheme)
 	if err != nil {
 		log.Errorf("Config::Init(): could not initialize butler config. err=%s", err.Error())
 		return err
 	}
 	client.Method = method
 
-	switch bc.Url.Scheme {
+	switch bc.URL.Scheme {
 	case "http", "https":
 		client.SetTimeout(bc.Timeout)
 		client.SetRetryMax(bc.Retries)
 		client.SetRetryWaitMin(bc.RetryWaitMin)
 		client.SetRetryWaitMax(bc.RetryWaitMax)
 		// this is a bit hokey
-		m := method.(methods.HttpMethod)
-		m.AuthType = bc.HttpAuthType
-		m.AuthToken = bc.HttpAuthToken
-		m.AuthUser = bc.HttpAuthUser
+		m := method.(methods.HTTPMethod)
+		m.AuthType = bc.HTTPAuthType
+		m.AuthToken = bc.HTTPAuthToken
+		m.AuthUser = bc.HTTPAuthUser
 		client.Method = m
 	case "s3", "S3":
-		pathSplit := strings.Split(bc.Url.Path, "/")
+		pathSplit := strings.Split(bc.URL.Path, "/")
 		bucket := pathSplit[0]
 		bc.SetRegionAndBucket(bc.S3Region, bucket)
-		client.Method, err = methods.NewS3MethodWithRegionAndBucket(bc.S3Region, bc.Url.Host)
+		client.Method, err = methods.NewS3MethodWithRegionAndBucket(bc.S3Region, bc.URL.Host)
 		if err != nil {
 			return err
 		}
 	case "file":
-		client.Method, err = methods.NewFileMethodWithUrl(bc.Url)
+		client.Method, err = methods.NewFileMethodWithURL(bc.URL)
 		if err != nil {
 			return err
 		}
 	case "blob":
-		client.Method, err = methods.NewBlobMethodWithAccount(bc.Url.Host)
+		client.Method, err = methods.NewBlobMethodWithAccount(bc.URL.Host)
 		if err != nil {
 			return err
 		}
@@ -260,39 +260,39 @@ func (bc *ButlerConfig) Init() error {
 
 func (bc *ButlerConfig) Handler() error {
 	log.Infof("ButlerConfig::Handler()[count=%v]: entering.", handlerCounter)
-	response, err := bc.Client.Get(bc.Url)
+	response, err := bc.Client.Get(bc.URL)
 
 	if err != nil {
 		log.Errorf("ButlerConfig::Handler()[count=%v]: Cannot retrieve butler configuration. err=%s", handlerCounter, err.Error())
 		log.Errorf("ButlerConfig::Handler()[count=%v]: done.", handlerCounter)
-		handlerCounter += 1
-		stats.SetButlerContactVal(stats.FAILURE, bc.Url.Host, bc.Url.Path)
+		handlerCounter++
+		stats.SetButlerContactVal(stats.FAILURE, bc.URL.Host, bc.URL.Path)
 		return err
 	}
 	defer response.GetResponseBody().Close()
 
 	if response.GetResponseStatusCode() != 200 {
-		stats.SetButlerContactVal(stats.FAILURE, bc.Url.Host, bc.Url.Path)
-		log.Errorf("ButlerConfig::Handler()[count=%v]: Did not receive 200 response code for %s. code=%d", handlerCounter, bc.Url.String(), response.GetResponseStatusCode())
+		stats.SetButlerContactVal(stats.FAILURE, bc.URL.Host, bc.URL.Path)
+		log.Errorf("ButlerConfig::Handler()[count=%v]: Did not receive 200 response code for %s. code=%d", handlerCounter, bc.URL.String(), response.GetResponseStatusCode())
 		log.Errorf("ButlerConfig::Handler()[count=%v] done.", handlerCounter)
-		handlerCounter += 1
-		errMsg := fmt.Sprintf("Did not receive 200 response code for %s. code=%d", bc.Url.String(), response.GetResponseStatusCode())
+		handlerCounter++
+		errMsg := fmt.Sprintf("Did not receive 200 response code for %s. code=%d", bc.URL.String(), response.GetResponseStatusCode())
 		return errors.New(errMsg)
 	}
 
 	body, err := ioutil.ReadAll(response.GetResponseBody())
 	if err != nil {
-		stats.SetButlerContactVal(stats.FAILURE, bc.Url.Host, bc.Url.Path)
-		log.Errorf("ButlerConfig::Handler()[count=%v]: Could not read response body for %s. err=%s", handlerCounter, bc.Url.String(), err)
+		stats.SetButlerContactVal(stats.FAILURE, bc.URL.Host, bc.URL.Path)
+		log.Errorf("ButlerConfig::Handler()[count=%v]: Could not read response body for %s. err=%s", handlerCounter, bc.URL.String(), err)
 		log.Errorf("ButlerConfig::Handler()[count=%v] done.", handlerCounter)
-		handlerCounter += 1
-		errMsg := fmt.Sprintf("Could not read response body for %s. err=%s", bc.Url.String(), err)
+		handlerCounter++
+		errMsg := fmt.Sprintf("Could not read response body for %s. err=%s", bc.URL.String(), err)
 		return errors.New(errMsg)
 	}
 
 	err = ValidateConfig(NewValidateOpts().WithData(body).WithFileName("butler.toml").WithManager("butler-config"))
 	if err != nil {
-		stats.SetButlerContactVal(stats.FAILURE, bc.Url.Host, bc.Url.Path)
+		stats.SetButlerContactVal(stats.FAILURE, bc.URL.Host, bc.URL.Path)
 		return err
 	}
 
@@ -302,7 +302,7 @@ func (bc *ButlerConfig) Handler() error {
 			if bc.Config.Globals.ExitOnFailure {
 				log.Fatal(err)
 			} else {
-				stats.SetButlerContactVal(stats.FAILURE, bc.Url.Host, bc.Url.Path)
+				stats.SetButlerContactVal(stats.FAILURE, bc.URL.Host, bc.URL.Path)
 				return err
 			}
 		} else {
@@ -317,7 +317,7 @@ func (bc *ButlerConfig) Handler() error {
 			if bc.Config.Globals.ExitOnFailure {
 				log.Fatal(err)
 			} else {
-				stats.SetButlerContactVal(stats.FAILURE, bc.Url.Host, bc.Url.Path)
+				stats.SetButlerContactVal(stats.FAILURE, bc.URL.Host, bc.URL.Path)
 				return err
 			}
 		} else {
@@ -355,9 +355,9 @@ func (bc *ButlerConfig) Handler() error {
 			bc.SetCMPrevInterval(bc.GetCMInterval())
 		}
 	}
-	stats.SetButlerContactVal(stats.SUCCESS, bc.Url.Host, bc.Url.Path)
+	stats.SetButlerContactVal(stats.SUCCESS, bc.URL.Host, bc.URL.Path)
 	log.Infof("ButlerConfig::Handler()[count=%v]: done.", handlerCounter)
-	handlerCounter += 1
+	handlerCounter++
 	return nil
 }
 
@@ -487,7 +487,7 @@ func (bc *ButlerConfig) RunCMHandler() error {
 		}
 	}
 	log.Infof("Config::RunCMHandler()[count=%v]: done.", cmHandlerCounter)
-	cmHandlerCounter += 1
+	cmHandlerCounter++
 	return nil
 }
 

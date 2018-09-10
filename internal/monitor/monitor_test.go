@@ -71,26 +71,26 @@ func (s *ButlerTestSuite) SetUpSuite(c *C) {
 
 func (s *ButlerTestSuite) TestNewMonitor(c *C) {
 	bc := config.NewButlerConfig()
-	m := NewMonitor().WithOpts(&MonitorOpts{Config: bc, Version: "1.2.3"})
+	m := NewMonitor().WithOpts(&Opts{Config: bc, Version: "1.2.3"})
 	c.Assert(bc, Equals, m.config)
 }
 
-func (s *ButlerTestSuite) TestStartHttp(c *C) {
+func (s *ButlerTestSuite) TestStartHTTP(c *C) {
 	// have to set some stuff up first
 	bc := config.NewButlerConfig()
 	u := &url.URL{}
 	bc.Config = config.NewConfigSettings()
-	bc.Config.Globals.HttpProto = "http"
-	bc.Config.Globals.HttpPort = 58532
-	bc.Config.Globals.EnableHttpLog = true
-	bc.Url = u
-	m := NewMonitor().WithOpts(&MonitorOpts{Config: bc, Version: "1.2.3"})
+	bc.Config.Globals.HTTPProto = "http"
+	bc.Config.Globals.HTTPPort = 58532
+	bc.Config.Globals.EnableHTTPLog = true
+	bc.URL = u
+	m := NewMonitor().WithOpts(&Opts{Config: bc, Version: "1.2.3"})
 	s.bm = m
 	c.Assert(bc, Equals, m.config)
 	// WOW
 	s.bm.Start()
 	defer s.bm.Stop()
-	host := fmt.Sprintf("%v://127.0.0.1:%v/health-check", bc.Config.Globals.HttpProto, bc.Config.Globals.HttpPort)
+	host := fmt.Sprintf("%v://127.0.0.1:%v/health-check", bc.Config.Globals.HTTPProto, bc.Config.Globals.HTTPPort)
 	resp, err := http.Get(host)
 	c.Assert(err, IsNil)
 	buf := new(bytes.Buffer)
@@ -98,7 +98,7 @@ func (s *ButlerTestSuite) TestStartHttp(c *C) {
 	c.Assert(buf.String(), Matches, `.*"http-proto\":\"http\",\"http-port\":58532,.*`)
 }
 
-func (s *ButlerTestSuite) TestStartHttps(c *C) {
+func (s *ButlerTestSuite) TestStartHTTPs(c *C) {
 	// have to set some stuff up first
 	tmpCert, err := ioutil.TempFile("", "tmpCert")
 	c.Assert(err, IsNil)
@@ -118,17 +118,17 @@ func (s *ButlerTestSuite) TestStartHttps(c *C) {
 	bc := config.NewButlerConfig()
 	u := &url.URL{}
 	bc.Config = config.NewConfigSettings()
-	bc.Config.Globals.HttpProto = "https"
-	bc.Config.Globals.HttpPort = 58532
-	bc.Config.Globals.EnableHttpLog = false
-	bc.Config.Globals.HttpTlsCert = tmpCert.Name()
-	bc.Config.Globals.HttpTlsKey = tmpKey.Name()
-	bc.Url = u
+	bc.Config.Globals.HTTPProto = "https"
+	bc.Config.Globals.HTTPPort = 58532
+	bc.Config.Globals.EnableHTTPLog = false
+	bc.Config.Globals.HTTPTLSCert = tmpCert.Name()
+	bc.Config.Globals.HTTPTLSKey = tmpKey.Name()
+	bc.URL = u
 	s.bm.Update(bc)
 	c.Assert(bc, Equals, s.bm.config)
 
 	// WOWER
-	host := fmt.Sprintf("%v://127.0.0.1:%v/health-check", bc.Config.Globals.HttpProto, bc.Config.Globals.HttpPort)
+	host := fmt.Sprintf("%v://127.0.0.1:%v/health-check", bc.Config.Globals.HTTPProto, bc.Config.Globals.HTTPPort)
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}

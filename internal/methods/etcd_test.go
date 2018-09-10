@@ -138,7 +138,7 @@ func (s *EtcdTestSuite) TestGetPass(c *C) {
 	c.Assert(err, IsNil)
 	endpoints := []string{"http://127.0.0.2:2379"}
 
-	patch := monkey.Patch(GetEtcdKey, func(_ EtcdMethod, _ context.Context, _ string, _ *client.GetOptions) (*client.Response, error) {
+	patch := monkey.Patch(GetEtcdKey, func(_ context.Context, _ EtcdMethod, _ string, _ *client.GetOptions) (*client.Response, error) {
 		return &client.Response{
 			Node: &client.Node{
 				Value: "hiya",

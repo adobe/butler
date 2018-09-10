@@ -48,10 +48,10 @@ some more text`)
 }
 
 func (s *ConfigTestSuite) TestrunJsonValidate(c *C) {
-	var testJsonConfigGood = []byte(`{"foo": "bar", "baz": ["one", "two", "three"] }`)
-	var testJsonConfigBad = []byte(`{"foo": "bar", ["one", "two", "three"] }`)
-	c.Assert(runJsonValidate(bytes.NewReader(testJsonConfigGood), "test-manager"), IsNil)
-	c.Assert(runJsonValidate(bytes.NewReader(testJsonConfigBad), "test-manager"), NotNil)
+	var testJSONConfigGood = []byte(`{"foo": "bar", "baz": ["one", "two", "three"] }`)
+	var testJSONConfigBad = []byte(`{"foo": "bar", ["one", "two", "three"] }`)
+	c.Assert(runJSONValidate(bytes.NewReader(testJSONConfigGood), "test-manager"), IsNil)
+	c.Assert(runJSONValidate(bytes.NewReader(testJSONConfigBad), "test-manager"), NotNil)
 }
 
 func (s *ConfigTestSuite) TestrunYamlValidate(c *C) {

@@ -79,7 +79,7 @@ func (h *ApacheLoggingHandler) ServeHTTP(rw http.ResponseWriter, r *http.Request
 
 	record := &ApacheLogRecord{
 		ResponseWriter: rw,
-		log:            h.config.Config.Globals.EnableHttpLog,
+		log:            h.config.Config.Globals.EnableHTTPLog,
 		ip:             clientIP,
 		time:           time.Time{},
 		method:         r.Method,

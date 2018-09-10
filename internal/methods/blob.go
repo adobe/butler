@@ -65,7 +65,7 @@ func NewBlobMethod(manager *string, entry *string) (Method, error) {
 
 	client, err = storage.NewBasicClient(result.StorageAccount, authToken)
 	if err != nil {
-		return BlobMethod{}, errors.New(fmt.Sprintf("blob client error. err=%v", err))
+		return BlobMethod{}, fmt.Errorf("blob client error. err=%v", err)
 	}
 
 	result.AzureClient = client
@@ -95,7 +95,7 @@ func NewBlobMethodWithAccount(account string) (Method, error) {
 
 	client, err = storage.NewBasicClient(result.StorageAccount, authToken)
 	if err != nil {
-		return BlobMethod{}, errors.New(fmt.Sprintf("blob client error. err=%v", err))
+		return BlobMethod{}, fmt.Errorf("blob client error. err=%v", err)
 	}
 
 	result.AzureClient = client

@@ -17,12 +17,12 @@ import (
 	"net/http"
 )
 
-var _ = Suite(&HttpTestSuite{})
+var _ = Suite(&HTTPTestSuite{})
 
-type HttpTestSuite struct {
+type HTTPTestSuite struct {
 }
 
-func (s *HttpTestSuite) TestgetBasicAuthorization(c *C) {
+func (s *HTTPTestSuite) TestgetBasicAuthorization(c *C) {
 	username := "testing"
 	password := "testing"
 	result := "Basic dGVzdGluZzp0ZXN0aW5n"
@@ -30,17 +30,17 @@ func (s *HttpTestSuite) TestgetBasicAuthorization(c *C) {
 	c.Assert(r, Equals, result)
 }
 
-func (s *HttpTestSuite) TestgetMD5(c *C) {
+func (s *HTTPTestSuite) TestgetMD5(c *C) {
 	result := "e2c50ded5d3990bdabeb4b44c4411f18"
 	res := getMD5("hiya")
 	c.Assert(result, Equals, res)
 }
 
-func (s *HttpTestSuite) TestgetCnonce(c *C) {
+func (s *HTTPTestSuite) TestgetCnonce(c *C) {
 	c.Assert(len(getCnonce()), Equals, 16)
 }
 
-func (s *HttpTestSuite) TestgetDigestAuthorization(c *C) {
+func (s *HTTPTestSuite) TestgetDigestAuthorization(c *C) {
 	resp := &http.Response{}
 	header := http.Header{}
 	header.Add("Date", "Mon, 04 Jun 2018 14:33:09 GMT")
@@ -52,7 +52,7 @@ func (s *HttpTestSuite) TestgetDigestAuthorization(c *C) {
 	c.Assert(res, Matches, `.*realm="testing", nonce="5b25940d5b154da5".*qop="auth".*`)
 }
 
-func (s *HttpTestSuite) TestdigestDigestParts(c *C) {
+func (s *HTTPTestSuite) TestdigestDigestParts(c *C) {
 	resp := &http.Response{}
 	header := http.Header{}
 	header.Add("Date", "Mon, 04 Jun 2018 14:33:09 GMT")

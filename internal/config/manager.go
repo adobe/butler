@@ -57,8 +57,8 @@ type ManagerOpts struct {
 	Repo                            string         `json:"repo"`
 	PrimaryConfig                   []string       `mapstructure:"primary-config" json:"primary-config"`
 	AdditionalConfig                []string       `mapstructure:"additional-config" json:"additional-config"`
-	PrimaryConfigsFullUrls          []string       `json:"-"`
-	AdditionalConfigsFullUrls       []string       `json:"-"`
+	PrimaryConfigsFullURLs          []string       `json:"-"`
+	AdditionalConfigsFullURLs       []string       `json:"-"`
 	PrimaryConfigsFullLocalPaths    []string       `json:"-"`
 	AdditionalConfigsFullLocalPaths []string       `json:"-"`
 	ContentType                     string         `mapstructure:"content-type" json:"content-type"`
@@ -98,7 +98,7 @@ func (bm *Manager) DownloadPrimaryConfigFiles(c chan ChanEvent) error {
 	// Process the prometheus.yml configuration files
 	// We are going to iterate through each of the potential managers configured
 	for _, opts := range bm.ManagerOpts {
-		for i, u := range opts.GetPrimaryConfigUrls() {
+		for i, u := range opts.GetPrimaryConfigURLs() {
 			log.Debugf("Manager::DownloadPrimaryConfigFiles(): i=%v, u=%v", i, u)
 			log.Debugf("Manager::DownloadPrimaryConfigFiles(): f=%s", opts.GetPrimaryRemoteConfigFiles()[i])
 			f := opts.DownloadConfigFile(u)
@@ -176,7 +176,7 @@ func (bm *Manager) DownloadAdditionalConfigFiles(c chan ChanEvent) error {
 
 	// Process the additional configuration files
 	for _, opts := range bm.ManagerOpts {
-		for i, u := range opts.GetAdditionalConfigUrls() {
+		for i, u := range opts.GetAdditionalConfigURLs() {
 			log.Debugf("Manager::DownloadAdditionalConfigFiles(): i=%v, u=%v", i, u)
 			f := opts.DownloadConfigFile(u)
 			if f == nil {
@@ -280,9 +280,9 @@ func (bm *Manager) GetAllLocalPaths() []string {
 	return result
 }
 
-func (bmo *ManagerOpts) AppendPrimaryConfigUrl(c string) error {
-	log.Debugf("ManagerOpts::AppendPrimaryConfigUrl(): adding %s to PrimaryConfigsUrls...", c)
-	bmo.PrimaryConfigsFullUrls = append(bmo.PrimaryConfigsFullUrls, c)
+func (bmo *ManagerOpts) AppendPrimaryConfigURL(c string) error {
+	log.Debugf("ManagerOpts::AppendPrimaryConfigURL(): adding %s to PrimaryConfigsURLs...", c)
+	bmo.PrimaryConfigsFullURLs = append(bmo.PrimaryConfigsFullURLs, c)
 	return nil
 }
 
@@ -292,9 +292,9 @@ func (bmo *ManagerOpts) AppendPrimaryConfigFile(c string) error {
 	return nil
 }
 
-func (bmo *ManagerOpts) AppendAdditionalConfigUrl(c string) error {
-	log.Debugf("ManagerOpts::AppendAdditionalConfigUrl(): adding %s to AdditionalConfigsUrls...", c)
-	bmo.AdditionalConfigsFullUrls = append(bmo.AdditionalConfigsFullUrls, c)
+func (bmo *ManagerOpts) AppendAdditionalConfigURL(c string) error {
+	log.Debugf("ManagerOpts::AppendAdditionalConfigURL(): adding %s to AdditionalConfigsURLs...", c)
+	bmo.AdditionalConfigsFullURLs = append(bmo.AdditionalConfigsFullURLs, c)
 	return nil
 }
 
@@ -309,8 +309,8 @@ func (bmo *ManagerOpts) SetParentManager(c string) error {
 	return nil
 }
 
-func (bmo *ManagerOpts) GetPrimaryConfigUrls() []string {
-	return bmo.PrimaryConfigsFullUrls
+func (bmo *ManagerOpts) GetPrimaryConfigURLs() []string {
+	return bmo.PrimaryConfigsFullURLs
 }
 
 func (bmo *ManagerOpts) GetPrimaryLocalConfigFiles() []string {
@@ -321,8 +321,8 @@ func (bmo *ManagerOpts) GetPrimaryRemoteConfigFiles() []string {
 	return bmo.PrimaryConfig
 }
 
-func (bmo *ManagerOpts) GetAdditionalConfigUrls() []string {
-	return bmo.AdditionalConfigsFullUrls
+func (bmo *ManagerOpts) GetAdditionalConfigURLs() []string {
+	return bmo.AdditionalConfigsFullURLs
 }
 
 func (bmo *ManagerOpts) GetAdditionalLocalConfigFiles() []string {

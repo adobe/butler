@@ -41,10 +41,10 @@ const (
 	defaultTimeout      = 10
 )
 
-func NewHttpMethod(manager *string, entry *string) (Method, error) {
+func NewHTTPMethod(manager *string, entry *string) (Method, error) {
 	var (
 		err    error
-		result HttpMethod
+		result HTTPMethod
 	)
 
 	if (manager != nil) && (entry != nil) {
@@ -90,7 +90,7 @@ func NewHttpMethod(manager *string, entry *string) (Method, error) {
 	return result, err
 }
 
-type HttpMethod struct {
+type HTTPMethod struct {
 	Client       *retryablehttp.Client `json:"-"`
 	Manager      *string               `json:"-"`
 	Host         string                `mapstruecture:"host" json:"host,omitempty"`
@@ -103,7 +103,7 @@ type HttpMethod struct {
 	AuthUser     string                `mapstructure:"auth-user" json:"auth-user,omitempty"`
 }
 
-func (h HttpMethod) Get(u *url.URL) (*Response, error) {
+func (h HTTPMethod) Get(u *url.URL) (*Response, error) {
 	var (
 		err       error
 		r         *http.Response
@@ -163,7 +163,7 @@ func (h HttpMethod) Get(u *url.URL) (*Response, error) {
 	return &res, err
 }
 
-func (h *HttpMethod) MethodRetryPolicy(resp *http.Response, err error) (bool, error) {
+func (h *HTTPMethod) MethodRetryPolicy(resp *http.Response, err error) (bool, error) {
 	// This is actually the default RetryPolicy from the go-retryablehttp library. The only
 	// change is the stats monitor. We want to keep track of all the reload failures.
 	if (err != nil) && (h.Manager != nil) {

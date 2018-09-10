@@ -94,7 +94,7 @@ func ValidateConfig(opts *ValidateOpts) error {
 		newf := f.([]byte)
 		file = bytes.NewReader(newf)
 	default:
-		return errors.New(fmt.Sprintf("ValidateConfig()[count=%v][manager=%v]: unknown file type %s for %s", cmHandlerCounter, opts.Manager, t, f))
+		return fmt.Errorf("ValidateConfig()[count=%v][manager=%v]: unknown file type %s for %s", cmHandlerCounter, opts.Manager, t, f)
 	}
 
 	if opts.ContentType == "auto" {
@@ -107,11 +107,11 @@ func ValidateConfig(opts *ValidateOpts) error {
 	case "text":
 		err = runTextValidate(file, opts.Manager)
 	case "json":
-		err = runJsonValidate(file, opts.Manager)
+		err = runJSONValidate(file, opts.Manager)
 	case "yaml":
 		err = runYamlValidate(file, opts.Manager)
 	default:
-		err = errors.New(fmt.Sprintf("unknown content type %s", opts.ContentType))
+		err = fmt.Errorf("unknown content type %s", opts.ContentType)
 	}
 
 	if err != nil {
@@ -215,17 +215,17 @@ func runTextValidate(f *bytes.Reader, m string) error {
 	}
 
 	if !isValidHeader && !isValidFooter {
-		return errors.New(fmt.Sprintf("runTextValidate()[count=%v][manager=%v]: Invalid butler header and footer", cmHandlerCounter, m))
+		return fmt.Errorf("runTextValidate()[count=%v][manager=%v]: Invalid butler header and footer", cmHandlerCounter, m)
 	} else if !isValidHeader {
-		return errors.New(fmt.Sprintf("runTextValidate()[count=%v][manager=%v]: Invalid butler header", cmHandlerCounter, m))
+		return fmt.Errorf("runTextValidate()[count=%v][manager=%v]: Invalid butler header", cmHandlerCounter, m)
 	} else if !isValidFooter {
-		return errors.New(fmt.Sprintf("runTextValidate()[count=%v][manager=%v]: Invalid butler footer", cmHandlerCounter, m))
+		return fmt.Errorf("runTextValidate()[count=%v][manager=%v]: Invalid butler footer", cmHandlerCounter, m)
 	} else {
 		return nil
 	}
 }
 
-func runJsonValidate(f *bytes.Reader, m string) error {
+func runJSONValidate(f *bytes.Reader, m string) error {
 	var (
 		err  error
 		data []byte
@@ -233,13 +233,13 @@ func runJsonValidate(f *bytes.Reader, m string) error {
 
 	data, err = ioutil.ReadAll(f)
 	if err != nil {
-		msg := fmt.Sprintf("runJsonValidate()[count=%v][manager=%v], could not read data from bytes.Reader. err=%v", cmHandlerCounter, m, err.Error())
+		msg := fmt.Sprintf("runJSONValidate()[count=%v][manager=%v], could not read data from bytes.Reader. err=%v", cmHandlerCounter, m, err.Error())
 		return errors.New(msg)
 	}
 
 	_, err = gabs.ParseJSON(data)
 	if err != nil {
-		msg := fmt.Sprintf("runJsonValidate()[count=%v][manager=%v], could not Unmarshal json data into interface. err=%v", cmHandlerCounter, m, err.Error())
+		msg := fmt.Sprintf("runJSONValidate()[count=%v][manager=%v], could not Unmarshal json data into interface. err=%v", cmHandlerCounter, m, err.Error())
 		return errors.New(msg)
 	}
 	return nil
@@ -759,9 +759,9 @@ func NewConfigClient(scheme string) (*ConfigClient, error) {
 	switch scheme {
 	case "http", "https":
 		c.Scheme = "http"
-		c.HttpClient = retryablehttp.NewClient()
-		c.HttpClient.Logger.SetFlags(0)
-		c.HttpClient.Logger.SetOutput(ioutil.Discard)
+		c.HTTPClient = retryablehttp.NewClient()
+		c.HTTPClient.Logger.SetFlags(0)
+		c.HTTPClient.Logger.SetOutput(ioutil.Discard)
 	case "s3", "S3":
 		c.Scheme = "s3"
 	case "file":

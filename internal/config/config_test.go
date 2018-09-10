@@ -31,18 +31,18 @@ import (
 func Test(t *testing.T) { TestingT(t) }
 
 var _ = Suite(&ConfigTestSuite{})
-var TestHttpCase = 0
+var TestHTTPCase = 0
 
 type ConfigTestSuite struct {
 	TestServer *httptest.Server
 	Config     *ButlerConfig
 }
 
-type TestHttpHandler struct {
+type TestHTTPHandler struct {
 }
 
-func (h *TestHttpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	switch TestHttpCase {
+func (h *TestHTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	switch TestHTTPCase {
 	case 0:
 		// Let's throw a 500
 		http.Error(w, http.StatusText(http.StatusInternalServerError),
@@ -174,10 +174,10 @@ var TestConfigCompleteEnvironment = []byte(`[globals]
         timeout = "10"
 `)
 
-var TestManagerNoUrls = []byte(`[testing]
+var TestManagerNoURLs = []byte(`[testing]
 `)
 
-var TestManagerUrls = []byte(`[testing]
+var TestManagerURLs = []byte(`[testing]
   urls = ["woden.corp.adobe.com", "localhost"]
   mustache-subs = ["ethos-cluster-id=ethos01-dev-or1", "endpoint=external"]
 `)
@@ -209,11 +209,11 @@ var TestManagerOptsFail4 = []byte(`[testing.localhost]
 `)
 
 func (s *ConfigTestSuite) SetUpSuite(c *C) {
-	s.TestServer = httptest.NewServer(&TestHttpHandler{})
+	s.TestServer = httptest.NewServer(&TestHTTPHandler{})
 	s.Config = NewButlerConfig()
 	u, err := url.Parse(s.TestServer.URL)
 	c.Assert(err, IsNil)
-	s.Config.Url = u
+	s.Config.URL = u
 	log.SetLevel(log.DebugLevel)
 }
 
@@ -243,9 +243,9 @@ func (s *ConfigTestSuite) TestNewConfigClientDefault(c *C) {
 
 func (s *ConfigTestSuite) TestConfigConfigHandler_InternalServerError(c *C) {
 	var err error
-	TestHttpCase = 0
-	s.Config.SetScheme(s.Config.Url.Scheme)
-	s.Config.SetPath(s.Config.Url.Path)
+	TestHTTPCase = 0
+	s.Config.SetScheme(s.Config.URL.Scheme)
+	s.Config.SetPath(s.Config.URL.Path)
 	s.Config.Init()
 	err = s.Config.Handler()
 	//log.Infof("err=%#v\n", err.Error())
@@ -255,7 +255,7 @@ func (s *ConfigTestSuite) TestConfigConfigHandler_InternalServerError(c *C) {
 
 func (s *ConfigTestSuite) TestConfigConfigHandler_NotFound(c *C) {
 	var err error
-	TestHttpCase = 1
+	TestHTTPCase = 1
 	urlSplit := strings.Split(s.TestServer.URL, "://")
 	s.Config.SetScheme(urlSplit[0])
 	s.Config.SetPath(urlSplit[1])
@@ -362,22 +362,22 @@ func (s *ConfigTestSuite) TestParseConfigCompleteNoExit(c *C) {
 }
 */
 
-func (s *ConfigTestSuite) TestGetConfigManagerNoUrls(c *C) {
+func (s *ConfigTestSuite) TestGetConfigManagerNoURLs(c *C) {
 	var err error
 
 	// Load the config initially
-	err = ParseConfig(TestManagerNoUrls)
+	err = ParseConfig(TestManagerNoURLs)
 	c.Assert(err, NotNil)
 	err = GetConfigManager("testing", &ConfigSettings{})
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Matches, "No repos configured for manager testing.*")
 }
 
-func (s *ConfigTestSuite) TestGetConfigManagerUrls(c *C) {
+func (s *ConfigTestSuite) TestGetConfigManagerURLs(c *C) {
 	var err error
 
 	// Load the config initially
-	err = ParseConfig(TestManagerUrls)
+	err = ParseConfig(TestManagerURLs)
 	c.Assert(err, NotNil)
 	err = GetConfigManager("testing", &ConfigSettings{})
 	c.Assert(err, NotNil)
@@ -441,7 +441,7 @@ func (s *ConfigTestSuite) TestConfigCompleteEnvironment(c *C) {
 	c.Assert(mgr.CleanFiles, Equals, true)
 	c.Assert(mgr.EnableCache, Equals, false)
 	c.Assert(mgr.MustacheSubs["foo"], Equals, mustacheSub)
-	mgrReloaderOpts := config.Managers["test-handler"].Reloader.(reloaders.HttpReloader)
+	mgrReloaderOpts := config.Managers["test-handler"].Reloader.(reloaders.HTTPReloader)
 	c.Assert(mgrReloaderOpts.Opts.Host, Equals, reloaderHost)
 
 	// Cleanup env

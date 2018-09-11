@@ -42,7 +42,7 @@ func New(manager *string, method string, entry *string) (Method, error) {
 	//log.Debugf("methods.New() manager=%v method=%v entry=%v", manager, method, entry)
 	switch method {
 	case "http", "https":
-		return NewHttpMethod(manager, entry)
+		return NewHTTPMethod(manager, entry)
 	case "S3", "s3":
 		return NewS3Method(manager, entry)
 	case "file":

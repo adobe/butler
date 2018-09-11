@@ -23,6 +23,9 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// ChanEvent is the interface which gets passed along to the different
+// retrieval mechanisms which ultimately keeps track of which files
+// have been downlaoded, changed, etc.
 type ChanEvent interface {
 	CanCopyFiles() bool
 	CleanTmpFiles() error

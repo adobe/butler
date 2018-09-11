@@ -77,21 +77,21 @@ func (b *ConfigSettings) GetAllConfigLocalPaths(mgr string) []string {
 type ConfigGlobals struct {
 	Managers             []string `mapstructure:"config-managers" json:"-"`
 	SchedulerInterval    int      `json:"scheduler-interval"`
-	CfgEnableHttpLog     string   `mapstructure:"enable-http-log" json:"-"`
-	EnableHttpLog        bool     `json:"enable-http-log"`
+	CfgEnableHTTPLog     string   `mapstructure:"enable-http-log" json:"-"`
+	EnableHTTPLog        bool     `json:"enable-http-log"`
 	CfgSchedulerInterval string   `mapstructure:"scheduler-interval" json:"-"`
 	CfgExitOnFailure     string   `mapstructure:"exit-on-config-failure" json:"-"`
 	ExitOnFailure        bool     `json:"exit-on-failure"`
 	CfgStatusFile        string   `mapstructure:"status-file" json:"-"`
 	StatusFile           string   `json:"status-file"`
-	CfgHttpProto         string   `mapstructure:"http-proto" json:"-"`
-	HttpProto            string   `json:"http-proto"`
-	CfgHttpPort          string   `mapstructure:"http-port" json:"-"`
-	HttpPort             int      `json:"http-port"`
-	CfgHttpTlsCert       string   `mapstructure:"http-tls-cert" json:"-"`
-	HttpTlsCert          string   `json:"http-tls-cert"`
-	CfgHttpTlsKey        string   `mapstructure:"http-tls-key" json:"-"`
-	HttpTlsKey           string   `json:"http-tls-key"`
+	CfgHTTPProto         string   `mapstructure:"http-proto" json:"-"`
+	HTTPProto            string   `json:"http-proto"`
+	CfgHTTPPort          string   `mapstructure:"http-port" json:"-"`
+	HTTPPort             int      `json:"http-port"`
+	CfgHTTPTLSCert       string   `mapstructure:"http-tls-cert" json:"-"`
+	HTTPTLSCert          string   `json:"http-tls-cert"`
+	CfgHTTPTLSKey        string   `mapstructure:"http-tls-key" json:"-"`
+	HTTPTLSKey           string   `json:"http-tls-key"`
 }
 
 type ValidateOpts struct {

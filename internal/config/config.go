@@ -21,8 +21,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/adobe/butler/internal/methods"
 	"github.com/adobe/butler/internal/environment"
+	"github.com/adobe/butler/internal/methods"
 
 	"github.com/hashicorp/go-retryablehttp"
 	log "github.com/sirupsen/logrus"
@@ -46,14 +46,14 @@ const (
 type ConfigClient struct {
 	Scheme     string
 	Method     methods.Method
-	HttpClient *retryablehttp.Client
+	HTTPClient *retryablehttp.Client
 }
 
 func (c *ConfigClient) SetTimeout(val int) {
 	switch c.Scheme {
 	case "http", "https":
 		log.Debugf("ConfigClient::SetTimeout(): setting timeout to %v", val)
-		c.HttpClient.HTTPClient.Timeout = time.Duration(val) * time.Second
+		c.HTTPClient.HTTPClient.Timeout = time.Duration(val) * time.Second
 	}
 }
 
@@ -61,21 +61,21 @@ func (c *ConfigClient) SetRetryMax(val int) {
 	switch c.Scheme {
 	case "http", "https":
 		log.Debugf("ConfigClient::SetRetryMax(): setting retry max to %v", val)
-		c.HttpClient.RetryMax = val
+		c.HTTPClient.RetryMax = val
 	}
 }
 
 func (c *ConfigClient) SetRetryWaitMin(val int) {
 	switch c.Scheme {
 	case "http", "https":
-		c.HttpClient.RetryWaitMin = time.Duration(val) * time.Second
+		c.HTTPClient.RetryWaitMin = time.Duration(val) * time.Second
 	}
 }
 
 func (c *ConfigClient) SetRetryWaitMax(val int) {
 	switch c.Scheme {
 	case "http", "https":
-		c.HttpClient.RetryWaitMax = time.Duration(val) * time.Second
+		c.HTTPClient.RetryWaitMax = time.Duration(val) * time.Second
 	}
 }
 
@@ -143,35 +143,35 @@ func (c *ConfigSettings) ParseConfig(config []byte) error {
 		Config.Globals.StatusFile = "/var/tmp/butler.status"
 	}
 
-	envEnableHttpLog := strings.ToLower(environment.GetVar(Config.Globals.CfgEnableHttpLog))
-	if envEnableHttpLog == "true" {
-		Config.Globals.EnableHttpLog = true
+	envEnableHTTPLog := strings.ToLower(environment.GetVar(Config.Globals.CfgEnableHTTPLog))
+	if envEnableHTTPLog == "true" {
+		Config.Globals.EnableHTTPLog = true
 		// enable http logging
-	} else if envEnableHttpLog == "false" {
-		Config.Globals.EnableHttpLog = false
+	} else if envEnableHTTPLog == "false" {
+		Config.Globals.EnableHTTPLog = false
 		// disable http logging
 	} else {
-		Config.Globals.EnableHttpLog = true
+		Config.Globals.EnableHTTPLog = true
 		// enable http logging
 	}
 
 	// Let's determine the http proto and the port
-	envHttpPort, _ := strconv.Atoi(environment.GetVar(Config.Globals.CfgHttpPort))
-	if envHttpPort == 0 {
-		Config.Globals.HttpPort = 8080
+	envHTTPPort, _ := strconv.Atoi(environment.GetVar(Config.Globals.CfgHTTPPort))
+	if envHTTPPort == 0 {
+		Config.Globals.HTTPPort = 8080
 	} else {
-		Config.Globals.HttpPort = envHttpPort
+		Config.Globals.HTTPPort = envHTTPPort
 	}
 
-	Config.Globals.HttpProto = strings.ToLower(environment.GetVar(Config.Globals.CfgHttpProto))
-	if (Config.Globals.HttpProto != "http") && (Config.Globals.HttpProto != "https") {
-		Config.Globals.HttpProto = "http"
+	Config.Globals.HTTPProto = strings.ToLower(environment.GetVar(Config.Globals.CfgHTTPProto))
+	if (Config.Globals.HTTPProto != "http") && (Config.Globals.HTTPProto != "https") {
+		Config.Globals.HTTPProto = "http"
 	}
 
-	if Config.Globals.HttpProto == "https" {
-		Config.Globals.HttpTlsCert = environment.GetVar(Config.Globals.CfgHttpTlsCert)
-		Config.Globals.HttpTlsKey = environment.GetVar(Config.Globals.CfgHttpTlsKey)
-		if (Config.Globals.HttpTlsCert == "") || (Config.Globals.HttpTlsKey == "") {
+	if Config.Globals.HTTPProto == "https" {
+		Config.Globals.HTTPTLSCert = environment.GetVar(Config.Globals.CfgHTTPTLSCert)
+		Config.Globals.HTTPTLSKey = environment.GetVar(Config.Globals.CfgHTTPTLSKey)
+		if (Config.Globals.HTTPTLSCert == "") || (Config.Globals.HTTPTLSKey == "") {
 			if Config.Globals.ExitOnFailure {
 				log.Fatalf("ConfigSetings::ParseConfig(): globlals.http-proto set to \"https\" but no cert and/or key defined! exiting...")
 			} else {
@@ -229,7 +229,7 @@ func (c *ConfigSettings) ParseConfig(config []byte) error {
 			baseRemotePath := fmt.Sprintf("%s://%s%s", m.ManagerOpts[opts].Method, u, m.ManagerOpts[opts].RepoPath)
 			for _, f := range m.ManagerOpts[opts].PrimaryConfig {
 				fullRemotePath := fmt.Sprintf("%s/%s", baseRemotePath, f)
-				m.ManagerOpts[opts].AppendPrimaryConfigUrl(fullRemotePath)
+				m.ManagerOpts[opts].AppendPrimaryConfigURL(fullRemotePath)
 				log.Debugf("ConfigSettings::ParseConfig(): full remote path to primary config: %s", fullRemotePath)
 			}
 			// we've only got one primary config, so we only need the array to have that element
@@ -243,7 +243,7 @@ func (c *ConfigSettings) ParseConfig(config []byte) error {
 				fullLocalPath := fmt.Sprintf("%s/%s", m.DestPath, f)
 				log.Debugf("ConfigSettings::ParseConfig(): full remote path to additional config: %s", fullRemotePath)
 				log.Debugf("ConfigSettings::ParseConfig(): full local path to primary config: %s", fullLocalPath)
-				m.ManagerOpts[opts].AppendAdditionalConfigUrl(fullRemotePath)
+				m.ManagerOpts[opts].AppendAdditionalConfigURL(fullRemotePath)
 				m.ManagerOpts[opts].AppendAdditionalConfigFile(fullLocalPath)
 			}
 		}

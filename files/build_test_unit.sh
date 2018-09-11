@@ -14,13 +14,14 @@ export GOPATH=/root/go
 export PATH=/bin:/usr/bin:/usr/local/bin:/sbin:/usr/sbin:/usr/local/sbin:/usr/local/go/bin:$GOPATH/bin
 export BUTLER_GO_PATH=/root/go/src/github.com/adobe/butler
 
-if [ ! -d /tmp ]; then
-    mkdir /tmp
+if [ ! -d /tmp/coverage ]; then
+    mkdir -p /tmp/coverage
 fi
 
 mkdir -p $BUTLER_GO_PATH
 cd $BUTLER_GO_PATH
 mv /root/butler/vendor .
+mv /root/butler/.git .
 
 ## make butler directories
 mkdir -p cmd/butler internal/monitor internal/stats internal/config internal/alog internal/environment internal/methods internal/reloaders
@@ -126,3 +127,37 @@ if [ -f /tmp/coverage-monitor.out ]; then
     go tool cover -func /tmp/coverage-monitor.out
     echo
 fi
+
+if [ -f /tmp/coverage/coverage.txt ]; then
+    cp /dev/null /tmp/coverage/coverage.txt
+else
+    touch /tmp/coverage/coverage.txt
+fi
+
+for i in /tmp/coverage-*; do
+  cat $i >> /tmp/coverage/coverage.txt
+done
+
+#if [ x${CODECOV_TOKEN} != "x" ]; then
+#    cd $BUTLER_GO_PATH
+#    echo "> HERE"
+#
+#    echo "> git rev-parse --show-toplevel"
+#    git rev-parse --show-toplevel
+#
+#    echo "> git rev-parse --abbrev-ref HEAD"
+#    git rev-parse --abbrev-ref HEAD
+#
+#    echo "> git log -1 --format=\"%H\""
+#    git log -1 --format="%H"
+#
+#    echo "> git config --get remote.origin.url"
+#    git config --get remote.origin.url
+#    echo "> THERE"
+#    echo "uploading coverage to codecov.io"
+#    bash <(curl -s https://codecov.io/bash) -s /tmp/coverage --retry 3
+#    exit $?
+#else
+#   echo "Could not find CODECOV_TOKEN environment. Not uploading to codecov.io."
+#   exit 0
+#fi

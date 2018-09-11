@@ -32,13 +32,28 @@ ci: build
 all: build test push-dockerhub
 
 build:
+	@echo "> building container butler binary"
 	@docker build --build-arg VERSION=$(VERSION) -t $(BUILDER_TAG) -f files/Dockerfile-build .
 	@docker run -v m2:/root/.m2 -v `pwd`:/build $(BUILDER_TAG) cp /root/butler/butler /build
 	@docker build -t $(IMAGE_TAG) .
 
-build-local:
-	@$(GO) fmt $(pkgs)
-	@$(GO) build -ldflags "-X main.version=$(VERSION)"
+fmt:
+	@echo "> formatting go files"
+	@find . -path ./vendor -prune -o -name '*.go' -print | xargs gofmt -s -w
+
+lint:
+	@echo "> linting go files"
+	@golint $(pkgs)
+
+vet:
+	@echo "> vetting go files"
+	@go vet $(pkgs)
+
+build-local: fmt
+	@echo "> building local butler binary"
+	@$(GO) build -ldflags "-X main.version=$(VERSION)" -o butler cmd/butler/main.go
+
+check: fmt vet lint
 
 pre-deploy-build: test-unit
 
@@ -47,8 +62,8 @@ post-deploy-build:
 
 test: test-unit test-accept
 test-unit:
-	@docker build --build-arg VERSION=$(VERSION) -t $(UNIT_TESTER_TAG) -f files/Dockerfile-testunit .
-	@docker run -i $(UNIT_TESTER_TAG)
+	@docker build --build-arg VERSION=$(VERSION) --build-arg CODECOV_TOKEN=$(CODECOV_TOKEN) -t $(UNIT_TESTER_TAG) -f files/Dockerfile-testunit .
+	@docker run -v /tmp/coverage:/tmp/coverage -i $(UNIT_TESTER_TAG)
 
 test-accept:
 	@docker build --build-arg VERSION=$(VERSION) -t $(ACCEPT_TESTER_TAG) -f files/Dockerfile-testaccept .
@@ -79,6 +94,9 @@ help:
 	@printf "make build-local\t\tBuilds a local binary of butler.\n"
 	@printf "make build-$(SERVICE_NAME)\t\tBuilds butler locally, for use in pushing to artifactory.\n"
 	@printf "make push-dockerhub\t\tPushes butler to DockerHub (If necessary).\n"
+	@printf "make test\t\t\tRuns both unit and acceptance testing.\n"
+	@printf "make test-accept\t\tRuns acceptance testing.\n"
+	@printf "make test-unit\t\t\tRuns unit testing.\n"
 	@printf "make run\t\t\tRun butler on local system.\n"
 	@printf "make start-alertmanager\t\tRun a local alertmanager instance for testing.\n"
 	@printf "make start-prometheus\t\tRun a local prometheus v1 instance for testing.\n"

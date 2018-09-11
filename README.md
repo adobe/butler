@@ -1,5 +1,5 @@
 # Butler CMS
-[![Go Report Card][3]][4] [![Build Status][5]][6]
+[![Go Report Card][3]][4] [![Build Status][5]][6] [![codecov][7]][8]
 ![Butler Logo][0]
 
 ## Butler CMS (Configuration Management System) Overview
@@ -604,3 +604,5 @@ This project is licensed under the Apache V2 License. See [LICENSE](LICENSE) for
 [4]: https://goreportcard.com/report/github.com/adobe/butler
 [5]: https://travis-ci.org/adobe/butler.svg?branch=master
 [6]: https://travis-ci.org/adobe/butler
+[7]: https://codecov.io/gh/adobe/butler/branch/master/graph/badge.svg
+[8]: https://codecov.io/gh/adobe/butler

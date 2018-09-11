@@ -96,7 +96,7 @@ func (s S3Method) Get(u *url.URL) (*Response, error) {
 
 	tmpFile, err := ioutil.TempFile("/tmp", "s3pcmsfile")
 	if err != nil {
-		return &Response{}, errors.New(fmt.Sprintf("S3Method::Get(): could not create temp file err=%v", err))
+		return &Response{}, fmt.Errorf("S3Method::Get(): could not create temp file err=%v", err)
 	}
 
 	log.Debugf("S3Method::Get(): going to download s3 region=%v, bucket=%v, key=%v", s.Region, s.Bucket, u.Path)
@@ -122,14 +122,14 @@ func (s S3Method) Get(u *url.URL) (*Response, error) {
 		}
 		tmpFile.Close()
 		os.Remove(tmpFile.Name())
-		return &Response{statusCode: code}, errors.New(fmt.Sprintf("S3Method::Get(): caught error for download err=%v", err.Error()))
+		return &Response{statusCode: code}, fmt.Errorf("S3Method::Get(): caught error for download err=%v", err.Error())
 	}
 
 	fileData, err := ioutil.ReadFile(tmpFile.Name())
 	if err != nil {
 		tmpFile.Close()
 		os.Remove(tmpFile.Name())
-		return &Response{statusCode: 500}, errors.New(fmt.Sprintf("S3Method::Get(): caught error read file err=%v", err.Error()))
+		return &Response{statusCode: 500}, fmt.Errorf("S3Method::Get(): caught error read file err=%v", err.Error())
 	}
 
 	// Clean up the tmpfile

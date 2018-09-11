@@ -13,3 +13,8 @@ services:
 
 script:
   - make test
+
+# moved this to the test script in files/
+after_success:
+  - ls /tmp/coverage
+  - bash <(curl -s https://codecov.io/bash) -s /tmp/coverage

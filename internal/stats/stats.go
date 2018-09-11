@@ -20,8 +20,8 @@ import (
 	//log "github.com/sirupsen/logrus"
 )
 
+// Prometheus metrics
 var (
-	// Prometheus metrics
 	ButlerConfigValid       *prometheus.GaugeVec
 	ButlerContactSuccess    *prometheus.GaugeVec
 	ButlerContactTime       *prometheus.GaugeVec
@@ -204,7 +204,7 @@ func SetButlerContactVal(res float64, repo string, file string) {
 	if ButlerContactSuccess == nil {
 		ButlerContactSuccess = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Name: "butler_remoterepo_contact_success",
-			Help: "Did butler succesfully contact the remote repository",
+			Help: "Did butler successfully contact the remote repository",
 		}, []string{"config_file", "repo"})
 		prometheus.MustRegister(ButlerContactSuccess)
 
@@ -213,7 +213,7 @@ func SetButlerContactVal(res float64, repo string, file string) {
 	if ButlerContactTime == nil {
 		ButlerContactTime = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Name: "butler_remoterepo_contact_time",
-			Help: "Time that butler succesfully contacted the remote repository",
+			Help: "Time that butler successfully contacted the remote repository",
 		}, []string{"config_file", "repo"})
 		prometheus.MustRegister(ButlerContactTime)
 	}

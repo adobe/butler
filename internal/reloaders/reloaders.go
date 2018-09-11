@@ -69,7 +69,7 @@ func New(entry string) (Reloader, error) {
 
 	switch method {
 	case "http", "https":
-		return NewHttpReloader(entry, method, jsonRes)
+		return NewHTTPReloader(entry, method, jsonRes)
 	default:
 		return NewGenericReloader(entry, method, jsonRes)
 	}

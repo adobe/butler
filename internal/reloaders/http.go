@@ -29,11 +29,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func NewHttpReloader(manager string, method string, entry []byte) (Reloader, error) {
+func NewHTTPReloader(manager string, method string, entry []byte) (Reloader, error) {
 	var (
 		err    error
-		result HttpReloader
-		opts   HttpReloaderOpts
+		result HTTPReloader
+		opts   HTTPReloaderOpts
 	)
 
 	err = json.Unmarshal(entry, &opts)
@@ -74,7 +74,7 @@ func NewHttpReloader(manager string, method string, entry []byte) (Reloader, err
 	opts.ContentType = environment.GetVar(opts.ContentType)
 	// we cannot do ints yet!
 	//opts.Port
-	opts.Uri = environment.GetVar(opts.Uri)
+	opts.URI = environment.GetVar(opts.URI)
 	opts.Method = environment.GetVar(opts.Method)
 	opts.Payload = environment.GetVar(opts.Payload)
 
@@ -86,19 +86,19 @@ func NewHttpReloader(manager string, method string, entry []byte) (Reloader, err
 	return result, err
 }
 
-type HttpReloader struct {
+type HTTPReloader struct {
 	Manager string           `json:"-"`
 	Counter int              `json:"-"`
 	Method  string           `mapstructure:"method" json:"method"`
-	Opts    HttpReloaderOpts `json:"opts"`
+	Opts    HTTPReloaderOpts `json:"opts"`
 }
 
-type HttpReloaderOpts struct {
+type HTTPReloaderOpts struct {
 	Client       *retryablehttp.Client `json:"-"`
 	ContentType  string                `json:"content-type"`
 	Host         string                `json:"host"`
 	Port         string                `mapstructure:"port" json:"port"`
-	Uri          string                `json:"uri"`
+	URI          string                `json:"uri"`
 	Method       string                `json:"method"`
 	Payload      string                `json:"payload"`
 	Retries      string                `json:"retries"`
@@ -107,54 +107,54 @@ type HttpReloaderOpts struct {
 	Timeout      string                `json:"timeout"`
 }
 
-func (h *HttpReloaderOpts) GetClient() *retryablehttp.Client {
+func (h *HTTPReloaderOpts) GetClient() *retryablehttp.Client {
 	return h.Client
 }
 
-func (h HttpReloader) Reload() error {
+func (h HTTPReloader) Reload() error {
 	var (
 		err  error
 		req  *retryablehttp.Request
 		resp *http.Response
 	)
 
-	log.Debugf("HttpReloader::Reload()[count=%v][manager=%v]: reloading manager using http", h.Counter, h.Manager)
-	o := h.GetOpts().(HttpReloaderOpts)
+	log.Debugf("HTTPReloader::Reload()[count=%v][manager=%v]: reloading manager using http", h.Counter, h.Manager)
+	o := h.GetOpts().(HTTPReloaderOpts)
 	c := o.GetClient()
 	// Set the reloader retry policy
 	c.CheckRetry = h.ReloaderRetryPolicy
 	newPort, _ := strconv.Atoi(environment.GetVar(o.Port))
 	if newPort == 0 {
-		log.Warnf("HttpReloader::Reload()[count=%v][manager=%v]: could not convert %v to integer for port, defaulting to 0. This is probably undesired.", h.Counter, h.Manager, o.Port)
+		log.Warnf("HTTPReloader::Reload()[count=%v][manager=%v]: could not convert %v to integer for port, defaulting to 0. This is probably undesired.", h.Counter, h.Manager, o.Port)
 	}
-	reloadUrl := fmt.Sprintf("%s://%s:%d%s", h.Method, o.Host, newPort, o.Uri)
+	reloadURL := fmt.Sprintf("%s://%s:%d%s", h.Method, o.Host, newPort, o.URI)
 
 	switch o.Method {
 	case "post", "put", "patch":
-		req, err = retryablehttp.NewRequest(strings.ToUpper(o.Method), reloadUrl, strings.NewReader(o.Payload))
+		req, err = retryablehttp.NewRequest(strings.ToUpper(o.Method), reloadURL, strings.NewReader(o.Payload))
 		req.Header.Add("Content-Type", o.ContentType)
 	default:
-		req, err = retryablehttp.NewRequest(strings.ToUpper(o.Method), reloadUrl, nil)
+		req, err = retryablehttp.NewRequest(strings.ToUpper(o.Method), reloadURL, nil)
 	}
 
 	if err != nil {
-		msg := fmt.Sprintf("HttpReloader::Reload()[count=%v][manager=%v]: err=%v", h.Counter, h.Manager, err.Error())
+		msg := fmt.Sprintf("HTTPReloader::Reload()[count=%v][manager=%v]: err=%v", h.Counter, h.Manager, err.Error())
 		log.Errorf(msg)
 		return NewReloaderError().WithMessage(err.Error()).WithCode(1)
 	}
 
-	log.Debugf("HttpReloader::Reload()[count=%v][manager=%v]: %v'ing up!", h.Counter, h.Manager, o.Method)
+	log.Debugf("HTTPReloader::Reload()[count=%v][manager=%v]: %v'ing up!", h.Counter, h.Manager, o.Method)
 	resp, err = c.Do(req)
 	if err != nil {
-		msg := fmt.Sprintf("HttpReloader::Reload()[count=%v][manager=%v]: err=%v", h.Counter, h.Manager, err.Error())
+		msg := fmt.Sprintf("HTTPReloader::Reload()[count=%v][manager=%v]: err=%v", h.Counter, h.Manager, err.Error())
 		log.Errorf(msg)
 		return NewReloaderError().WithMessage(err.Error()).WithCode(1)
 	}
 	if resp.StatusCode == 200 {
-		log.Infof("HttpReloader::Reload()[count=%v][manager=%v]: successfully reloaded config. http_code=%d", h.Counter, h.Manager, int(resp.StatusCode))
+		log.Infof("HTTPReloader::Reload()[count=%v][manager=%v]: successfully reloaded config. http_code=%d", h.Counter, h.Manager, int(resp.StatusCode))
 		// at this point error should be nil, so things are OK
 	} else {
-		msg := fmt.Sprintf("HttpReloader::Reload()[count=%v][manager=%v]: received bad response from server. http_code=%d", h.Counter, h.Manager, int(resp.StatusCode))
+		msg := fmt.Sprintf("HTTPReloader::Reload()[count=%v][manager=%v]: received bad response from server. http_code=%d", h.Counter, h.Manager, int(resp.StatusCode))
 		log.Errorf(msg)
 		// at this point we should raise an error
 		return NewReloaderError().WithMessage("received bad response from server").WithCode(resp.StatusCode)
@@ -163,7 +163,7 @@ func (h HttpReloader) Reload() error {
 	return err
 }
 
-func (h *HttpReloader) ReloaderRetryPolicy(resp *http.Response, err error) (bool, error) {
+func (h *HTTPReloader) ReloaderRetryPolicy(resp *http.Response, err error) (bool, error) {
 	if err != nil {
 		stats.SetButlerReloaderRetry(stats.SUCCESS, h.Manager)
 		return true, err
@@ -178,19 +178,19 @@ func (h *HttpReloader) ReloaderRetryPolicy(resp *http.Response, err error) (bool
 	return false, nil
 }
 
-func (h HttpReloader) GetMethod() string {
+func (h HTTPReloader) GetMethod() string {
 	return h.Method
 }
-func (h HttpReloader) GetOpts() ReloaderOpts {
+func (h HTTPReloader) GetOpts() ReloaderOpts {
 	return h.Opts
 }
 
-func (h HttpReloader) SetOpts(opts ReloaderOpts) bool {
-	h.Opts = opts.(HttpReloaderOpts)
+func (h HTTPReloader) SetOpts(opts ReloaderOpts) bool {
+	h.Opts = opts.(HTTPReloaderOpts)
 	return true
 }
 
-func (h HttpReloader) SetCounter(c int) Reloader {
+func (h HTTPReloader) SetCounter(c int) Reloader {
 	h.Counter = c
 	return h
 }

@@ -118,11 +118,11 @@ func (s *FileTestSuite) TestNewFileMethodEnv(c *C) {
 	os.Unsetenv("BUTLER_PATH")
 }
 
-func (s *FileTestSuite) TestNewFileMethodWithUrl(c *C) {
+func (s *FileTestSuite) TestNewFileMethodWithURL(c *C) {
 	path := "/var/www/html/butler/configs/hiya"
 	u, err := url.Parse(path)
 	c.Assert(err, IsNil)
-	method, err := NewFileMethodWithUrl(u)
+	method, err := NewFileMethodWithURL(u)
 	c.Assert(err, IsNil)
 	m := method.(FileMethod)
 	c.Assert(m.Path, Equals, path)
@@ -133,7 +133,7 @@ func (s *FileTestSuite) TestGetPass(c *C) {
 	entry := "test-manager.repo.file"
 	u, err := url.Parse("none")
 	c.Assert(err, IsNil)
-	method1, err1 := NewFileMethodWithUrl(u)
+	method1, err1 := NewFileMethodWithURL(u)
 	method2, err2 := NewFileMethod(&manager, &entry)
 	c.Assert(err1, IsNil)
 	c.Assert(err2, IsNil)
@@ -163,7 +163,7 @@ func (s *FileTestSuite) TestGetFail(c *C) {
 	entry := "test-manager.repo.file"
 	u, err := url.Parse("none")
 	c.Assert(err, IsNil)
-	method1, err1 := NewFileMethodWithUrl(u)
+	method1, err1 := NewFileMethodWithURL(u)
 	method2, err2 := NewFileMethod(&manager, &entry)
 	c.Assert(err1, IsNil)
 	c.Assert(err2, IsNil)

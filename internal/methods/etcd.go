@@ -98,7 +98,7 @@ func (e EtcdMethod) Get(u *url.URL) (*Response, error) {
 	)
 	// get path key's value
 	log.Debugf("Getting file at %v", u)
-	resp, err := GetEtcdKey(e, context.Background(), u.Path, nil)
+	resp, err := GetEtcdKey(context.Background(), e, u.Path, nil)
 	if err != nil {
 		log.Warnf("Error getting key %s from etcd at %s", u.Path, e.Endpoints)
 		return &Response{statusCode: 404}, err
@@ -109,6 +109,6 @@ func (e EtcdMethod) Get(u *url.URL) (*Response, error) {
 	return &response, nil
 }
 
-func GetEtcdKey(e EtcdMethod, ctx context.Context, key string, opts *client.GetOptions) (*client.Response, error) {
+func GetEtcdKey(ctx context.Context, e EtcdMethod, key string, opts *client.GetOptions) (*client.Response, error) {
 	return e.KeysAPI.Get(ctx, key, opts)
 }

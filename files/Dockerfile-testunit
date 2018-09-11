@@ -33,6 +33,6 @@ COPY ./vendor /root/butler/vendor
 COPY ./.git/ /root/butler/.git
 ### required to build
 
-RUN apk update && apk add bash build-base ca-certificates curl git mercurial
+RUN apk update && apk add bash build-base ca-certificates git
 
 CMD ["/doit.sh"]

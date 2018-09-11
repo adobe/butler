@@ -128,7 +128,12 @@ if [ -f /tmp/coverage-monitor.out ]; then
     echo
 fi
 
-touch /tmp/coverage/coverage.txt
+if [ -f /tmp/coverage/coverage.txt ]; then
+    cp /dev/null /tmp/coverage/coverage.txt
+else
+    touch /tmp/coverage/coverage.txt
+fi
+
 for i in /tmp/coverage-*; do
   cat $i >> /tmp/coverage/coverage.txt
 done

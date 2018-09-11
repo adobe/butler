@@ -63,7 +63,7 @@ post-deploy-build:
 test: test-unit test-accept
 test-unit:
 	@docker build --build-arg VERSION=$(VERSION) --build-arg CODECOV_TOKEN=$(CODECOV_TOKEN) -t $(UNIT_TESTER_TAG) -f files/Dockerfile-testunit .
-	@docker run -t /tmp/coverage:/tmp/coverage -i $(UNIT_TESTER_TAG)
+	@docker run -v /tmp/coverage:/tmp/coverage -i $(UNIT_TESTER_TAG)
 
 test-accept:
 	@docker build --build-arg VERSION=$(VERSION) -t $(ACCEPT_TESTER_TAG) -f files/Dockerfile-testaccept .

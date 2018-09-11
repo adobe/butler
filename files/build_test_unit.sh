@@ -133,26 +133,26 @@ for i in /tmp/coverage-*; do
   cat $i >> /tmp/coverage/coverage.txt
 done
 
-if [ x${CODECOV_TOKEN} != "x" ]; then
-    cd $BUTLER_GO_PATH
-    echo "> HERE"
-
-    echo "> git rev-parse --show-toplevel"
-    git rev-parse --show-toplevel
-
-    echo "> git rev-parse --abbrev-ref HEAD"
-    git rev-parse --abbrev-ref HEAD
-
-    echo "> git log -1 --format=\"%H\""
-    git log -1 --format="%H"
-
-    echo "> git config --get remote.origin.url"
-    git config --get remote.origin.url
-    echo "> THERE"
-    echo "uploading coverage to codecov.io"
-    bash <(curl -s https://codecov.io/bash) -s /tmp/coverage --retry 3
-    exit $?
-else
-   echo "Could not find CODECOV_TOKEN environment. Not uploading to codecov.io."
-   exit 0
-fi
+#if [ x${CODECOV_TOKEN} != "x" ]; then
+#    cd $BUTLER_GO_PATH
+#    echo "> HERE"
+#
+#    echo "> git rev-parse --show-toplevel"
+#    git rev-parse --show-toplevel
+#
+#    echo "> git rev-parse --abbrev-ref HEAD"
+#    git rev-parse --abbrev-ref HEAD
+#
+#    echo "> git log -1 --format=\"%H\""
+#    git log -1 --format="%H"
+#
+#    echo "> git config --get remote.origin.url"
+#    git config --get remote.origin.url
+#    echo "> THERE"
+#    echo "uploading coverage to codecov.io"
+#    bash <(curl -s https://codecov.io/bash) -s /tmp/coverage --retry 3
+#    exit $?
+#else
+#   echo "Could not find CODECOV_TOKEN environment. Not uploading to codecov.io."
+#   exit 0
+#fi

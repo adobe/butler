@@ -33,6 +33,7 @@ There are four options that must be configured in the globals section. These opt
 1. scheduler-interval
 1. exit-on-config-failure
 1. status-file
+1. enable-http-log
 
 ### config-manager
 The `config-manager` option is an array of managers for butler to handle configuration for. The manager name can be an arbitrary name, but you have to maintain consistency in the name while configuring the manager sub sections. What is more important is how you configure the the Handler and Reloader options of hte manager.
@@ -71,6 +72,16 @@ It should be readable and writable by the user that butler runs as.
 
 #### Default Value
 /var/tmp/butler.status
+
+#### Example
+`status-file = "/var/tmp/butler.status"`
+
+### enable-http-log
+The `enable-http-log` option is a string boolean value which configures whether or not butler will log http requests to its stderr output, on top of all the other logs that
+it prints. It logs in the standard Apache log format.
+
+#### Default Value
+"true"
 
 #### Example
 `status-file = "/var/tmp/butler.status"`
@@ -301,6 +312,9 @@ Currently http/https are the only reloader options that are supported. The optio
 1. retry-wait-min
 1. retry-wait-max
 1. timeout
+1. auth-type
+1. auth-user
+1. auth-token
 
 #### host
 The `host` option is the host that the http connection will utilise.
@@ -330,6 +344,18 @@ The `retry-wait-max` option is the maximum amount of time, in seconds, to HOLD O
 
 #### timeout
 The `timeout` option is the amount of time, in seconds, until the http connection times out.
+
+#### auth-type
+The `auth-type` option is where you can define the authentication type to attempt when butler tries to retrieve configs from a repo. The valid auth-type options are `basic` and `digest` `token-key`.
+Refer to the main Butler CMS [README](README.md) for details on the differences and usage of the fields.
+
+#### auth-user
+The `auth-user` option defines what the user is that should be used when trying to authenticate to the repository.
+For `token-key` authentication, use this field for the token section.
+
+#### auth-token
+The `auth-token` option defines what password/token should be used when trying to authenticate to the repository.
+For `token-key` authentication, use this field for the key section.
 
 
 ### FILE Retrieval Options

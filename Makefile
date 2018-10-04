@@ -21,7 +21,7 @@ GO:=go
 pkgs=$(shell $(GO) list ./... | egrep -v "(vendor)")
 
 export DOCKERHUB_USER=$(shell echo "$$DOCKERHUB_USER")
-export BUTLER_VERSION=1.1.13
+export BUTLER_VERSION=1.3.0
 export VERSION=v$(BUTLER_VERSION)
 
 default: ci
@@ -29,14 +29,31 @@ default: ci
 ci: build
 	@echo "Success"
 
+all: build test push-dockerhub
+
 build:
-	@docker build --build-arg VERSION=$(VERSION) -t $(BUILDER_TAG) -f Dockerfile-build .
+	@echo "> building container butler binary"
+	@docker build --build-arg VERSION=$(VERSION) -t $(BUILDER_TAG) -f files/Dockerfile-build .
 	@docker run -v m2:/root/.m2 -v `pwd`:/build $(BUILDER_TAG) cp /root/butler/butler /build
 	@docker build -t $(IMAGE_TAG) .
 
-build-local:
-	@$(GO) fmt $(pkgs)
-	@$(GO) build -ldflags "-X main.version=v1.1.12"
+fmt:
+	@echo "> formatting go files"
+	@find . -path ./vendor -prune -o -name '*.go' -print | xargs gofmt -s -w
+
+lint:
+	@echo "> linting go files"
+	@golint $(pkgs)
+
+vet:
+	@echo "> vetting go files"
+	@go vet $(pkgs)
+
+build-local: fmt
+	@echo "> building local butler binary"
+	@$(GO) build -ldflags "-X main.version=$(VERSION)" -o butler cmd/butler/main.go
+
+check: fmt vet lint
 
 pre-deploy-build: test-unit
 
@@ -45,11 +62,11 @@ post-deploy-build:
 
 test: test-unit test-accept
 test-unit:
-	@docker build --build-arg VERSION=$(VERSION) -t $(UNIT_TESTER_TAG) -f Dockerfile-testunit .
-	@docker run -i $(UNIT_TESTER_TAG)
+	@docker build --build-arg VERSION=$(VERSION) --build-arg CODECOV_TOKEN=$(CODECOV_TOKEN) -t $(UNIT_TESTER_TAG) -f files/Dockerfile-testunit .
+	@docker run -v /tmp/coverage:/tmp/coverage -i $(UNIT_TESTER_TAG)
 
 test-accept:
-	@docker build --build-arg VERSION=$(VERSION) -t $(ACCEPT_TESTER_TAG) -f Dockerfile-testaccept .
+	@docker build --build-arg VERSION=$(VERSION) -t $(ACCEPT_TESTER_TAG) -f files/Dockerfile-testaccept .
 	@docker run -v `pwd`/files/certs:/certs -v `pwd`/files/tests:/www --env-file <(env | egrep "(^BUT|AWS)") -i $(ACCEPT_TESTER_TAG)
 
 enter-test-unit:
@@ -77,6 +94,9 @@ help:
 	@printf "make build-local\t\tBuilds a local binary of butler.\n"
 	@printf "make build-$(SERVICE_NAME)\t\tBuilds butler locally, for use in pushing to artifactory.\n"
 	@printf "make push-dockerhub\t\tPushes butler to DockerHub (If necessary).\n"
+	@printf "make test\t\t\tRuns both unit and acceptance testing.\n"
+	@printf "make test-accept\t\tRuns acceptance testing.\n"
+	@printf "make test-unit\t\t\tRuns unit testing.\n"
 	@printf "make run\t\t\tRun butler on local system.\n"
 	@printf "make start-alertmanager\t\tRun a local alertmanager instance for testing.\n"
 	@printf "make start-prometheus\t\tRun a local prometheus v1 instance for testing.\n"
@@ -89,7 +109,7 @@ help:
 	@printf "make alertmanager-logs\t\tTail the logs of the test prometheus instance.\n"
 
 run:
-	$(GO) run -ldflags "-X main.version=$(VERSION)" butler.go -config.path http://localhost/butler/config/butler.toml -config.retrieve-interval 10 -log.level debug
+	$(GO) run -ldflags "-X main.version=$(VERSION)" cmd/butler/main.go -config.path http://localhost/butler/config/butler.toml -config.retrieve-interval 10 -log.level debug
 
 start-prometheus:
 	@docker run --rm -it --name=prometheus -d -p 9090:9090 -v /opt/prometheus:/etc/prometheus prom/prometheus:v1.8.2 -config.file=/etc/prometheus/prometheus.yml -storage.local.path=/prometheus -storage.local.memory-chunks=104857

@@ -18,6 +18,31 @@ title = "Butler Configuration"
   ## Default: /var/tmp/butler.status
   status-file = "/var/tmp/butler.status"
 
+  ## Whether to enable the http log handler for butler. Some find the apache style logging
+  ## helpful, others don't.
+  ## Default: "true"
+  enable-http-log = "true"
+
+  ## Specify that HTTP protocol and Port for the /metrics and /health-check
+  ## to respond on.
+  ##
+  ## http-proto can be either "http" or "https". If you specify "https,"
+  ## then you must also specify the http-tls-cert and http-tls-key options.
+  ##
+  ## http-port can be any port that you want the http server to bind on, but
+  ## quotated.
+  ##
+  ## The default for http-proto is: "http"
+  ## The default for http-port is: "8080"
+  ##
+  ## There is no default for http-tls-cert, or http-tls-key, and it must be
+  ## specified if http-proto is set to "https"
+  ##
+  http-proto = "https"
+  http-port = "8443"
+  http-tls-cert = "/tmp/server.crt"
+  http-tls-key = "/tmp/server.key"
+
 ## This is the definition for the prometheus configuration handler
 [prometheus]
   repos = ["prom"]
@@ -30,7 +55,7 @@ title = "Butler Configuration"
   clean-files = "true"
 
   ## These are the mustache substitutions that we'll attempt to make on the merged prometheus.yml
-  mustache-subs = ["ethos-cluster-id=ethos01-dev-or1", "endpoint=external"]
+  mustache-subs = ["cluster-cluster-id=cluster01-dev-or1", "endpoint=external"]
 
   ## Should config caching be used
   enable-cache = "true"

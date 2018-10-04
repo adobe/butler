@@ -1,7 +1,9 @@
-butler
+/butler
 env
 *.swp
 *.key
 #*.toml
 *.bak
 *.idea
+.vscode
+debug

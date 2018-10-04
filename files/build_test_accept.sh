@@ -12,7 +12,7 @@
 export GOROOT=/usr/local/go
 export GOPATH=/root/go
 export PATH=/bin:/usr/bin:/usr/local/bin:/sbin:/usr/sbin:/usr/local/sbin:/usr/local/go/bin:$GOPATH/bin
-export BUTLER_GO_PATH=/root/go/src/git.corp.adobe.com/TechOps-IAO/butler
+export BUTLER_GO_PATH=/root/go/src/github.com/adobe/butler
 
 if [ ! -d /tmp ]; then
     mkdir /tmp
@@ -30,32 +30,37 @@ mkdir -p /opt/butler /opt/cache
 mkdir -p $BUTLER_GO_PATH
 cd $BUTLER_GO_PATH
 mv /root/butler/vendor .
-mv /root/butler/*.go .
 
 ## make butler directories
-mkdir -p stats config alog environment config/methods config/reloaders
+mkdir -p cmd/butler internal/monitor internal/stats internal/config internal/alog internal/environment internal/methods internal/reloaders
+
+## move butler main
+mv /root/butler/cmd/butler/*.go cmd/butler
 
 ## move stats files
-mv /root/butler/stats/*.go stats
+mv /root/butler/internal/stats/*.go internal/stats
 
 ## move config files
-mv /root/butler/config/*.go config
+mv /root/butler/internal/config/*.go internal/config
 
 ## move environment files
-mv /root/butler/environment/*.go environment
+mv /root/butler/internal/environment/*.go internal/environment
 
 ## move alog files
-mv /root/butler/alog/*.go alog
+mv /root/butler/internal/alog/*.go internal/alog
 
-## move config/methods files
-mv /root/butler/config/methods/*.go config/methods
+## move monitor files
+mv /root/butler/internal/monitor/*.go internal/monitor
 
-## move config/reloaders files
-mv /root/butler/config/reloaders/*.go config/reloaders
+## move internal/methods files
+mv /root/butler/internal/methods/*.go internal/methods
+
+## move internal/reloaders files
+mv /root/butler/internal/reloaders/*.go internal/reloaders
 
 ## Let's build local go and perform some tests
 cd $BUTLER_GO_PATH
-go build -ldflags "-X main.version=$VERSION" -o /butler
+go build -ldflags "-X main.version=$VERSION" -o /butler cmd/butler/main.go
 
 BASE_SCRIPTS="/www/scripts/base.sh /www/scripts/s3.sh /www/scripts/azure.sh"
 for script in /www/scripts/base.sh /www/scripts/s3.sh /www/scripts/azure.sh

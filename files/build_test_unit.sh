@@ -12,38 +12,45 @@
 export GOROOT=/usr/local/go
 export GOPATH=/root/go
 export PATH=/bin:/usr/bin:/usr/local/bin:/sbin:/usr/sbin:/usr/local/sbin:/usr/local/go/bin:$GOPATH/bin
-export BUTLER_GO_PATH=/root/go/src/git.corp.adobe.com/TechOps-IAO/butler
+export BUTLER_GO_PATH=/root/go/src/github.com/adobe/butler
 
-if [ ! -d /tmp ]; then
-    mkdir /tmp
+if [ ! -d /tmp/coverage ]; then
+    mkdir -p /tmp/coverage
 fi
 
 mkdir -p $BUTLER_GO_PATH
 cd $BUTLER_GO_PATH
 mv /root/butler/vendor .
-mv /root/butler/*.go .
+mv /root/butler/.git .
 
 ## make butler directories
-mkdir -p stats config alog environment config/methods config/reloaders
+mkdir -p cmd/butler internal/monitor internal/stats internal/config internal/alog internal/environment internal/methods internal/reloaders
+
+## move butler main
+mv /root/butler/cmd/butler/*.go cmd/butler
 
 ## move stats files
-mv /root/butler/stats/*.go stats
+mv /root/butler/internal/stats/*.go internal/stats
 
 ## move config files
-mv /root/butler/config/*.go config
+mv /root/butler/internal/config/*.go internal/config
 
 ## move environment files
-mv /root/butler/environment/*.go environment
+mv /root/butler/internal/environment/*.go internal/environment
 
 ## move alog files
-mv /root/butler/alog/*.go alog
+mv /root/butler/internal/alog/*.go internal/alog
 
-## move config/methods files
-mv /root/butler/config/methods/*.go config/methods
+## move monitor files
+mv /root/butler/internal/monitor/*.go internal/monitor
 
-## move config/reloaders files
-mv /root/butler/config/reloaders/*.go config/reloaders
+## move internal/methods files
+mv /root/butler/internal/methods/*.go internal/methods
 
+## move internal/reloaders files
+mv /root/butler/internal/reloaders/*.go internal/reloaders
+
+cd $BUTLER_GO_PATH/cmd/butler
 go test -check.vv -coverprofile=/tmp/coverage-main.out
 ret=$?
 
@@ -51,7 +58,7 @@ if [ $ret -ne 0 ]; then
     exit $ret
 fi
 
-cd $BUTLER_GO_PATH/config
+cd $BUTLER_GO_PATH/internal/config
 go test -check.vv -coverprofile=/tmp/coverage-config.out
 ret=$?
 
@@ -59,7 +66,7 @@ if [ $ret -ne 0 ]; then
     exit $ret
 fi
 
-cd $BUTLER_GO_PATH/config/methods
+cd $BUTLER_GO_PATH/internal/methods
 go test -check.vv -coverprofile=/tmp/coverage-config-methods.out
 ret=$?
 
@@ -67,7 +74,7 @@ if [ $ret -ne 0 ]; then
     exit $ret
 fi
 
-cd $BUTLER_GO_PATH/config/reloaders
+cd $BUTLER_GO_PATH/internal/reloaders
 go test -check.vv -coverprofile=/tmp/coverage-config-reloaders.out
 ret=$?
 
@@ -75,7 +82,15 @@ if [ $ret -ne 0 ]; then
     exit $ret
 fi
 
-cd $BUTLER_GO_PATH/stats
+cd $BUTLER_GO_PATH/internal/monitor
+go test -check.vv -coverprofile=/tmp/coverage-monitor.out
+ret=$?
+
+if [ $ret -ne 0 ]; then
+    exit $ret
+fi
+
+cd $BUTLER_GO_PATH/internal/stats
 go test -check.vv -coverprofile=/tmp/coverage-stats.out
 ret=$?
 
@@ -107,3 +122,42 @@ if [ -f /tmp/coverage-stats.out ]; then
     go tool cover -func /tmp/coverage-stats.out
     echo
 fi
+
+if [ -f /tmp/coverage-monitor.out ]; then
+    go tool cover -func /tmp/coverage-monitor.out
+    echo
+fi
+
+if [ -f /tmp/coverage/coverage.txt ]; then
+    cp /dev/null /tmp/coverage/coverage.txt
+else
+    touch /tmp/coverage/coverage.txt
+fi
+
+for i in /tmp/coverage-*; do
+  cat $i >> /tmp/coverage/coverage.txt
+done
+
+#if [ x${CODECOV_TOKEN} != "x" ]; then
+#    cd $BUTLER_GO_PATH
+#    echo "> HERE"
+#
+#    echo "> git rev-parse --show-toplevel"
+#    git rev-parse --show-toplevel
+#
+#    echo "> git rev-parse --abbrev-ref HEAD"
+#    git rev-parse --abbrev-ref HEAD
+#
+#    echo "> git log -1 --format=\"%H\""
+#    git log -1 --format="%H"
+#
+#    echo "> git config --get remote.origin.url"
+#    git config --get remote.origin.url
+#    echo "> THERE"
+#    echo "uploading coverage to codecov.io"
+#    bash <(curl -s https://codecov.io/bash) -s /tmp/coverage --retry 3
+#    exit $?
+#else
+#   echo "Could not find CODECOV_TOKEN environment. Not uploading to codecov.io."
+#   exit 0
+#fi

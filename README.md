@@ -1,53 +1,64 @@
-# butler
-![Butler Logo][butler-logo]
+# Butler CMS
+[![Go Report Card][3]][4] [![Build Status][5]][6] [![codecov][7]][8]
+![Butler Logo][0]
 
-## Butler Configuration Management System (BCMS) Overview
-The butler tool is designed to grab any configuration files, defined in its configuration file, from a remote location/repository via http(s) and side load them onto another locally running container.
+## Butler CMS (Configuration Management System) Overview
+The Butler CMS (butler) tool is designed to grab any configuration files, defined in its configuration file, from a remote location/repository via http(s)/s3(AWS)/blob(Azure)/file/etcd and side load them onto another locally running container.
 
-The butler configuration file is a [TOML](https://github.com/toml-lang/toml) formatted file. You can store the file locally (using a mounted filesystem), or on a remote server. The proper formatting for the config file can be found [here](https://git.corp.adobe.com/TechOps-IAO/butler/tree/master/contrib)
+The butler configuration file is a [TOML](https://github.com/toml-lang/toml) formatted file. You can store the file locally (using a mounted filesystem), or on a remote server. The proper formatting for the config file can be found [here](https://github.com/adobe/butler/tree/master/contrib)
 
 ### Butler at 30,000 feet
 Here is a quick diagram that contains all the elements of what butler does, and how it is intended to interact with other systems.
 
-![Butler Elements][elements-diagram]
+![Butler Elements][1]
 
 ### Butler Workflow
 To help understand more of how butler functions, here is a work flow diagram showing, in more detail, the work butler does.
 
-![Butler Workflow][workflow-diagram]
+![Butler Workflow][2]
 
 ## Usage
 There are various ways that you can run butler. We will ultimately deploy butler via DCOS, and you can run this on your local machine to do some testing.
 
 ### Command Line Usage
 ```
-[14:22]pts/12:16(stegen@woden):[~/git/ethos/butler]% ./butler -h
+[16:06]pts/22:49(stegen@woden):[~]%
 Usage of ./butler:
   -config.path string
     	Full remote path to butler configuration file (eg: full URL scheme://path).
-  -config.retrieve-interval int
-    	The interval, in seconds, to retrieve new butler configuration files. (default 300)
-  -http.retries int
-    	The number of http retries for GET requests to obtain the butler configuration files (default 4)
-  -http.retry_wait_max int
-    	The maximum amount of time to wait before attemping to retry the http config get operation. (default 10)
-  -http.retry_wait_min int
-    	The minimum amount of time to wait before attemping to retry the http config get operation. (default 5)
-  -http.timeout int
-    	The http timeout, in seconds, for GET requests to obtain the butler configuration file. (default 10)
+  -config.retrieve-interval string
+    	The interval, in seconds, to retrieve new butler configuration files. (default "300")
+  -etcd.endpoints string
+    	The endpoints to connect to etcd.
+  -http.auth_token string
+    	HTTP auth token to use for HTTP authentication.
+  -http.auth_type string
+    	HTTP auth type (eg: basic / digest / token-key) to use. If empty (by default) do not use HTTP authentication.
+  -http.auth_user string
+    	HTTP auth user to use for HTTP authentication
+  -http.retries string
+    	The number of http retries for GET requests to obtain the butler configuration files (default "4")
+  -http.retry_wait_max string
+    	The maximum amount of time to wait before attemping to retry the http config get operation. (default "10")
+  -http.retry_wait_min string
+    	The minimum amount of time to wait before attemping to retry the http config get operation. (default "5")
+  -http.timeout string
+    	The http timeout, in seconds, for GET requests to obtain the butler configuration file. (default "10")
   -log.level string
     	The butler log level. Log levels are: debug, info, warn, error, fatal, panic. (default "info")
   -s3.region string
     	The S3 Region that the config file resides.
+  -test
+    	Are we testing butler? (probably not!)
   -version
     	Print version information.
 
-[master]
-[14:22]pts/12:17(stegen@woden):[~/git/ethos/butler]%
+[16:08]pts/22:50(stegen@woden):[~]%
+
 
 ```
 
-Valid schemes are: blob (Azure), file, http (or https), and s3 (AWS)
+Valid schemes are: blob (Azure), etcd, file, http (or https), and s3 (AWS)
 
 ### Use of Environment Variables
 Butler supports the usre of environment variables. Any field that is prefixed with `env:` will be looked up in the environment. This will work for all command line options, and MOST configuration file options.
@@ -67,23 +78,58 @@ You should get the gist at this point. Refer to the butler.toml.sample configura
 ### Example Command Line Usage
 #### HTTP/HTTPS CLI
 ```
-[14:24]pts/12:21(stegen@woden):[~/git/ethos/butler]% ./butler -config.path http://localhost/butler/config/butler.toml -config.retrieve-interval 10 -log.level info
-INFO[2017-10-11T14:24:29+01:00] Starting butler version v1.0.0
+[14:24]pts/12:21(stegen@woden):[~]% ./butler -config.path http://localhost/butler/config/butler.toml -config.retrieve-interval 10 -log.level info
+INFO[2017-10-11T14:24:29+01:00] Starting Butler CMS version v1.2.1
 ^C
 
 [master]
-[14:24]pts/12:22(stegen@woden):[~/git/ethos/butler]%
+[14:24]pts/12:22(stegen@woden):[~]%
 ```
 When you execute butler with the above arguments, you are asking butler to grab its configuration file from http://localhost/butler/config/butler.toml, and try to re-retrieve and refresh it every 10 seconds. It will also use the default log level of INFO. If you need more verbosity to your output, specify `debug` as the logging level argument.
 
+##### HTTP/HTTPS CLI Authentication
+Butler CMS supports both Basic and Digest based HTTP authentication. If your butler.toml is behind an authenticated webserver, then on the CLI you must provide the following flags:
+1. `-http.auth_type` - This is the backend authentication type. Choose either `basic`, `digest`, or `token-key`.
+1. `-http.auth_user` - This is the user to authenticate as.
+1. `-http.auth_token` - This is the authentication token.
+
+With any of these flags, they can be retrieved form the environment. Refer to the "Use of Environment Variables" section for more information.
+
+###### Authentication Types
+1. basic - This is your standard `Authorization: basic` header.
+1. digest - This is your sandard `Authorization: digest` header.
+1. token-key - This is a custom `Authorization: token=foo, key=bar` header. Use -http.auth_user field for token and -http.auth_token field for the key.
+
+#### etcd CLI
+```
+[12:34]pts/16:3(stegen@woden):[~]% ./butler -config.path etcd://etcd.mesos/butler/butler.toml -etcd.endpoints http://etcd.mesos:1026 -log.level info
+INFO[2018-05-10T11:34:05Z] Starting Butler CMS version v1.2.1
+INFO[2018-05-10T11:34:05Z] Config::Init(): initializing butler config.
+WARN[2018-05-10T11:34:05Z] ButlerConfig::Init() Above \"NewHttpMethod(): could not convert\" warnings may be safely disregarded.
+INFO[2018-05-10T11:34:05Z] Config::Init(): butler config initialized.
+INFO[2018-05-10T11:34:05Z] ButlerConfig::Handler(): entering.
+INFO[2018-05-10T11:34:05Z] Config::RunCMHandler(): entering
+^C
+[12:34]pts/16:4(stegen@woden):[~]%
+```
+
+You can grab the butler.toml directly from etcd, and you can also create a repo which utilizes etcd within the butler.toml. Refer to [this example](https://github.com/adobe/butler/blob/master/contrib/butler.toml.etcdtest).
+
+You can easily add the files into etcd by the following commands:
+```
+etcdctl --endpoint http://etcd.mesos:1026 mkdir /butler
+etcdctl --endpoint http://etcd.mesos:1026 set /butler/butler.toml "$(cat /tmp/butler.toml)"
+```
+Note that this should support both etcd v2 and v3.
+
 #### S3 CLI
 ```
-[14:24]pts/12:21(stegen@woden):[~/git/ethos/butler]% ./butler -config.path s3://s3-bucket/config/butler.toml -config.retrieve-interval 10 -log.level info -s3.region <aws-region>
-INFO[2017-10-11T14:24:29+01:00] Starting butler version v1.0.0
+[14:24]pts/12:21(stegen@woden):[~]% ./butler -config.path s3://s3-bucket/config/butler.toml -config.retrieve-interval 10 -log.level info -s3.region <aws-region>
+INFO[2017-10-11T14:24:29+01:00] Starting Butler CMS version v1.2.1
 ^C
 
 [master]
-[14:24]pts/12:22(stegen@woden):[~/git/ethos/butler]%
+[14:24]pts/12:22(stegen@woden):[~]%
 ```
 When you execute butler with the above arguments, you are asking butler to grab its configuration file from S3 storage using bucket `s3-bucket`, file key `config/butler.toml` and the aws-region as specified by `s3.region`, and try to re-retrieve and refresh it every 10 seconds. It will also use the default log level of INFO. If you need more verbosity to your output, specify `debug` as the logging level argument.
 
@@ -95,7 +141,8 @@ The following environment variable is optional
 1. `BUTLER_STORAGE_ACCOUNT`- This is the name of the Azure Storage Account. You can either specify this in the environment, or you can specify it in the butler.toml configuration file. See the example file for reference under `./contrib/butler.toml.sample`.
 
 The command line option looks like this:
-`[14:24]pts/12:21(stegen@woden):[~/git/ethos/butler]% ./butler -config.path blob://azure-storage-account/azure-blob-container/butler.toml -config.retrieve-interval 10 -log.level info`
+
+`[14:24]pts/12:21(stegen@woden):[~]% ./butler -config.path blob://azure-storage-account/azure-blob-container/butler.toml -config.retrieve-interval 10 -log.level info`
 
 ### DCOS Deployment JSON
 ```
@@ -105,7 +152,7 @@ The command line option looks like this:
   "cmd": null,
   "args": [
     "-config.path",
-    "http://10.14.210.14/cgit/adobe-platform/ethos-monitoring/plain/oncluster/butler.toml"
+    "http://server/butler.toml"
   ],
   "user": null,
   "env": null,
@@ -119,7 +166,7 @@ The command line option looks like this:
     [
       "hostname",
       "LIKE",
-      "10.14.211.16"
+      "1.2.3.4"
     ],
     [
       "hostname",
@@ -133,7 +180,7 @@ The command line option looks like this:
   "maxLaunchDelaySeconds": 3600,
   "container": {
     "docker": {
-      "image": "docker-ethos-core-univ-dev.dr-uw2.adobeitc.com/ethos/butler:x.y.z",
+      "image": "matthsmi/butler:x.y.z",
       "forcePullImage": false,
       "privileged": false,
       "parameters": [
@@ -241,7 +288,7 @@ If you want to run the acceptance testing, just run `make test-accept`.
 ## Health Checks
 butler provides DCOS health checks by exposing an http service with a /health-check endpoint. It exposes various configuration, and realtime information in JSON format regarding the butler process.
 ```
-[12:54]pts/11:13(stegen@woden):[~/git/ethos/butler]% http get localhost:8080/health-check
+[12:54]pts/11:13(stegen@woden):[~]% http get localhost:8080/health-check
 HTTP/1.1 200 OK
 Content-Type: application/json
 Date: Thu, 12 Oct 2017 10:44:50 GMT
@@ -399,12 +446,12 @@ Transfer-Encoding: chunked
 }
 
 [master]
-[13:02]pts/11:14(stegen@woden):[~/git/ethos/butler]% 
+[13:02]pts/11:14(stegen@woden):[~]%
 ```
 ## Prometheus Metrics
 butler provides native Prometheus of the butler go binary by exposing an http service with a /metrics endpoint. This includes both butler specific metric information (prefixed with `butler_`), and internal go and process related metrics (prefixed with `go_` and `process_`)
 ```
-[13:04]pts/11:15(stegen@woden):[~/git/ethos/butler]% http get localhost:8080/metrics 
+[13:04]pts/11:15(stegen@woden):[~]% http get localhost:8080/metrics 
 HTTP/1.1 200 OK
 Content-Encoding: gzip
 Content-Length: 1381
@@ -540,7 +587,7 @@ process_virtual_memory_bytes 2.39341568e+08
 
 
 [master]
-[13:04]pts/11:16(stegen@woden):[~/git/ethos/butler]% 
+[13:04]pts/11:16(stegen@woden):[~]%
 ```
 ### Contributing
 
@@ -550,6 +597,12 @@ Contributions are welcomed! Read the [Contributing Guide](CONTRIBUTING.md) for m
 
 This project is licensed under the Apache V2 License. See [LICENSE](LICENSE) for more information.
 
-[workflow-diagram]: https://git.corp.adobe.com/TechOps-IAO/butler/raw/master/contrib/diagrams/png/Butler%20Workflow.png
-[elements-diagram]: https://git.corp.adobe.com/TechOps-IAO/butler/raw/master/contrib/diagrams/png/Butler%20Elements.png
-[butler-logo]: https://git.corp.adobe.com/TechOps-IAO/butler/raw/master/contrib/images/butler.png
+[0]: https://github.com/adobe/butler/raw/master/contrib/images/butler.png
+[1]: https://github.com/adobe/butler/raw/master/contrib/diagrams/png/Butler%20Elements.png
+[2]: https://github.com/adobe/butler/raw/master/contrib/diagrams/png/Butler%20Workflow.png
+[3]: https://goreportcard.com/badge/github.com/adobe/butler
+[4]: https://goreportcard.com/report/github.com/adobe/butler
+[5]: https://travis-ci.org/adobe/butler.svg?branch=master
+[6]: https://travis-ci.org/adobe/butler
+[7]: https://codecov.io/gh/adobe/butler/branch/master/graph/badge.svg
+[8]: https://codecov.io/gh/adobe/butler

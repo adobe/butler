@@ -213,6 +213,42 @@
 			"revisionTime": "2017-03-20T16:26:55Z"
 		},
 		{
+			"checksumSHA1": "APRJtya3c5FX3g4HTCNWGGeCcM8=",
+			"path": "github.com/coreos/etcd/client",
+			"revision": "ef23564ebffa4863bf538d29bab1ed735980bac6",
+			"revisionTime": "2018-05-08T23:50:09Z"
+		},
+		{
+			"checksumSHA1": "mKIXx1kDwmVmdIpZ3pJtRBuUKso=",
+			"path": "github.com/coreos/etcd/pkg/pathutil",
+			"revision": "ef23564ebffa4863bf538d29bab1ed735980bac6",
+			"revisionTime": "2018-05-08T23:50:09Z"
+		},
+		{
+			"checksumSHA1": "wAOmJuqYSwbVNGdofRaxF1jm1ak=",
+			"path": "github.com/coreos/etcd/pkg/srv",
+			"revision": "ef23564ebffa4863bf538d29bab1ed735980bac6",
+			"revisionTime": "2018-05-08T23:50:09Z"
+		},
+		{
+			"checksumSHA1": "KU44RoTf7eoYTiIJcPuP70wFNrk=",
+			"path": "github.com/coreos/etcd/pkg/types",
+			"revision": "ef23564ebffa4863bf538d29bab1ed735980bac6",
+			"revisionTime": "2018-05-08T23:50:09Z"
+		},
+		{
+			"checksumSHA1": "SCXhykntdCkvDe22S/RNButQ0C0=",
+			"path": "github.com/coreos/etcd/version",
+			"revision": "ef23564ebffa4863bf538d29bab1ed735980bac6",
+			"revisionTime": "2018-05-08T23:50:09Z"
+		},
+		{
+			"checksumSHA1": "97BsbXOiZ8+Kr+LIuZkQFtSj7H4=",
+			"path": "github.com/coreos/go-semver/semver",
+			"revision": "e214231b295a8ea9479f11b70b35d5acf3556d9b",
+			"revisionTime": "2018-01-08T23:09:05Z"
+		},
+		{
 			"checksumSHA1": "+TKtBzv23ywvmmqRiGEjUba4YmI=",
 			"path": "github.com/dgrijalva/jwt-go",
 			"revision": "dbeaa9332f19a944acb5736b4456cfcc02140e29",
@@ -449,6 +485,12 @@
 			"revisionTime": "2016-12-13T21:39:29Z"
 		},
 		{
+			"checksumSHA1": "kdas0zQNtQqfUMEMFGkUF1OcgPc=",
+			"path": "github.com/ugorji/go/codec",
+			"revision": "f3cacc17c85ecb7f1b6a9e373ee85d1480919868",
+			"revisionTime": "2018-04-07T10:30:00Z"
+		},
+		{
 			"checksumSHA1": "ZaU56svwLgiJD0y8JOB3+/mpYBA=",
 			"path": "golang.org/x/crypto/ssh/terminal",
 			"revision": "adbae1b6b6fb4b02448a0fc0dbbc9ba2b95b294d",
@@ -485,5 +527,5 @@
 			"revisionTime": "2016-09-28T15:37:09Z"
 		}
 	],
-	"rootPath": "git.corp.adobe.com/TechOps-IAO/butler"
+	"rootPath": "github.com/adobe/butler"
 }

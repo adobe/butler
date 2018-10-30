@@ -475,12 +475,12 @@ butler_localconfig_render_time 1.501070527e+09
 butler_remoterepo_config_valid{config_file="commonalerts.yml"} 1
 butler_remoterepo_config_valid{config_file="prometheus.yml"} 1
 butler_remoterepo_config_valid{config_file="tenant.yml"} 1
-# HELP butler_remoterepo_contact_success Did butler succesfully contact the remote repository
+# HELP butler_remoterepo_contact_success Did butler successfully contact the remote repository
 # TYPE butler_remoterepo_contact_success gauge
 butler_remoterepo_contact_success{config_file="commonalerts.yml"} 1
 butler_remoterepo_contact_success{config_file="prometheus.yml"} 1
 butler_remoterepo_contact_success{config_file="tenant.yml"} 1
-# HELP butler_remoterepo_contact_time Time that butler succesfully contacted the remote repository
+# HELP butler_remoterepo_contact_time Time that butler successfully contacted the remote repository
 # TYPE butler_remoterepo_contact_time gauge
 butler_remoterepo_contact_time{config_file="commonalerts.yml"} 1.501070685e+09
 butler_remoterepo_contact_time{config_file="prometheus.yml"} 1.501070697e+09

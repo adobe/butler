@@ -51,6 +51,24 @@ var TestViperConfigEtcd = []byte(`[test-manager]
       endpoints = "http://127.0.0.1:2379"
 `)
 
+var TestViperConfigEtcdTLS = []byte(`[test-manager]
+  repos = ["repo"]
+  clean-files = "true"
+  mustache-subs = ["ethos-cluster-id=ethos01-dev-or1", "endpoint=external", "authkey=env:AUTH_KEY"]
+  enable-cache = "true"
+  cache-path = "/opt/cache/prometheus"
+  dest-path = "/opt/prometheus"
+  primary-config-name = "prometheus.yml"
+  [test-manager.repo]
+    method = "etcd"
+    repo-path = "/var/www/html/butler/configs/prometheus"
+    primary-config = ["prometheus.yml", "prometheus-other.yml"]
+    additional-config = ["alerts/commonalerts.yml", "butler/butler.yml"]
+    [test-manager.repo.etcd]
+	  endpoints = "https://127.0.0.1:2379"
+	  insecure-skip-verify = "true"
+`)
+
 var TestViperConfigEnvEtcd = []byte(`[test-manager]
   repos = ["repo"]
   clean-files = "true"
@@ -102,6 +120,21 @@ func (s *EtcdTestSuite) TestNewEtcdMethod(c *C) {
 	method, err := NewEtcdMethod(&manager, &entry)
 	m := method.(EtcdMethod)
 	c.Assert(m.Endpoints, DeepEquals, []string{"http://127.0.0.1:2379"})
+	c.Assert(m.InsecureSkipVerify, DeepEquals, false)
+	c.Assert(err, IsNil)
+}
+
+func (s *EtcdTestSuite) TestNewEtcdMethodTLSInsecureSkipVerify(c *C) {
+	// Load config
+	err := viper.ReadConfig(bytes.NewBuffer(TestViperConfigEtcdTLS))
+	c.Assert(err, IsNil)
+
+	manager := "test-manager"
+	entry := "test-manager.repo.etcd"
+	method, err := NewEtcdMethod(&manager, &entry)
+	m := method.(EtcdMethod)
+	c.Assert(m.Endpoints, DeepEquals, []string{"https://127.0.0.1:2379"})
+	c.Assert(m.InsecureSkipVerify, DeepEquals, true)
 	c.Assert(err, IsNil)
 }
 
@@ -118,15 +151,26 @@ func (s *EtcdTestSuite) TestNewEtcdMethodEnv(c *C) {
 	m := method.(EtcdMethod)
 	c.Assert(err, IsNil)
 	c.Assert(m.Endpoints, DeepEquals, endpoints)
+	c.Assert(m.InsecureSkipVerify, DeepEquals, false)
 	os.Unsetenv("ENDPOINTS")
 }
 
 func (s *EtcdTestSuite) TestNewEtcdMethodWithUrl(c *C) {
 	endpoints := []string{"http://127.0.0.2:2379", "http://127.0.0.1:2379"}
-	method, err := NewEtcdMethodWithEndpoints(endpoints)
+	method, err := NewEtcdMethodWithEndpoints(endpoints, false)
 	c.Assert(err, IsNil)
 	m := method.(EtcdMethod)
 	c.Assert(m.Endpoints, DeepEquals, endpoints)
+	c.Assert(m.InsecureSkipVerify, DeepEquals, false)
+}
+
+func (s *EtcdTestSuite) TestNewEtcdMethodWithUrlTLS(c *C) {
+	endpoints := []string{"https://127.0.0.2:2379", "https://127.0.0.1:2379"}
+	method, err := NewEtcdMethodWithEndpoints(endpoints, true)
+	c.Assert(err, IsNil)
+	m := method.(EtcdMethod)
+	c.Assert(m.Endpoints, DeepEquals, endpoints)
+	c.Assert(m.InsecureSkipVerify, DeepEquals, true)
 }
 
 func (s *EtcdTestSuite) TestGetPass(c *C) {
@@ -147,7 +191,7 @@ func (s *EtcdTestSuite) TestGetPass(c *C) {
 	})
 	defer patch.Unpatch()
 
-	method1, err1 := NewEtcdMethodWithEndpoints(endpoints)
+	method1, err1 := NewEtcdMethodWithEndpoints(endpoints, false)
 	method2, err2 := NewEtcdMethod(&manager, &entry)
 	c.Assert(err1, IsNil)
 	c.Assert(err2, IsNil)
@@ -175,7 +219,7 @@ func (s *EtcdTestSuite) TestGetFail(c *C) {
 	u, err := url.Parse("none")
 	endpoints := []string{"http://127.0.0.3:2379"}
 	c.Assert(err, IsNil)
-	method1, err1 := NewEtcdMethodWithEndpoints(endpoints)
+	method1, err1 := NewEtcdMethodWithEndpoints(endpoints, false)
 	method2, err2 := NewEtcdMethod(&manager, &entry)
 	c.Assert(err1, IsNil)
 	c.Assert(err2, IsNil)

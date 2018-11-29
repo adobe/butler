@@ -50,9 +50,10 @@ type ButlerConfig struct {
 	HTTPAuthUser  string
 	HTTPAuthToken string
 	// some s3 specific stuff
-	S3Region  string
-	S3Bucket  string
-	Endpoints []string
+	S3Region           string
+	S3Bucket           string
+	Endpoints          []string
+	InsecureSkipVerify bool
 }
 
 var (
@@ -248,7 +249,7 @@ func (bc *ButlerConfig) Init() error {
 			return err
 		}
 	case "etcd":
-		client.Method, err = methods.NewEtcdMethodWithEndpoints(bc.Endpoints)
+		client.Method, err = methods.NewEtcdMethodWithEndpoints(bc.Endpoints, bc.InsecureSkipVerify)
 		if err != nil {
 			return err
 		}

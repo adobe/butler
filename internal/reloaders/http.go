@@ -13,6 +13,7 @@ governing permissions and limitations under the License.
 package reloaders
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	//"errors"
 	"fmt"
@@ -31,9 +32,10 @@ import (
 
 func NewHTTPReloader(manager string, method string, entry []byte) (Reloader, error) {
 	var (
-		err    error
-		result HTTPReloader
-		opts   HTTPReloaderOpts
+		err                error
+		result             HTTPReloader
+		opts               HTTPReloaderOpts
+		insecureSkipVerify bool
 	)
 
 	err = json.Unmarshal(entry, &opts)
@@ -61,10 +63,17 @@ func NewHTTPReloader(manager string, method string, entry []byte) (Reloader, err
 		log.Warnf("NewHttpReloader(): could not convert %v to integer for retry-wait-min, defaulting to 0. This is probably undesired.", opts.RetryWaitMin)
 	}
 
+	// ignore cert errors if defined
+	insecureSkipVerify = strings.ToLower(environment.GetVar(opts.InsecureSkipVerify)) == "true"
+	transport := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: insecureSkipVerify},
+	}
+
 	opts.Client = retryablehttp.NewClient()
 	opts.Client.Logger.SetFlags(0)
 	opts.Client.Logger.SetOutput(ioutil.Discard)
 	opts.Client.HTTPClient.Timeout = time.Duration(newTimeout) * time.Second
+	opts.Client.HTTPClient.Transport = transport
 	opts.Client.RetryMax = newRetries
 	opts.Client.RetryWaitMax = time.Duration(newRetryWaitMax) * time.Second
 	opts.Client.RetryWaitMin = time.Duration(newRetryWaitMin) * time.Second
@@ -94,17 +103,18 @@ type HTTPReloader struct {
 }
 
 type HTTPReloaderOpts struct {
-	Client       *retryablehttp.Client `json:"-"`
-	ContentType  string                `json:"content-type"`
-	Host         string                `json:"host"`
-	Port         string                `mapstructure:"port" json:"port"`
-	URI          string                `json:"uri"`
-	Method       string                `json:"method"`
-	Payload      string                `json:"payload"`
-	Retries      string                `json:"retries"`
-	RetryWaitMax string                `json:"retry-wait-max"`
-	RetryWaitMin string                `json:"retry-wait-min"`
-	Timeout      string                `json:"timeout"`
+	Client             *retryablehttp.Client `json:"-"`
+	ContentType        string                `json:"content-type"`
+	Host               string                `json:"host"`
+	InsecureSkipVerify string                `json:"insecure-skip-verify"`
+	Port               string                `mapstructure:"port" json:"port"`
+	URI                string                `json:"uri"`
+	Method             string                `json:"method"`
+	Payload            string                `json:"payload"`
+	Retries            string                `json:"retries"`
+	RetryWaitMax       string                `json:"retry-wait-max"`
+	RetryWaitMin       string                `json:"retry-wait-min"`
+	Timeout            string                `json:"timeout"`
 }
 
 func (h *HTTPReloaderOpts) GetClient() *retryablehttp.Client {

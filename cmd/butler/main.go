@@ -68,21 +68,22 @@ func SetLogLevel(l string) log.Level {
 
 func main() {
 	var (
-		err                    error
-		versionFlag            = flag.Bool("version", false, "Print version information.")
-		configPath             = flag.String("config.path", "", "Full remote path to butler configuration file (eg: full URL scheme://path).")
-		configInterval         = flag.String("config.retrieve-interval", fmt.Sprintf("%v", defaultButlerConfigInterval), "The interval, in seconds, to retrieve new butler configuration files.")
-		configHTTPTimeout      = flag.String("http.timeout", fmt.Sprintf("%v", defaultHTTPTimeout), "The http timeout, in seconds, for GET requests to obtain the butler configuration file.")
-		configHTTPRetries      = flag.String("http.retries", fmt.Sprintf("%v", defaultHTTPRetries), "The number of http retries for GET requests to obtain the butler configuration files")
-		configHTTPRetryWaitMin = flag.String("http.retry_wait_min", fmt.Sprintf("%v", defaultHTTPRetryWaitMin), "The minimum amount of time to wait before attemping to retry the http config get operation.")
-		configHTTPRetryWaitMax = flag.String("http.retry_wait_max", fmt.Sprintf("%v", defaultHTTPRetryWaitMax), "The maximum amount of time to wait before attemping to retry the http config get operation.")
-		configHTTPAuthToken    = flag.String("http.auth_token", "", "HTTP auth token to use for HTTP authentication.")
-		configHTTPAuthType     = flag.String("http.auth_type", "", "HTTP auth type (eg: basic / digest / token-key) to use. If empty (by default) do not use HTTP authentication.")
-		configHTTPAuthUser     = flag.String("http.auth_user", "", "HTTP auth user to use for HTTP authentication")
-		configS3Region         = flag.String("s3.region", "", "The S3 Region that the config file resides.")
-		configEtcdEndpoints    = flag.String("etcd.endpoints", "", "The endpoints to connect to etcd.")
-		configLogLevel         = flag.String("log.level", "info", "The butler log level. Log levels are: debug, info, warn, error, fatal, panic.")
-		butlerTest             = flag.Bool("test", false, "Are we testing butler? (probably not!)")
+		err                         error
+		versionFlag                 = flag.Bool("version", false, "Print version information.")
+		configPath                  = flag.String("config.path", "", "Full remote path to butler configuration file (eg: full URL scheme://path).")
+		configInterval              = flag.String("config.retrieve-interval", fmt.Sprintf("%v", defaultButlerConfigInterval), "The interval, in seconds, to retrieve new butler configuration files.")
+		configHTTPTimeout           = flag.String("http.timeout", fmt.Sprintf("%v", defaultHTTPTimeout), "The http timeout, in seconds, for GET requests to obtain the butler configuration file.")
+		configHTTPRetries           = flag.String("http.retries", fmt.Sprintf("%v", defaultHTTPRetries), "The number of http retries for GET requests to obtain the butler configuration files")
+		configHTTPRetryWaitMin      = flag.String("http.retry_wait_min", fmt.Sprintf("%v", defaultHTTPRetryWaitMin), "The minimum amount of time to wait before attemping to retry the http config get operation.")
+		configHTTPRetryWaitMax      = flag.String("http.retry_wait_max", fmt.Sprintf("%v", defaultHTTPRetryWaitMax), "The maximum amount of time to wait before attemping to retry the http config get operation.")
+		configHTTPAuthToken         = flag.String("http.auth_token", "", "HTTP auth token to use for HTTP authentication.")
+		configHTTPAuthType          = flag.String("http.auth_type", "", "HTTP auth type (eg: basic / digest / token-key) to use. If empty (by default) do not use HTTP authentication.")
+		configHTTPAuthUser          = flag.String("http.auth_user", "", "HTTP auth user to use for HTTP authentication")
+		configS3Region              = flag.String("s3.region", "", "The S3 Region that the config file resides.")
+		configEtcdEndpoints         = flag.String("etcd.endpoints", "", "The endpoints to connect to etcd.")
+		configTlsInsecureSkipVerify = flag.Bool("tls.insecure-skip-verify", false, "Disable SSL verification.")
+		configLogLevel              = flag.String("log.level", "info", "The butler log level. Log levels are: debug, info, warn, error, fatal, panic.")
+		butlerTest                  = flag.Bool("test", false, "Are we testing butler? (probably not!)")
 	)
 	flag.Parse()
 	newConfigLogLevel := environment.GetVar(*configLogLevel)
@@ -167,6 +168,7 @@ func main() {
 		log.Debugf("main(): setting RetryWaitMin[%d] and RetryWaitMax[%d]", newConfigHTTPRetryWaitMin, newConfigHTTPRetryWaitMax)
 		bc.SetRetryWaitMin(newConfigHTTPRetryWaitMin)
 		bc.SetRetryWaitMax(newConfigHTTPRetryWaitMax)
+		bc.InsecureSkipVerify = *configTlsInsecureSkipVerify
 	case "s3", "S3":
 		if *configS3Region == "" {
 			log.Fatalf("You must provide a -s3.region for use with the s3 downloader.")
@@ -183,6 +185,7 @@ func main() {
 		newConfigEtcdEndpoints := environment.GetVar(*configEtcdEndpoints)
 		log.Debugf("main(): setting etcd endpoints=%v", newConfigEtcdEndpoints)
 		bc.SetEndpoints(strings.Split(newConfigEtcdEndpoints, ","))
+		bc.InsecureSkipVerify = *configTlsInsecureSkipVerify
 	}
 
 	// Set the butler configuration retrieval interval

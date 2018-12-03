@@ -15,6 +15,7 @@ package methods
 import (
 	"crypto/md5"
 	"crypto/rand"
+	"crypto/tls"
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
@@ -78,10 +79,16 @@ func NewHTTPMethod(manager *string, entry *string) (Method, error) {
 		newRetryWaitMin = defaultRetryWaitMin
 	}
 
+	result.InsecureSkipVerify = strings.ToLower(environment.GetVar(result.CfgInsecureSkipVerify)) == "true"
+	transport := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: result.InsecureSkipVerify},
+	}
+
 	result.Client = retryablehttp.NewClient()
 	result.Client.Logger.SetFlags(0)
 	result.Client.Logger.SetOutput(ioutil.Discard)
 	result.Client.HTTPClient.Timeout = time.Duration(newTimeout) * time.Second
+	result.Client.HTTPClient.Transport = transport
 	result.Client.RetryMax = newRetries
 	result.Client.RetryWaitMax = time.Duration(newRetryWaitMax) * time.Second
 	result.Client.RetryWaitMin = time.Duration(newRetryWaitMin) * time.Second
@@ -91,16 +98,18 @@ func NewHTTPMethod(manager *string, entry *string) (Method, error) {
 }
 
 type HTTPMethod struct {
-	Client       *retryablehttp.Client `json:"-"`
-	Manager      *string               `json:"-"`
-	Host         string                `mapstruecture:"host" json:"host,omitempty"`
-	Retries      string                `mapstructure:"retries" json:"retries"`
-	RetryWaitMax string                `mapstructure:"retry-wait-max" json:"retry-wait-max"`
-	RetryWaitMin string                `mapstructure:"retry-wait-min" json:"retry-wait-min"`
-	Timeout      string                `mapstructure:"timeout" json:"timeout"`
-	AuthType     string                `mapstructure:"auth-type" json:"auth-type,omitempty"`
-	AuthToken    string                `mapstructure:"auth-token" json:"-"`
-	AuthUser     string                `mapstructure:"auth-user" json:"auth-user,omitempty"`
+	Client                *retryablehttp.Client `json:"-"`
+	Manager               *string               `json:"-"`
+	Host                  string                `mapstruecture:"host" json:"host,omitempty"`
+	Retries               string                `mapstructure:"retries" json:"retries"`
+	RetryWaitMax          string                `mapstructure:"retry-wait-max" json:"retry-wait-max"`
+	RetryWaitMin          string                `mapstructure:"retry-wait-min" json:"retry-wait-min"`
+	Timeout               string                `mapstructure:"timeout" json:"timeout"`
+	AuthType              string                `mapstructure:"auth-type" json:"auth-type,omitempty"`
+	AuthToken             string                `mapstructure:"auth-token" json:"-"`
+	AuthUser              string                `mapstructure:"auth-user" json:"auth-user,omitempty"`
+	CfgInsecureSkipVerify string                `mapstructure:"insecure-skip-verify" json:"-"`
+	InsecureSkipVerify    bool                  `json:"insecure-skip-verify"`
 }
 
 func (h HTTPMethod) Get(u *url.URL) (*Response, error) {
@@ -113,6 +122,12 @@ func (h HTTPMethod) Get(u *url.URL) (*Response, error) {
 		authUser  string
 	)
 
+	// This should override the host defined in the manager
+	// with what is defined in the host field in side the
+	// http method options
+	if (h.Host != "") && (h.Host != u.Host) {
+		u.Host = h.Host
+	}
 	req, err := retryablehttp.NewRequest("GET", u.String(), nil)
 	if err != nil {
 		return &Response{}, err
@@ -152,6 +167,14 @@ func (h HTTPMethod) Get(u *url.URL) (*Response, error) {
 		req.Header.Set("Authorization", fmt.Sprintf("Token token=%s, key=%s", authToken, authUser))
 	default:
 		break
+	}
+
+	// h.Client.HTTPClient.Transport is a http.RoundTripper? Have to fudge some items.
+	// This check has to happen when you specify -tls.insecure-skip-verify on command line
+	if (h.InsecureSkipVerify == true) && (h.Client.HTTPClient.Transport.(*http.Transport).TLSClientConfig.InsecureSkipVerify == false) {
+		h.Client.HTTPClient.Transport = &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: h.InsecureSkipVerify},
+		}
 	}
 
 	r, err = h.Client.Do(req)

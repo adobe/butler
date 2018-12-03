@@ -229,6 +229,7 @@ func (bc *ButlerConfig) Init() error {
 		m.AuthType = bc.HTTPAuthType
 		m.AuthToken = bc.HTTPAuthToken
 		m.AuthUser = bc.HTTPAuthUser
+		m.InsecureSkipVerify = bc.InsecureSkipVerify
 		client.Method = m
 	case "s3", "S3":
 		pathSplit := strings.Split(bc.URL.Path, "/")

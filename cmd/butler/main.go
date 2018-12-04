@@ -81,7 +81,7 @@ func main() {
 		configHTTPAuthUser          = flag.String("http.auth_user", "", "HTTP auth user to use for HTTP authentication")
 		configS3Region              = flag.String("s3.region", "", "The S3 Region that the config file resides.")
 		configEtcdEndpoints         = flag.String("etcd.endpoints", "", "The endpoints to connect to etcd.")
-		configTlsInsecureSkipVerify = flag.Bool("tls.insecure-skip-verify", false, "Disable SSL verification.")
+		configTlsInsecureSkipVerify = flag.Bool("tls.insecure-skip-verify", false, "Disable SSL verification for etcd and https.")
 		configLogLevel              = flag.String("log.level", "info", "The butler log level. Log levels are: debug, info, warn, error, fatal, panic.")
 		butlerTest                  = flag.Bool("test", false, "Are we testing butler? (probably not!)")
 	)

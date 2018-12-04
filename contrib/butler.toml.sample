@@ -203,7 +203,7 @@ title = "Butler Configuration"
   ## These are the definitions for the first repo which is defined for alertmanager
   [alertmanager.repo3.domain.com]
     ## Method can be file, http, https, or s3. In the future it will support Azure blob
-    method = "http"
+    method = "https"
 
     ## Path is the URI / Path to the file on the repo
     repo-path = "/butler/configs/alertmanager"
@@ -215,11 +215,15 @@ title = "Butler Configuration"
     #additional-config = ["alerts/butler.yml", "rules/commonrules.yml"]
 
     ## These are repo specific http get options
-    [alertmanager.repo3.domain.com.http]
+    [alertmanager.repo3.domain.com.https]
       retries = "5"
       retry-wait-min = "5"
       retry-wait-max = "10"
       timeout = "10"
+      # If you are using a self signed cert and wish to connect insecurely
+      # over http, set the following insecure-skip-verify flag to "true"
+      # The default value is "false"
+      insecure-skip-verify = "false"
 
   ## This will be processed second (and appended / replaced depending)
   [alertmanager.repo4.domain.com]

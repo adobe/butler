@@ -88,6 +88,9 @@ title = "Butler Configuration"
     ## These are repo specific http get options
     [prometheus.prom.yml.etcd]
       endpoints = "http://127.0.0.1:2379"
+      # If you have self signed certs for etcd, you may need
+      # to skip ssl verification. Default value is "false".
+      insecure-skip-verify = "false"
 
   ## These are the options for reloading the alertmanager config-handler
   [prometheus.reloader]

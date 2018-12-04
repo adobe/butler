@@ -23,35 +23,38 @@ There are various ways that you can run butler. We will ultimately deploy butler
 ### Command Line Usage
 ```
 [16:06]pts/22:49(stegen@woden):[~]%
+./butler -h
 Usage of ./butler:
   -config.path string
-    	Full remote path to butler configuration file (eg: full URL scheme://path).
+        Full remote path to butler configuration file (eg: full URL scheme://path).
   -config.retrieve-interval string
-    	The interval, in seconds, to retrieve new butler configuration files. (default "300")
+        The interval, in seconds, to retrieve new butler configuration files. (default "300")
   -etcd.endpoints string
-    	The endpoints to connect to etcd.
+        The endpoints to connect to etcd.
   -http.auth_token string
-    	HTTP auth token to use for HTTP authentication.
+        HTTP auth token to use for HTTP authentication.
   -http.auth_type string
-    	HTTP auth type (eg: basic / digest / token-key) to use. If empty (by default) do not use HTTP authentication.
+        HTTP auth type (eg: basic / digest / token-key) to use. If empty (by default) do not use HTTP authentication.
   -http.auth_user string
-    	HTTP auth user to use for HTTP authentication
+        HTTP auth user to use for HTTP authentication
   -http.retries string
-    	The number of http retries for GET requests to obtain the butler configuration files (default "4")
+        The number of http retries for GET requests to obtain the butler configuration files (default "5")
   -http.retry_wait_max string
-    	The maximum amount of time to wait before attemping to retry the http config get operation. (default "10")
+        The maximum amount of time to wait before attemping to retry the http config get operation. (default "15")
   -http.retry_wait_min string
-    	The minimum amount of time to wait before attemping to retry the http config get operation. (default "5")
+        The minimum amount of time to wait before attemping to retry the http config get operation. (default "5")
   -http.timeout string
-    	The http timeout, in seconds, for GET requests to obtain the butler configuration file. (default "10")
+        The http timeout, in seconds, for GET requests to obtain the butler configuration file. (default "10")
   -log.level string
-    	The butler log level. Log levels are: debug, info, warn, error, fatal, panic. (default "info")
+        The butler log level. Log levels are: debug, info, warn, error, fatal, panic. (default "info")
   -s3.region string
-    	The S3 Region that the config file resides.
+        The S3 Region that the config file resides.
   -test
-    	Are we testing butler? (probably not!)
+        Are we testing butler? (probably not!)
+  -tls.insecure-skip-verify
+        Disable SSL verification.
   -version
-    	Print version information.
+        Print version information.
 
 [16:08]pts/22:50(stegen@woden):[~]%
 

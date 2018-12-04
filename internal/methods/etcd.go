@@ -15,8 +15,11 @@ package methods
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"errors"
 	"io/ioutil"
+	"net"
+	"net/http"
 	"net/url"
 	"strings"
 	"time"
@@ -29,9 +32,25 @@ import (
 )
 
 type EtcdMethod struct {
-	Endpoints []string       `mapstructure:"endpoints" json:"endpoints"`
-	KeysAPI   client.KeysAPI `json:"-"`
-	Manager   *string        `json:"-"`
+	Endpoints             []string       `mapstructure:"endpoints" json:"endpoints"`
+	CfgInsecureSkipVerify string         `mapstructure:"insecure-skip-verify" json:"-"`
+	InsecureSkipVerify    bool           `json:"insecure-skip-verify"`
+	KeysAPI               client.KeysAPI `json:"-"`
+	Manager               *string        `json:"-"`
+}
+
+func getTransport(insecureSkipVerify bool) *http.Transport {
+	return &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		Dial: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).Dial,
+		TLSHandshakeTimeout: 10 * time.Second,
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: insecureSkipVerify,
+		},
+	}
 }
 
 func NewEtcdMethod(manager *string, entry *string) (Method, error) {
@@ -50,9 +69,10 @@ func NewEtcdMethod(manager *string, entry *string) (Method, error) {
 		}
 		result.Endpoints = strings.Split(endpointsString, ",")
 
+		result.InsecureSkipVerify = strings.ToLower(environment.GetVar(result.CfgInsecureSkipVerify)) == "true"
 		cfg := client.Config{
 			Endpoints: result.Endpoints,
-			Transport: client.DefaultTransport,
+			Transport: getTransport(result.InsecureSkipVerify),
 			// set timeout per request to fail fast when the target endpoint is unavailable
 			HeaderTimeoutPerRequest: time.Second,
 		}
@@ -69,14 +89,14 @@ func NewEtcdMethod(manager *string, entry *string) (Method, error) {
 	return result, err
 }
 
-func NewEtcdMethodWithEndpoints(endpoints []string) (Method, error) {
+func NewEtcdMethodWithEndpoints(endpoints []string, insecureSkipVerify bool) (Method, error) {
 	var (
 		err    error
 		result EtcdMethod
 	)
 	cfg := client.Config{
 		Endpoints: endpoints,
-		Transport: client.DefaultTransport,
+		Transport: getTransport(insecureSkipVerify),
 		// set timeout per request to fail fast when the target endpoint is unavailable
 		HeaderTimeoutPerRequest: time.Second,
 	}
@@ -88,6 +108,7 @@ func NewEtcdMethodWithEndpoints(endpoints []string) (Method, error) {
 	log.Debugf("NewsKeyAPI configured with Endpoints %v", endpoints)
 	result.KeysAPI = client.NewKeysAPI(c)
 	result.Endpoints = endpoints
+	result.InsecureSkipVerify = insecureSkipVerify
 	return result, err
 }
 

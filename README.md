@@ -52,7 +52,7 @@ Usage of ./butler:
   -test
         Are we testing butler? (probably not!)
   -tls.insecure-skip-verify
-        Disable SSL verification.
+        Disable SSL verification for etcd and https.
   -version
         Print version information.
 

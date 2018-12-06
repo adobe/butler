@@ -24,13 +24,13 @@ mv /root/butler/vendor .
 mv /root/butler/.git .
 
 ## make butler directories
-mkdir -p cmd/butler internal/monitor internal/stats internal/config internal/alog internal/environment internal/methods internal/reloaders
+mkdir -p cmd/butler internal/monitor internal/metrics internal/config internal/alog internal/environment internal/methods internal/reloaders
 
 ## move butler main
 mv /root/butler/cmd/butler/*.go cmd/butler
 
-## move stats files
-mv /root/butler/internal/stats/*.go internal/stats
+## move metrics files
+mv /root/butler/internal/metrics/*.go internal/metrics
 
 ## move config files
 mv /root/butler/internal/config/*.go internal/config
@@ -90,8 +90,8 @@ if [ $ret -ne 0 ]; then
     exit $ret
 fi
 
-cd $BUTLER_GO_PATH/internal/stats
-go test -check.vv -coverprofile=/tmp/coverage-stats.out
+cd $BUTLER_GO_PATH/internal/metrics
+go test -check.vv -coverprofile=/tmp/coverage-metrics.out
 ret=$?
 
 if [ $ret -ne 0 ]; then
@@ -118,8 +118,8 @@ if [ -f /tmp/coverage-config-reloaders.out ]; then
     echo
 fi
 
-if [ -f /tmp/coverage-stats.out ]; then
-    go tool cover -func /tmp/coverage-stats.out
+if [ -f /tmp/coverage-metrics.out ]; then
+    go tool cover -func /tmp/coverage-metrics.out
     echo
 fi
 

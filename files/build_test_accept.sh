@@ -32,13 +32,13 @@ cd $BUTLER_GO_PATH
 mv /root/butler/vendor .
 
 ## make butler directories
-mkdir -p cmd/butler internal/monitor internal/stats internal/config internal/alog internal/environment internal/methods internal/reloaders
+mkdir -p cmd/butler internal/monitor internal/metrics internal/config internal/alog internal/environment internal/methods internal/reloaders
 
 ## move butler main
 mv /root/butler/cmd/butler/*.go cmd/butler
 
-## move stats files
-mv /root/butler/internal/stats/*.go internal/stats
+## move metrics files
+mv /root/butler/internal/metrics/*.go internal/metrics
 
 ## move config files
 mv /root/butler/internal/config/*.go internal/config

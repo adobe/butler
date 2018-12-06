@@ -25,8 +25,8 @@ import (
 
 	"github.com/adobe/butler/internal/environment"
 	"github.com/adobe/butler/internal/methods"
+	"github.com/adobe/butler/internal/metrics"
 	"github.com/adobe/butler/internal/reloaders"
-	"github.com/adobe/butler/internal/stats"
 
 	"github.com/Jeffail/gabs"
 	"github.com/hashicorp/go-retryablehttp"
@@ -365,11 +365,11 @@ func CompareAndCopy(source string, dest string, m string) bool {
 		log.Infof("helpers.CompareAndCopy()[count=%v][manager=%v]: Found difference in \"%s.\"  Updating.", cmHandlerCounter, m, dest)
 		err = CopyFile(source, dest)
 		if err != nil {
-			stats.SetButlerWriteVal(stats.FAILURE, stats.GetStatsLabel(dest))
+			metrics.SetButlerWriteVal(metrics.FAILURE, metrics.GetStatsLabel(dest))
 			log.Errorf("helpers.CompareAndCopy()[count=%v][manager=%v]: could not copy source=%v to dest=%v. err=%#v", cmHandlerCounter, m, source, dest, err)
 			return false
 		}
-		stats.SetButlerWriteVal(stats.SUCCESS, stats.GetStatsLabel(dest))
+		metrics.SetButlerWriteVal(metrics.SUCCESS, metrics.GetStatsLabel(dest))
 		return true
 	} else {
 		return false
@@ -449,8 +449,8 @@ func CacheConfigs(manager string, files []string) error {
 		}
 	}
 	log.Infof("helpers.CacheConfig()[count=%v][manager=%v]: Done storing known good configurations to cache.", cmHandlerCounter, manager)
-	stats.SetButlerKnownGoodCachedVal(stats.SUCCESS, manager)
-	stats.SetButlerKnownGoodRestoredVal(stats.FAILURE, manager)
+	metrics.SetButlerKnownGoodCachedVal(metrics.SUCCESS, manager)
+	metrics.SetButlerKnownGoodRestoredVal(metrics.FAILURE, manager)
 	return nil
 }
 
@@ -469,8 +469,8 @@ func RestoreCachedConfigs(manager string, files []string, cleanFiles bool) error
 			}
 			log.Infof("helpers.RestoreCachedConfigs()[count=%v][manager=%v]: Done cleaning broken configuration. Returning...", cmHandlerCounter, manager)
 		}
-		stats.SetButlerKnownGoodCachedVal(stats.FAILURE, manager)
-		stats.SetButlerKnownGoodRestoredVal(stats.FAILURE, manager)
+		metrics.SetButlerKnownGoodCachedVal(metrics.FAILURE, manager)
+		metrics.SetButlerKnownGoodRestoredVal(metrics.FAILURE, manager)
 		return nil
 	}
 
@@ -494,8 +494,8 @@ func RestoreCachedConfigs(manager string, files []string, cleanFiles bool) error
 		}
 	}
 	log.Warnf("helpers.RestoreCachedConfigs()[count=%v][manager=%v]: Done restoring known good configurations from cache.", cmHandlerCounter, manager)
-	stats.SetButlerKnownGoodCachedVal(stats.FAILURE, manager)
-	stats.SetButlerKnownGoodRestoredVal(stats.SUCCESS, manager)
+	metrics.SetButlerKnownGoodCachedVal(metrics.FAILURE, manager)
+	metrics.SetButlerKnownGoodRestoredVal(metrics.SUCCESS, manager)
 	return nil
 }
 

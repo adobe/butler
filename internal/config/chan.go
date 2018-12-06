@@ -18,7 +18,7 @@ import (
 	"os"
 	"sort"
 
-	"github.com/adobe/butler/internal/stats"
+	"github.com/adobe/butler/internal/metrics"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -172,7 +172,7 @@ func (c *ConfigChanEvent) CopyPrimaryConfigFiles(opts map[string]*ManagerOpts) b
 	out, err := os.OpenFile(c.TmpFile.Name(), os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
 		log.Infof("ConfigChanEvent::CopyPrimaryConfigFiles(): Could not process and merge new %v err=%s.", c.ConfigFile, err.Error())
-		stats.SetButlerConfigVal(stats.FAILURE, "local", stats.GetStatsLabel(*c.ConfigFile))
+		metrics.SetButlerConfigVal(metrics.FAILURE, "local", metrics.GetStatsLabel(*c.ConfigFile))
 		c.CleanTmpFiles()
 		return false
 	} else {
@@ -183,7 +183,7 @@ func (c *ConfigChanEvent) CopyPrimaryConfigFiles(opts map[string]*ManagerOpts) b
 					in, err := os.Open(t.File)
 					if err != nil {
 						log.Infof("ConfigChanEvent::CopyPrimaryConfigFiles(): Could not process and merge new %v err=%s.", c.ConfigFile, err.Error())
-						stats.SetButlerConfigVal(stats.FAILURE, "local", stats.GetStatsLabel(t.Name))
+						metrics.SetButlerConfigVal(metrics.FAILURE, "local", metrics.GetStatsLabel(t.Name))
 						c.CleanTmpFiles()
 						out.Close()
 						return false
@@ -191,7 +191,7 @@ func (c *ConfigChanEvent) CopyPrimaryConfigFiles(opts map[string]*ManagerOpts) b
 					_, err = io.Copy(out, in)
 					if err != nil {
 						log.Infof("ConfigChanEvent::CopyPrimaryConfigFiles(): Could not process and merge new %v err=%s.", c.ConfigFile, err.Error())
-						stats.SetButlerConfigVal(stats.FAILURE, "local", stats.GetStatsLabel(t.Name))
+						metrics.SetButlerConfigVal(metrics.FAILURE, "local", metrics.GetStatsLabel(t.Name))
 						c.CleanTmpFiles()
 						out.Close()
 						return false

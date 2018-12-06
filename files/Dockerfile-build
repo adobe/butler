@@ -15,13 +15,13 @@ ARG VERSION=$VERSION
 ENV VERSION=$VERSION
 
 ### required to build
-RUN mkdir -p /root/butler/cmd/butler /root/butler/internal/monitor /root/butler/internal/stats /root/butler/internal/config /root/butler/internal/methods /root/butler/internal/reloaders /root/butler/internal/environment /root/butler/internal/alog
+RUN mkdir -p /root/butler/cmd/butler /root/butler/internal/monitor /root/butler/internal/metrics /root/butler/internal/config /root/butler/internal/methods /root/butler/internal/reloaders /root/butler/internal/environment /root/butler/internal/alog
 COPY ./files/build.sh /root/build.sh
 COPY ./cmd/butler/main.go /root/butler/cmd/butler/main.go
 COPY ./internal/config/*.go /root/butler/internal/config/
 COPY ./internal/methods/*.go /root/butler/internal/methods/
 COPY ./internal/reloaders/*.go /root/butler/internal/reloaders/
-COPY ./internal/stats/*.go /root/butler/internal/stats/
+COPY ./internal/metrics/*.go /root/butler/internal/metrics/
 COPY ./internal/monitor/*.go /root/butler/internal/monitor/
 COPY ./internal/environment/*.go /root/butler/internal/environment
 COPY ./internal/alog/*.go /root/butler/internal/alog

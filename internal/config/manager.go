@@ -22,8 +22,8 @@ import (
 	"time"
 
 	"github.com/adobe/butler/internal/methods"
+	"github.com/adobe/butler/internal/metrics"
 	"github.com/adobe/butler/internal/reloaders"
-	"github.com/adobe/butler/internal/stats"
 
 	"strings"
 
@@ -103,17 +103,17 @@ func (bm *Manager) DownloadPrimaryConfigFiles(c chan ChanEvent) error {
 			log.Debugf("Manager::DownloadPrimaryConfigFiles(): f=%s", opts.GetPrimaryRemoteConfigFiles()[i])
 			f := opts.DownloadConfigFile(u)
 			if f == nil {
-				stats.SetButlerContactVal(stats.FAILURE, opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i])
+				metrics.SetButlerContactVal(metrics.FAILURE, opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i])
 
-				// Set this stats global as failure here, since we aren't sure whether or not it was a parse error or
+				// Set this metrics global as failure here, since we aren't sure whether or not it was a parse error or
 				// download error in RunCMHandler()
-				stats.SetButlerRemoteRepoUp(stats.FAILURE, bm.Name)
+				metrics.SetButlerRemoteRepoUp(metrics.FAILURE, bm.Name)
 
 				log.Debugf("Manager::DownloadPrimaryConfigFiles(): download for %s is nil.", u)
 				Chan.SetFailure(opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i], errors.New("could not download file"))
 				continue
 			} else {
-				stats.SetButlerContactVal(stats.SUCCESS, opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i])
+				metrics.SetButlerContactVal(metrics.SUCCESS, opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i])
 				Chan.SetSuccess(opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i], nil)
 			}
 			Chan.SetTmpFile(opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i], f.Name())
@@ -123,15 +123,15 @@ func (bm *Manager) DownloadPrimaryConfigFiles(c chan ChanEvent) error {
 			// the mustache entries... so we shuffled this around.
 			if err := RenderConfigMustache(f, bm.MustacheSubs); err != nil {
 				log.Errorf("%s for %s.", err.Error(), u)
-				stats.SetButlerRenderVal(stats.FAILURE, opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i])
-				stats.SetButlerConfigVal(stats.FAILURE, opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i])
+				metrics.SetButlerRenderVal(metrics.FAILURE, opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i])
+				metrics.SetButlerConfigVal(metrics.FAILURE, opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i])
 				log.Debugf("Manager::DownloadPrimaryConfigFiles(): render for %s is nil.", opts.GetPrimaryRemoteConfigFiles()[i])
 				Chan.SetFailure(opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i], errors.New("could not render file"))
 				continue
 			} else {
-				// stats
-				stats.SetButlerRenderVal(stats.SUCCESS, opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i])
-				stats.SetButlerConfigVal(stats.SUCCESS, opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i])
+				// metrics
+				metrics.SetButlerRenderVal(metrics.SUCCESS, opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i])
+				metrics.SetButlerConfigVal(metrics.SUCCESS, opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i])
 				Chan.SetSuccess(opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i], nil)
 			}
 
@@ -142,16 +142,16 @@ func (bm *Manager) DownloadPrimaryConfigFiles(c chan ChanEvent) error {
 			filename := opts.GetPrimaryRemoteConfigFiles()[i]
 			if err := ValidateConfig(NewValidateOpts().WithContentType(opts.ContentType).WithFileName(filename).WithData(f).WithManager(bm.Name)); err != nil {
 				log.Errorf("%s for %s.", err.Error(), u)
-				stats.SetButlerConfigVal(stats.FAILURE, opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i])
+				metrics.SetButlerConfigVal(metrics.FAILURE, opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i])
 
-				// Set this stats global as failure here, since we aren't sure whether or not it was a parse error or
+				// Set this metrics global as failure here, since we aren't sure whether or not it was a parse error or
 				// download error in RunCMHandler()
-				stats.SetButlerRemoteRepoSanity(stats.FAILURE, bm.Name)
+				metrics.SetButlerRemoteRepoSanity(metrics.FAILURE, bm.Name)
 
 				Chan.SetFailure(opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i], errors.New("could not validate file"))
 				continue
 			} else {
-				stats.SetButlerConfigVal(stats.SUCCESS, opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i])
+				metrics.SetButlerConfigVal(metrics.SUCCESS, opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i])
 				Chan.SetSuccess(opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i], nil)
 			}
 		}
@@ -181,16 +181,16 @@ func (bm *Manager) DownloadAdditionalConfigFiles(c chan ChanEvent) error {
 			f := opts.DownloadConfigFile(u)
 			if f == nil {
 				log.Debugf("Manager::DownloadAdditionalConfigFiles(): download for %s is nil.", u)
-				stats.SetButlerContactVal(stats.FAILURE, opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i])
+				metrics.SetButlerContactVal(metrics.FAILURE, opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i])
 
-				// Set this stats global as failure here, since we aren't sure whether or not it was a parse error or
+				// Set this metrics global as failure here, since we aren't sure whether or not it was a parse error or
 				// download error in RunCMHandler()
-				stats.SetButlerRemoteRepoUp(stats.FAILURE, bm.Name)
+				metrics.SetButlerRemoteRepoUp(metrics.FAILURE, bm.Name)
 
 				Chan.SetFailure(opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i], errors.New("could not download file"))
 				continue
 			} else {
-				stats.SetButlerContactVal(stats.SUCCESS, opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i])
+				metrics.SetButlerContactVal(metrics.SUCCESS, opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i])
 				Chan.SetSuccess(opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i], nil)
 				Chan.SetTmpFile(opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i], f.Name())
 			}
@@ -202,13 +202,13 @@ func (bm *Manager) DownloadAdditionalConfigFiles(c chan ChanEvent) error {
 			// We are doing this before the header/footer check because YAML parsing doesn't like
 			// the mustache entries... so we shuffled this around.
 			if err := RenderConfigMustache(f, bm.MustacheSubs); err != nil {
-				stats.SetButlerRenderVal(stats.FAILURE, opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i])
-				stats.SetButlerConfigVal(stats.FAILURE, opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i])
+				metrics.SetButlerRenderVal(metrics.FAILURE, opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i])
+				metrics.SetButlerConfigVal(metrics.FAILURE, opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i])
 				Chan.SetFailure(opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i], errors.New("could not render file"))
 				continue
 			} else {
-				stats.SetButlerRenderVal(stats.SUCCESS, opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i])
-				stats.SetButlerConfigVal(stats.SUCCESS, opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i])
+				metrics.SetButlerRenderVal(metrics.SUCCESS, opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i])
+				metrics.SetButlerConfigVal(metrics.SUCCESS, opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i])
 				Chan.SetSuccess(opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i], nil)
 			}
 
@@ -218,16 +218,16 @@ func (bm *Manager) DownloadAdditionalConfigFiles(c chan ChanEvent) error {
 			// issue with the upstream
 			filename := opts.GetAdditionalRemoteConfigFiles()[i]
 			if err := ValidateConfig(NewValidateOpts().WithContentType(opts.ContentType).WithFileName(filename).WithData(f).WithManager(bm.Name)); err != nil {
-				stats.SetButlerConfigVal(stats.FAILURE, opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i])
+				metrics.SetButlerConfigVal(metrics.FAILURE, opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i])
 
-				// Set this stats global as failure here, since we aren't sure whether or not it was a parse error or
+				// Set this metrics global as failure here, since we aren't sure whether or not it was a parse error or
 				// download error in RunCMHandler()
-				stats.SetButlerRemoteRepoSanity(stats.FAILURE, bm.Name)
+				metrics.SetButlerRemoteRepoSanity(metrics.FAILURE, bm.Name)
 
 				Chan.SetFailure(opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i], errors.New("could not validate file"))
 				continue
 			} else {
-				stats.SetButlerConfigVal(stats.SUCCESS, opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i])
+				metrics.SetButlerConfigVal(metrics.SUCCESS, opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i])
 				Chan.SetSuccess(opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i], nil)
 			}
 		}

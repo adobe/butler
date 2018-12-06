@@ -10,7 +10,7 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-package stats
+package metrics
 
 import (
 	"time"
@@ -57,32 +57,28 @@ func (s *ButlerStatsTestSuite) TestSetButlerReloadVal(c *C) {
 	metricFailure := io_prometheus_client.Metric{}
 	metricFailureTs := io_prometheus_client.Metric{}
 
-	// Initial values should be nil for the variables
-	c.Assert(ButlerReloadSuccess, IsNil)
-	c.Assert(ButlerReloadTime, IsNil)
-
 	// Set it to FAILURE
 	SetButlerReloadVal(FAILURE, s.TestRepo)
 
 	// Now they should NOT be nil
-	c.Assert(ButlerReloadSuccess, NotNil)
-	c.Assert(ButlerReloadTime, NotNil)
+	c.Assert(butlerReloadSuccess, NotNil)
+	c.Assert(butlerReloadTime, NotNil)
 
 	// There should also be some values for the metric Desc()
-	ButlerReloadSuccessMetric, err := ButlerReloadSuccess.GetMetricWithLabelValues(s.TestRepo)
-	c.Assert(ButlerReloadSuccessMetric, NotNil)
+	butlerReloadSuccessMetric, err := butlerReloadSuccess.GetMetricWithLabelValues(s.TestRepo)
+	c.Assert(butlerReloadSuccessMetric, NotNil)
 	c.Assert(err, IsNil)
 
-	ButlerReloadTimeMetric, err := ButlerReloadTime.GetMetricWithLabelValues(s.TestRepo)
-	c.Assert(ButlerReloadTimeMetric, NotNil)
+	butlerReloadTimeMetric, err := butlerReloadTime.GetMetricWithLabelValues(s.TestRepo)
+	c.Assert(butlerReloadTimeMetric, NotNil)
 	c.Assert(err, IsNil)
 
-	c.Assert(ButlerReloadSuccessMetric.Desc().String(), Equals, "Desc{fqName: \"butler_localconfig_reload_success\", help: \"Did butler successfully reload prometheus\", constLabels: {}, variableLabels: [manager]}")
-	c.Assert(ButlerReloadTimeMetric.Desc().String(), Equals, "Desc{fqName: \"butler_localconfig_reload_time\", help: \"Time that butler successfully reload prometheus\", constLabels: {}, variableLabels: [manager]}")
+	c.Assert(butlerReloadSuccessMetric.Desc().String(), Equals, "Desc{fqName: \"butler_localconfig_reload_success\", help: \"Did butler successfully reload prometheus\", constLabels: {}, variableLabels: [manager]}")
+	c.Assert(butlerReloadTimeMetric.Desc().String(), Equals, "Desc{fqName: \"butler_localconfig_reload_time\", help: \"Time that butler successfully reload prometheus\", constLabels: {}, variableLabels: [manager]}")
 
 	// Let's get the metric values for FAILURE
-	ButlerReloadSuccessMetric.Write(&metricFailure)
-	ButlerReloadTimeMetric.Write(&metricFailureTs)
+	butlerReloadSuccessMetric.Write(&metricFailure)
+	butlerReloadTimeMetric.Write(&metricFailureTs)
 	c.Assert(*metricFailure.Gauge.Value, Equals, FAILURE)
 	c.Assert(*metricFailureTs.Gauge.Value, Equals, 0.0)
 
@@ -93,16 +89,16 @@ func (s *ButlerStatsTestSuite) TestSetButlerReloadVal(c *C) {
 	SetButlerReloadVal(SUCCESS, s.TestRepo)
 
 	// Let's get the metric values for SUCCESS
-	ButlerReloadSuccessMetric, err = ButlerReloadSuccess.GetMetricWithLabelValues(s.TestRepo)
-	c.Assert(ButlerReloadSuccessMetric, NotNil)
+	butlerReloadSuccessMetric, err = butlerReloadSuccess.GetMetricWithLabelValues(s.TestRepo)
+	c.Assert(butlerReloadSuccessMetric, NotNil)
 	c.Assert(err, IsNil)
 
-	ButlerReloadTimeMetric, err = ButlerReloadTime.GetMetricWithLabelValues(s.TestRepo)
-	c.Assert(ButlerReloadTimeMetric, NotNil)
+	butlerReloadTimeMetric, err = butlerReloadTime.GetMetricWithLabelValues(s.TestRepo)
+	c.Assert(butlerReloadTimeMetric, NotNil)
 	c.Assert(err, IsNil)
 
-	ButlerReloadSuccessMetric.Write(&metricSuccess)
-	ButlerReloadTimeMetric.Write(&metricSuccessTs)
+	butlerReloadSuccessMetric.Write(&metricSuccess)
+	butlerReloadTimeMetric.Write(&metricSuccessTs)
 
 	c.Assert(*metricSuccess.Gauge.Value, Equals, SUCCESS)
 
@@ -119,41 +115,37 @@ func (s *ButlerStatsTestSuite) TestSetButlerRenderVal(c *C) {
 	metricFailure := io_prometheus_client.Metric{}
 	metricFailureTs := io_prometheus_client.Metric{}
 
-	// Initial values should be nil for the variables
-	c.Assert(ButlerRenderSuccess, IsNil)
-	c.Assert(ButlerRenderTime, IsNil)
-
 	// Set it to failure
 	SetButlerRenderVal(FAILURE, s.TestRepo, s.TestLabel)
 
 	// Now they should NOT be nil
-	c.Assert(ButlerRenderSuccess, NotNil)
-	c.Assert(ButlerRenderTime, NotNil)
+	c.Assert(butlerRenderSuccess, NotNil)
+	c.Assert(butlerRenderTime, NotNil)
 
 	// There should also be some values for the metric Desc()
-	ButlerRenderSuccessMetric, err := ButlerRenderSuccess.GetMetricWithLabelValues(s.TestRepo, s.TestLabel)
-	c.Assert(ButlerRenderSuccessMetric, NotNil)
+	butlerRenderSuccessMetric, err := butlerRenderSuccess.GetMetricWithLabelValues(s.TestRepo, s.TestLabel)
+	c.Assert(butlerRenderSuccessMetric, NotNil)
 	c.Assert(err, IsNil)
 
-	ButlerRenderTimeMetric, err := ButlerRenderTime.GetMetricWithLabelValues(s.TestRepo, s.TestLabel)
-	c.Assert(ButlerRenderTimeMetric, NotNil)
+	butlerRenderTimeMetric, err := butlerRenderTime.GetMetricWithLabelValues(s.TestRepo, s.TestLabel)
+	c.Assert(butlerRenderTimeMetric, NotNil)
 	c.Assert(err, IsNil)
 
 	// There should also be some values for the metric Desc()
-	ButlerRenderSuccessMetric, err = ButlerRenderSuccess.GetMetricWithLabelValues(s.TestRepo, s.TestLabel)
-	c.Assert(ButlerRenderSuccessMetric, NotNil)
+	butlerRenderSuccessMetric, err = butlerRenderSuccess.GetMetricWithLabelValues(s.TestRepo, s.TestLabel)
+	c.Assert(butlerRenderSuccessMetric, NotNil)
 	c.Assert(err, IsNil)
 
-	ButlerRenderTimeMetric, err = ButlerRenderTime.GetMetricWithLabelValues(s.TestRepo, s.TestLabel)
-	c.Assert(ButlerRenderTimeMetric, NotNil)
+	butlerRenderTimeMetric, err = butlerRenderTime.GetMetricWithLabelValues(s.TestRepo, s.TestLabel)
+	c.Assert(butlerRenderTimeMetric, NotNil)
 	c.Assert(err, IsNil)
 
-	c.Assert(ButlerRenderSuccessMetric.Desc().String(), Equals, "Desc{fqName: \"butler_localconfig_render_success\", help: \"Did butler successfully render the prometheus.yml\", constLabels: {}, variableLabels: [config_file repo]}")
-	c.Assert(ButlerRenderTimeMetric.Desc().String(), Equals, "Desc{fqName: \"butler_localconfig_render_time\", help: \"Time that butler successfully rendered the prometheus.yml\", constLabels: {}, variableLabels: [config_file repo]}")
+	c.Assert(butlerRenderSuccessMetric.Desc().String(), Equals, "Desc{fqName: \"butler_localconfig_render_success\", help: \"Did butler successfully render the prometheus.yml\", constLabels: {}, variableLabels: [config_file repo]}")
+	c.Assert(butlerRenderTimeMetric.Desc().String(), Equals, "Desc{fqName: \"butler_localconfig_render_time\", help: \"Time that butler successfully rendered the prometheus.yml\", constLabels: {}, variableLabels: [config_file repo]}")
 
 	// Let's get the metric values for FAILURE
-	ButlerRenderSuccessMetric.Write(&metricFailure)
-	ButlerRenderTimeMetric.Write(&metricFailureTs)
+	butlerRenderSuccessMetric.Write(&metricFailure)
+	butlerRenderTimeMetric.Write(&metricFailureTs)
 	c.Assert(*metricFailure.Gauge.Value, Equals, FAILURE)
 	c.Assert(*metricFailureTs.Gauge.Value, Equals, 0.0)
 
@@ -164,17 +156,17 @@ func (s *ButlerStatsTestSuite) TestSetButlerRenderVal(c *C) {
 	SetButlerRenderVal(SUCCESS, s.TestRepo, s.TestLabel)
 
 	// Let's get the metric values for SUCCESS
-	ButlerRenderSuccessMetric, err = ButlerRenderSuccess.GetMetricWithLabelValues(s.TestRepo, s.TestLabel)
-	c.Assert(ButlerRenderSuccessMetric, NotNil)
+	butlerRenderSuccessMetric, err = butlerRenderSuccess.GetMetricWithLabelValues(s.TestRepo, s.TestLabel)
+	c.Assert(butlerRenderSuccessMetric, NotNil)
 	c.Assert(err, IsNil)
-	log.Infof("ButlerRenderSuccessMetric=%#v", ButlerRenderSuccessMetric)
+	log.Infof("butlerRenderSuccessMetric=%#v", butlerRenderSuccessMetric)
 
-	ButlerRenderTimeMetric, err = ButlerRenderTime.GetMetricWithLabelValues(s.TestRepo, s.TestLabel)
-	c.Assert(ButlerRenderTimeMetric, NotNil)
+	butlerRenderTimeMetric, err = butlerRenderTime.GetMetricWithLabelValues(s.TestRepo, s.TestLabel)
+	c.Assert(butlerRenderTimeMetric, NotNil)
 	c.Assert(err, IsNil)
 
-	ButlerRenderSuccessMetric.Write(&metricSuccess)
-	ButlerRenderTimeMetric.Write(&metricSuccessTs)
+	butlerRenderSuccessMetric.Write(&metricSuccess)
+	butlerRenderTimeMetric.Write(&metricSuccessTs)
 
 	// stegen - HOLY MOLY THIS SHOULD BE SUCCESS NOT FAILURE WHY?
 	c.Assert(*metricSuccess.Gauge.Value, Equals, FAILURE)
@@ -195,32 +187,28 @@ func (s *ButlerStatsTestSuite) TestSetButlerWriteVal(c *C) {
 	metricFailure := io_prometheus_client.Metric{}
 	metricFailureTs := io_prometheus_client.Metric{}
 
-	// Initial values should be nil for the variables
-	c.Assert(ButlerWriteSuccess, IsNil)
-	c.Assert(ButlerWriteTime, IsNil)
-
 	// Set it to FAILURE
 	SetButlerWriteVal(FAILURE, s.TestRepo)
 
 	// Now they should NOT be nil
-	c.Assert(ButlerWriteSuccess, NotNil)
-	c.Assert(ButlerWriteTime, NotNil)
+	c.Assert(butlerWriteSuccess, NotNil)
+	c.Assert(butlerWriteTime, NotNil)
 
 	// There should also be some values for the metric Desc()
-	ButlerWriteSuccessMetric, err := ButlerWriteSuccess.GetMetricWithLabelValues(s.TestRepo)
-	c.Assert(ButlerWriteSuccessMetric, NotNil)
+	butlerWriteSuccessMetric, err := butlerWriteSuccess.GetMetricWithLabelValues(s.TestRepo)
+	c.Assert(butlerWriteSuccessMetric, NotNil)
 	c.Assert(err, IsNil)
 
-	ButlerWriteTimeMetric, err := ButlerWriteTime.GetMetricWithLabelValues(s.TestRepo)
-	c.Assert(ButlerWriteTimeMetric, NotNil)
+	butlerWriteTimeMetric, err := butlerWriteTime.GetMetricWithLabelValues(s.TestRepo)
+	c.Assert(butlerWriteTimeMetric, NotNil)
 	c.Assert(err, IsNil)
 
-	c.Assert(ButlerWriteSuccessMetric.Desc().String(), Equals, "Desc{fqName: \"butler_localconfig_write_success\", help: \"Did butler successfully write the configuration\", constLabels: {}, variableLabels: [config_file]}")
-	c.Assert(ButlerWriteTimeMetric.Desc().String(), Equals, "Desc{fqName: \"butler_localconfig_write_time\", help: \"Time that butler successfully write the configuration\", constLabels: {}, variableLabels: [config_file]}")
+	c.Assert(butlerWriteSuccessMetric.Desc().String(), Equals, "Desc{fqName: \"butler_localconfig_write_success\", help: \"Did butler successfully write the configuration\", constLabels: {}, variableLabels: [config_file]}")
+	c.Assert(butlerWriteTimeMetric.Desc().String(), Equals, "Desc{fqName: \"butler_localconfig_write_time\", help: \"Time that butler successfully write the configuration\", constLabels: {}, variableLabels: [config_file]}")
 
 	// Let's get the metric values for FAILURE
-	ButlerWriteSuccessMetric.Write(&metricFailure)
-	ButlerWriteTimeMetric.Write(&metricFailureTs)
+	butlerWriteSuccessMetric.Write(&metricFailure)
+	butlerWriteTimeMetric.Write(&metricFailureTs)
 	c.Assert(*metricFailure.Gauge.Value, Equals, FAILURE)
 	c.Assert(*metricFailureTs.Gauge.Value, Equals, 0.0)
 
@@ -231,16 +219,16 @@ func (s *ButlerStatsTestSuite) TestSetButlerWriteVal(c *C) {
 	SetButlerWriteVal(SUCCESS, s.TestRepo)
 
 	// Let's get the metric values for SUCCESS
-	ButlerWriteSuccessMetric, err = ButlerWriteSuccess.GetMetricWithLabelValues(s.TestRepo)
-	c.Assert(ButlerWriteSuccessMetric, NotNil)
+	butlerWriteSuccessMetric, err = butlerWriteSuccess.GetMetricWithLabelValues(s.TestRepo)
+	c.Assert(butlerWriteSuccessMetric, NotNil)
 	c.Assert(err, IsNil)
 
-	ButlerWriteTimeMetric, err = ButlerWriteTime.GetMetricWithLabelValues(s.TestRepo)
-	c.Assert(ButlerWriteTimeMetric, NotNil)
+	butlerWriteTimeMetric, err = butlerWriteTime.GetMetricWithLabelValues(s.TestRepo)
+	c.Assert(butlerWriteTimeMetric, NotNil)
 	c.Assert(err, IsNil)
 
-	ButlerWriteSuccessMetric.Write(&metricSuccess)
-	ButlerWriteTimeMetric.Write(&metricSuccessTs)
+	butlerWriteSuccessMetric.Write(&metricSuccess)
+	butlerWriteTimeMetric.Write(&metricSuccessTs)
 
 	c.Assert(*metricSuccess.Gauge.Value, Equals, SUCCESS)
 

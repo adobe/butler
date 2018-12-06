@@ -28,7 +28,7 @@ import (
 	"time"
 
 	"github.com/adobe/butler/internal/environment"
-	"github.com/adobe/butler/internal/stats"
+	"github.com/adobe/butler/internal/metrics"
 
 	"github.com/hashicorp/go-retryablehttp"
 	log "github.com/sirupsen/logrus"
@@ -188,10 +188,10 @@ func (h HTTPMethod) Get(u *url.URL) (*Response, error) {
 
 func (h *HTTPMethod) MethodRetryPolicy(resp *http.Response, err error) (bool, error) {
 	// This is actually the default RetryPolicy from the go-retryablehttp library. The only
-	// change is the stats monitor. We want to keep track of all the reload failures.
+	// change is the metrics monitor. We want to keep track of all the reload failures.
 	if (err != nil) && (h.Manager != nil) {
 		opErr := err.(*url.Error)
-		stats.SetButlerContactRetryVal(stats.SUCCESS, *h.Manager, stats.GetStatsLabel(opErr.URL))
+		metrics.SetButlerContactRetryVal(metrics.SUCCESS, *h.Manager, metrics.GetStatsLabel(opErr.URL))
 		return true, err
 	}
 
@@ -203,7 +203,7 @@ func (h *HTTPMethod) MethodRetryPolicy(resp *http.Response, err error) (bool, er
 		// invalid response codes as well, like 0 and 999.
 		if resp.StatusCode == 0 || resp.StatusCode >= 500 {
 			if h.Manager != nil {
-				stats.SetButlerContactRetryVal(stats.SUCCESS, *h.Manager, stats.GetStatsLabel(resp.Request.RequestURI))
+				metrics.SetButlerContactRetryVal(metrics.SUCCESS, *h.Manager, metrics.GetStatsLabel(resp.Request.RequestURI))
 			}
 			return true, nil
 		}

@@ -24,8 +24,8 @@ import (
 	"time"
 
 	"github.com/adobe/butler/internal/methods"
+	"github.com/adobe/butler/internal/metrics"
 	"github.com/adobe/butler/internal/reloaders"
-	"github.com/adobe/butler/internal/stats"
 
 	"github.com/jasonlvhit/gocron"
 	log "github.com/sirupsen/logrus"
@@ -271,13 +271,13 @@ func (bc *ButlerConfig) Handler() error {
 		log.Errorf("ButlerConfig::Handler()[count=%v]: Cannot retrieve butler configuration. err=%s", handlerCounter, err.Error())
 		log.Errorf("ButlerConfig::Handler()[count=%v]: done.", handlerCounter)
 		handlerCounter++
-		stats.SetButlerContactVal(stats.FAILURE, bc.URL.Host, bc.URL.Path)
+		metrics.SetButlerContactVal(metrics.FAILURE, bc.URL.Host, bc.URL.Path)
 		return err
 	}
 	defer response.GetResponseBody().Close()
 
 	if response.GetResponseStatusCode() != 200 {
-		stats.SetButlerContactVal(stats.FAILURE, bc.URL.Host, bc.URL.Path)
+		metrics.SetButlerContactVal(metrics.FAILURE, bc.URL.Host, bc.URL.Path)
 		log.Errorf("ButlerConfig::Handler()[count=%v]: Did not receive 200 response code for %s. code=%d", handlerCounter, bc.URL.String(), response.GetResponseStatusCode())
 		log.Errorf("ButlerConfig::Handler()[count=%v] done.", handlerCounter)
 		handlerCounter++
@@ -287,7 +287,7 @@ func (bc *ButlerConfig) Handler() error {
 
 	body, err := ioutil.ReadAll(response.GetResponseBody())
 	if err != nil {
-		stats.SetButlerContactVal(stats.FAILURE, bc.URL.Host, bc.URL.Path)
+		metrics.SetButlerContactVal(metrics.FAILURE, bc.URL.Host, bc.URL.Path)
 		log.Errorf("ButlerConfig::Handler()[count=%v]: Could not read response body for %s. err=%s", handlerCounter, bc.URL.String(), err)
 		log.Errorf("ButlerConfig::Handler()[count=%v] done.", handlerCounter)
 		handlerCounter++
@@ -297,7 +297,7 @@ func (bc *ButlerConfig) Handler() error {
 
 	err = ValidateConfig(NewValidateOpts().WithData(body).WithFileName("butler.toml").WithManager("butler-config"))
 	if err != nil {
-		stats.SetButlerContactVal(stats.FAILURE, bc.URL.Host, bc.URL.Path)
+		metrics.SetButlerContactVal(metrics.FAILURE, bc.URL.Host, bc.URL.Path)
 		return err
 	}
 
@@ -307,7 +307,7 @@ func (bc *ButlerConfig) Handler() error {
 			if bc.Config.Globals.ExitOnFailure {
 				log.Fatal(err)
 			} else {
-				stats.SetButlerContactVal(stats.FAILURE, bc.URL.Host, bc.URL.Path)
+				metrics.SetButlerContactVal(metrics.FAILURE, bc.URL.Host, bc.URL.Path)
 				return err
 			}
 		} else {
@@ -322,7 +322,7 @@ func (bc *ButlerConfig) Handler() error {
 			if bc.Config.Globals.ExitOnFailure {
 				log.Fatal(err)
 			} else {
-				stats.SetButlerContactVal(stats.FAILURE, bc.URL.Host, bc.URL.Path)
+				metrics.SetButlerContactVal(metrics.FAILURE, bc.URL.Host, bc.URL.Path)
 				return err
 			}
 		} else {
@@ -360,7 +360,7 @@ func (bc *ButlerConfig) Handler() error {
 			bc.SetCMPrevInterval(bc.GetCMInterval())
 		}
 	}
-	stats.SetButlerContactVal(stats.SUCCESS, bc.URL.Host, bc.URL.Path)
+	metrics.SetButlerContactVal(metrics.SUCCESS, bc.URL.Host, bc.URL.Path)
 	log.Infof("ButlerConfig::Handler()[count=%v]: done.", handlerCounter)
 	handlerCounter++
 	return nil
@@ -397,8 +397,8 @@ func (bc *ButlerConfig) RunCMHandler() error {
 			}
 			PrimaryChan.CleanTmpFiles()
 			AdditionalChan.CleanTmpFiles()
-			stats.SetButlerRemoteRepoUp(stats.SUCCESS, m.Name)
-			stats.SetButlerRemoteRepoSanity(stats.SUCCESS, m.Name)
+			metrics.SetButlerRemoteRepoUp(metrics.SUCCESS, m.Name)
+			metrics.SetButlerRemoteRepoSanity(metrics.SUCCESS, m.Name)
 		} else {
 			log.Debugf("Config::RunCMHandler()[count=%v]: cannot copy files. cleaning up...", cmHandlerCounter)
 			// Failure statistics for RemoteRepoUp and RemoteRepoSanity
@@ -414,7 +414,7 @@ func (bc *ButlerConfig) RunCMHandler() error {
 		// We are going to run through the managers and ensure that the status file
 		// is in an OK state for the manager. If it is not, then we will attempt a reload
 		for _, m := range bc.GetManagers() {
-			stats.SetButlerRepoInSync(stats.SUCCESS, m.Name)
+			metrics.SetButlerRepoInSync(metrics.SUCCESS, m.Name)
 			if !GetManagerStatus(bc.GetStatusFile(), m.Name) {
 				log.Debugf("Config::RunCMHandler()[count=%v]: Could not find manager status. Going to reload to get in sync.", cmHandlerCounter)
 				err := m.Reload()
@@ -426,14 +426,14 @@ func (bc *ButlerConfig) RunCMHandler() error {
 						if e.Code == 1 && m.ManagerTimeoutOk == true {
 							// we really don't care about here
 							// let's make sure we at least delete our metrics
-							stats.DeleteButlerReloadVal(m.Name)
+							metrics.DeleteButlerReloadVal(m.Name)
 						} else {
 							log.Errorf("Config::RunCMHandler()[count=%v]: err=%#v", cmHandlerCounter, err)
 							err := SetManagerStatus(bc.GetStatusFile(), m.Name, false)
 							if err != nil {
 								log.Fatalf("Config::RunCMHandler()[count=%v]: could not write to %v err=%v", cmHandlerCounter, bc.GetStatusFile(), err.Error())
 							}
-							stats.SetButlerReloadVal(stats.FAILURE, m.Name)
+							metrics.SetButlerReloadVal(metrics.FAILURE, m.Name)
 							if m.EnableCache && m.GoodCache {
 								RestoreCachedConfigs(m.Name, bc.Config.GetAllConfigLocalPaths(m.Name), m.CleanFiles)
 							}
@@ -444,7 +444,7 @@ func (bc *ButlerConfig) RunCMHandler() error {
 					if err != nil {
 						log.Fatalf("Config::RunCMHandler()[count=%v]: could not write to %v err=%v", cmHandlerCounter, bc.GetStatusFile(), err.Error())
 					}
-					stats.SetButlerReloadVal(stats.SUCCESS, m.Name)
+					metrics.SetButlerReloadVal(metrics.SUCCESS, m.Name)
 					if m.EnableCache {
 						CacheConfigs(m.Name, bc.Config.GetAllConfigLocalPaths(m.Name))
 						m.GoodCache = true
@@ -465,14 +465,14 @@ func (bc *ButlerConfig) RunCMHandler() error {
 					if e.Code == 1 && mgr.ManagerTimeoutOk == true {
 						// we really don't care about here, but
 						// let's make sure we at least delete our metrics
-						stats.DeleteButlerReloadVal(mgr.Name)
+						metrics.DeleteButlerReloadVal(mgr.Name)
 					} else {
 						log.Errorf("Config::RunCMHandler()[count=%v]: Could not reload manager \"%v\" err=%#v", cmHandlerCounter, mgr.Name, err)
 						err := SetManagerStatus(bc.GetStatusFile(), m, false)
 						if err != nil {
 							log.Fatalf("Config::RunCMHandler()[count=%v]: could not write to %v err=%v", cmHandlerCounter, bc.GetStatusFile(), err.Error())
 						}
-						stats.SetButlerReloadVal(stats.FAILURE, m)
+						metrics.SetButlerReloadVal(metrics.FAILURE, m)
 						if mgr.EnableCache && mgr.GoodCache {
 							RestoreCachedConfigs(m, bc.Config.GetAllConfigLocalPaths(mgr.Name), mgr.CleanFiles)
 						}
@@ -483,7 +483,7 @@ func (bc *ButlerConfig) RunCMHandler() error {
 				if err != nil {
 					log.Fatalf("Config::RunCMHandler()[count=%v]: could not write to %v err=%v", cmHandlerCounter, bc.GetStatusFile(), err.Error())
 				}
-				stats.SetButlerReloadVal(stats.SUCCESS, m)
+				metrics.SetButlerReloadVal(metrics.SUCCESS, m)
 				if mgr.EnableCache {
 					CacheConfigs(m, bc.Config.GetAllConfigLocalPaths(mgr.Name))
 					mgr.GoodCache = true

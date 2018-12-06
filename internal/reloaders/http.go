@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"github.com/adobe/butler/internal/environment"
-	"github.com/adobe/butler/internal/stats"
+	"github.com/adobe/butler/internal/metrics"
 
 	"github.com/hashicorp/go-retryablehttp"
 	log "github.com/sirupsen/logrus"
@@ -175,14 +175,14 @@ func (h HTTPReloader) Reload() error {
 
 func (h *HTTPReloader) ReloaderRetryPolicy(resp *http.Response, err error) (bool, error) {
 	if err != nil {
-		stats.SetButlerReloaderRetry(stats.SUCCESS, h.Manager)
+		metrics.SetButlerReloaderRetry(metrics.SUCCESS, h.Manager)
 		return true, err
 	}
 
 	// Here is our policy override. By default it looks for
 	// res.StatusCode >= 500 ...
 	if resp.StatusCode == 0 || resp.StatusCode >= 600 {
-		stats.SetButlerReloaderRetry(stats.SUCCESS, h.Manager)
+		metrics.SetButlerReloaderRetry(metrics.SUCCESS, h.Manager)
 		return true, nil
 	}
 	return false, nil

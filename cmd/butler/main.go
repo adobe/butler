@@ -137,9 +137,6 @@ func main() {
 				opts.HTTPAuthType = newConfigHTTPAuthType
 				opts.HTTPAuthToken = *configHTTPAuthToken
 				opts.HTTPAuthUser = *configHTTPAuthUser
-				//bc.SetHTTPAuthType(newConfigHTTPAuthType)
-				//bc.SetHTTPAuthToken(*configHTTPAuthToken)
-				//bc.SetHTTPAuthUser(*configHTTPAuthUser)
 				break
 			default:
 				log.Fatalf("Unsupported HTTP Authentication Type: %s", newConfigHTTPAuthType)

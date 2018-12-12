@@ -342,7 +342,7 @@ func (bmo *ManagerOpts) DownloadConfigFile(file string) *os.File {
 			log.Fatal(msg)
 		}
 
-		if (bmo.Method == "s3") || (bmo.Method == "S3") {
+		if bmo.Method == "s3" {
 			prefix := bmo.Method + "://"
 			file = strings.TrimPrefix(file, prefix)
 		}

@@ -43,6 +43,12 @@ const (
 	butlerFooter = "#butlerend"
 )
 
+type ButlerConfigOpts struct {
+	InsecureSkipVerify bool
+	LogLevel           log.Level
+	URL                *url.URL
+}
+
 type ConfigClient struct {
 	Scheme     string
 	Method     methods.Method
@@ -84,10 +90,9 @@ func (c *ConfigClient) Get(val *url.URL) (*methods.Response, error) {
 		response *methods.Response
 		err      error
 	)
-	switch val.Scheme {
-	case "blob", "file", "http", "https", "s3", "S3", "etcd":
+	if IsValidScheme(val.Scheme) {
 		response, err = c.Method.Get(val)
-	default:
+	} else {
 		response = &methods.Response{}
 		err = errors.New("unsupported scheme")
 	}

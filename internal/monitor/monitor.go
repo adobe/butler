@@ -136,8 +136,8 @@ func (m *Monitor) Update(bc *config.ButlerConfig) {
 // configuration options that buter gets started with, and some run time
 // information
 func (m *Monitor) Handler(w http.ResponseWriter, r *http.Request) {
-	mOut := Output{ConfigPath: m.config.GetPath(),
-		ConfigScheme:     m.config.URL.Scheme,
+	mOut := Output{ConfigPath: m.config.Path(),
+		ConfigScheme:     m.config.Scheme(),
 		RetrieveInterval: m.config.Interval,
 		LogLevel:         m.config.GetLogLevel(),
 		ConfigSettings:   *m.config.Config,

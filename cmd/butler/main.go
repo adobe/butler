@@ -187,6 +187,10 @@ func main() {
 		os.Setenv("BUTLER_STORAGE_ACCOUNT", bc.Host())
 		bc.SetMethodOpts(opts)
 	case "etcd":
+		u := bc.URL()
+		newU := fmt.Sprintf("%v://%v/%v%v", u.Scheme, u.Host, u.Host, u.Path)
+		rewriteURL, _ := url.Parse(newU)
+		bc.SetURL(rewriteURL)
 		opts := config.EtcdMethodOpts{Scheme: bc.Scheme()}
 		if *configEtcdEndpoints == "" {
 			log.Fatalf("You must provide a valid -etcd.endpoints for use with the etcd downloader.")

@@ -107,6 +107,10 @@ func (bc *ButlerConfig) URL() *url.URL {
 	return bc.url
 }
 
+func (bc *ButlerConfig) SetURL(u *url.URL) {
+	bc.url = u
+}
+
 func (bc *ButlerConfig) Opts() MethodOpts {
 	return bc.MethodOpts
 }

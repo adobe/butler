@@ -765,7 +765,6 @@ func NewConfigChanEvent() *ConfigChanEvent {
 func NewConfigClient(bc *ButlerConfig) (*ConfigClient, error) {
 	var c ConfigClient
 	opts := bc.MethodOpts
-	log.Debugf("opts=%#v", opts)
 	method, err := methods.New(nil, opts.GetScheme(), nil)
 	if err != nil {
 		if err.Error() == "Generic method handler is not very useful" {
@@ -811,7 +810,7 @@ func NewConfigClient(bc *ButlerConfig) (*ConfigClient, error) {
 	case "blob":
 		o := opts.(BlobMethodOpts)
 		c.Scheme = o.GetScheme()
-		c.Method, err = methods.NewBlobMethodWithAccount(bc.Host())
+		c.Method, err = methods.NewBlobMethodWithAccountAndKey(o.AccountName, o.AccountKey)
 		if err != nil {
 			return &ConfigClient{}, err
 		}

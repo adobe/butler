@@ -58,7 +58,9 @@ func (o S3MethodOpts) GetScheme() string {
 }
 
 type BlobMethodOpts struct {
-	Scheme string
+	Scheme      string
+	AccountName string
+	AccountKey  string
 }
 
 func (o BlobMethodOpts) GetScheme() string {

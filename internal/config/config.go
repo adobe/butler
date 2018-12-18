@@ -103,6 +103,7 @@ func (c *ConfigSettings) ParseConfig(config []byte) error {
 	var (
 		Config  ConfigSettings
 		Globals ConfigGlobals
+		path    string
 	)
 	log.Debugf("ConfigSettings::ParseConfig(): entering.")
 	// The  configuration is in TOML format
@@ -231,7 +232,13 @@ func (c *ConfigSettings) ParseConfig(config []byte) error {
 		for _, u := range m.Repos {
 			opts := fmt.Sprintf("%s.%s", m.Name, u)
 			m.ManagerOpts[opts].SetParentManager(m.Name)
-			baseRemotePath := fmt.Sprintf("%s://%s%s", m.ManagerOpts[opts].Method, u, m.ManagerOpts[opts].RepoPath)
+			repo := strings.Replace(u, "/", "", -1)
+			if strings.HasPrefix(m.ManagerOpts[opts].RepoPath, "/") {
+				path = strings.Replace(m.ManagerOpts[opts].RepoPath, "/", "", 1)
+			} else {
+				path = m.ManagerOpts[opts].RepoPath
+			}
+			baseRemotePath := fmt.Sprintf("%s://%s/%s", m.ManagerOpts[opts].Method, repo, path)
 			for _, f := range m.ManagerOpts[opts].PrimaryConfig {
 				fullRemotePath := fmt.Sprintf("%s/%s", baseRemotePath, f)
 				m.ManagerOpts[opts].AppendPrimaryConfigURL(fullRemotePath)

@@ -183,8 +183,9 @@ func main() {
 		opts.Bucket = pathSplit
 		bc.SetMethodOpts(opts)
 	case "blob":
-		opts := config.BlobMethodOpts{Scheme: bc.Scheme()}
-		os.Setenv("BUTLER_STORAGE_ACCOUNT", bc.Host())
+		opts := config.BlobMethodOpts{Scheme: bc.Scheme(),
+			AccountName: bc.Host(),
+			AccountKey:  os.Getenv("ACCOUNT_KEY")}
 		bc.SetMethodOpts(opts)
 	case "etcd":
 		u := bc.URL()

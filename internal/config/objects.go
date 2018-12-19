@@ -20,6 +20,70 @@ var (
 	ConfigCache map[string]map[string][]byte
 )
 
+type MethodOpts interface {
+	GetScheme() string
+}
+
+type FileMethodOpts struct {
+	Scheme string
+}
+
+func (o FileMethodOpts) GetScheme() string {
+	return o.Scheme
+}
+
+type HttpMethodOpts struct {
+	HTTPAuthType  string
+	HTTPAuthToken string
+	HTTPAuthUser  string
+	Retries       int
+	RetryWaitMin  int
+	RetryWaitMax  int
+	Scheme        string
+	Timeout       int
+}
+
+func (o HttpMethodOpts) GetScheme() string {
+	return o.Scheme
+}
+
+type S3MethodOpts struct {
+	Bucket string
+	Region string
+	Scheme string
+}
+
+func (o S3MethodOpts) GetScheme() string {
+	return o.Scheme
+}
+
+type BlobMethodOpts struct {
+	Scheme      string
+	AccountName string
+	AccountKey  string
+}
+
+func (o BlobMethodOpts) GetScheme() string {
+	return o.Scheme
+}
+
+type EtcdMethodOpts struct {
+	Endpoints []string
+	Scheme    string
+}
+
+func (o EtcdMethodOpts) GetScheme() string {
+	return o.Scheme
+}
+
+type GenericMethodOpts struct {
+	Scheme string
+}
+
+func (o GenericMethodOpts) GetScheme() string {
+	return "generic"
+}
+
 type TmpFile struct {
 	Name string
 	File string

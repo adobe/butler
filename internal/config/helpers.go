@@ -529,10 +529,7 @@ func GetManagerOpts(entry string, bc *ConfigSettings) (*ManagerOpts, error) {
 		MgrOpts.RepoPath = ""
 	}
 
-	switch MgrOpts.Method {
-	case "blob", "file", "http", "https", "s3", "S3", "etcd":
-		break
-	default:
+	if !IsValidScheme(MgrOpts.Method) {
 		msg := fmt.Sprintf("unknown manager.method=%v", MgrOpts.Method)
 		return &ManagerOpts{}, errors.New(msg)
 	}
@@ -741,8 +738,19 @@ func ParseConfig(config []byte) error {
 	return nil
 }
 
-func NewButlerConfig() *ButlerConfig {
-	return &ButlerConfig{FirstRun: true}
+func NewButlerConfig(opts *ButlerConfigOpts) (*ButlerConfig, error) {
+	var (
+		cfg ButlerConfig
+	)
+	cfg.FirstRun = true
+	cfg.InsecureSkipVerify = opts.InsecureSkipVerify
+	cfg.url = opts.URL
+
+	if !IsValidScheme(cfg.Scheme()) {
+		return &cfg, fmt.Errorf("%v is not a supported scheme.", cfg.Scheme())
+	} else {
+		return &cfg, nil
+	}
 }
 
 func NewConfigChanEvent() *ConfigChanEvent {
@@ -754,24 +762,67 @@ func NewConfigChanEvent() *ConfigChanEvent {
 	return &c
 }
 
-func NewConfigClient(scheme string) (*ConfigClient, error) {
+func NewConfigClient(bc *ButlerConfig) (*ConfigClient, error) {
 	var c ConfigClient
-	switch scheme {
+	opts := bc.MethodOpts
+	method, err := methods.New(nil, opts.GetScheme(), nil)
+	if err != nil {
+		if err.Error() == "Generic method handler is not very useful" {
+			log.Errorf("Config::Init(): could not initialize butler config (check if using valid scheme). err=%s", err.Error())
+			return &ConfigClient{}, fmt.Errorf("\"%s\" is an invalid config retrieval method.", bc.Scheme())
+
+		} else {
+			log.Errorf("Config::Init(): could not initialize butler config. err=%s", err.Error())
+			return &ConfigClient{}, err
+		}
+	}
+	log.Warnf("ButlerConfig::Init() Above \"NewHttpMethod(): could not convert\" warnings may be safely disregarded.")
+	switch opts.GetScheme() {
 	case "http", "https":
-		c.Scheme = "http"
+		o := opts.(HttpMethodOpts)
+		m := method.(methods.HTTPMethod)
+		m.AuthType = o.HTTPAuthType
+		m.AuthToken = o.HTTPAuthToken
+		m.InsecureSkipVerify = bc.InsecureSkipVerify
+		c.Scheme = o.GetScheme()
 		c.HTTPClient = retryablehttp.NewClient()
 		c.HTTPClient.Logger.SetFlags(0)
 		c.HTTPClient.Logger.SetOutput(ioutil.Discard)
-	case "s3", "S3":
-		c.Scheme = "s3"
+		c.SetTimeout(o.Timeout)
+		c.SetRetryMax(o.Retries)
+		c.SetRetryWaitMax(o.RetryWaitMax)
+		c.SetRetryWaitMin(o.RetryWaitMin)
+		c.Method = m
+	case "s3":
+		o := opts.(S3MethodOpts)
+		c.Scheme = o.GetScheme()
+		c.Method, err = methods.NewS3MethodWithRegionAndBucket(o.Region, bc.Host())
+		if err != nil {
+			return &ConfigClient{}, err
+		}
 	case "file":
-		c.Scheme = "file"
+		o := opts.(FileMethodOpts)
+		c.Scheme = o.GetScheme()
+		c.Method, err = methods.NewFileMethodWithURL(bc.URL())
+		if err != nil {
+			return &ConfigClient{}, err
+		}
 	case "blob":
-		c.Scheme = "blob"
+		o := opts.(BlobMethodOpts)
+		c.Scheme = o.GetScheme()
+		c.Method, err = methods.NewBlobMethodWithAccountAndKey(o.AccountName, o.AccountKey)
+		if err != nil {
+			return &ConfigClient{}, err
+		}
 	case "etcd":
-		c.Scheme = "etcd"
+		o := opts.(EtcdMethodOpts)
+		c.Scheme = o.GetScheme()
+		c.Method, err = methods.NewEtcdMethodWithEndpoints(o.Endpoints, bc.InsecureSkipVerify)
+		if err != nil {
+			return &ConfigClient{}, err
+		}
 	default:
-		errMsg := fmt.Sprintf("Unsupported butler config scheme: %s", scheme)
+		errMsg := fmt.Sprintf("Unsupported butler config scheme: %s", opts.GetScheme())
 		return &ConfigClient{}, errors.New(errMsg)
 	}
 	return &c, nil

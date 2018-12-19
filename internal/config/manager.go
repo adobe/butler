@@ -335,15 +335,14 @@ func (bmo *ManagerOpts) GetAdditionalRemoteConfigFiles() []string {
 
 // Really need to come up with a better method for this.
 func (bmo *ManagerOpts) DownloadConfigFile(file string) *os.File {
-	switch bmo.Method {
-	case "blob", "file", "http", "https", "s3", "S3", "etcd":
+	if IsValidScheme(bmo.Method) {
 		tmpFile, err := ioutil.TempFile("/tmp", "bcmsfile")
 		if err != nil {
 			msg := fmt.Sprintf("ManagerOpts::DownloadConfigFile()[count=%v][manager=%v]: could not create temporary file. err=%v", cmHandlerCounter, bmo.parentManager, err)
 			log.Fatal(msg)
 		}
 
-		if (bmo.Method == "s3") || (bmo.Method == "S3") {
+		if bmo.Method == "s3" {
 			prefix := bmo.Method + "://"
 			file = strings.TrimPrefix(file, prefix)
 		}
@@ -399,7 +398,7 @@ func (bmo *ManagerOpts) DownloadConfigFile(file string) *os.File {
 			return tmpFile
 		}
 		return tmpFile
-	default:
+	} else {
 		return nil
 	}
 }

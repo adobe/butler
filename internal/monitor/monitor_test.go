@@ -70,20 +70,31 @@ func (s *ButlerTestSuite) SetUpSuite(c *C) {
 }
 
 func (s *ButlerTestSuite) TestNewMonitor(c *C) {
-	bc := config.NewButlerConfig()
+	u, err := url.Parse("https://localhost")
+	c.Assert(err, IsNil)
+	opts := &config.ButlerConfigOpts{
+		InsecureSkipVerify: true,
+		URL:                u}
+	bc, err := config.NewButlerConfig(opts)
+	c.Assert(err, IsNil)
+	bc.SetMethodOpts(config.HttpMethodOpts{Scheme: bc.Scheme()})
 	m := NewMonitor().WithOpts(&Opts{Config: bc, Version: "1.2.3"})
 	c.Assert(bc, Equals, m.config)
 }
 
 func (s *ButlerTestSuite) TestStartHTTP(c *C) {
 	// have to set some stuff up first
-	bc := config.NewButlerConfig()
-	u := &url.URL{}
+	u, err := url.Parse("https://localhost:58532")
+	c.Assert(err, IsNil)
+	opts := &config.ButlerConfigOpts{
+		InsecureSkipVerify: true,
+		URL:                u}
+	bc, err := config.NewButlerConfig(opts)
+	c.Assert(err, IsNil)
 	bc.Config = config.NewConfigSettings()
 	bc.Config.Globals.HTTPProto = "http"
 	bc.Config.Globals.HTTPPort = 58532
 	bc.Config.Globals.EnableHTTPLog = true
-	bc.URL = u
 	m := NewMonitor().WithOpts(&Opts{Config: bc, Version: "1.2.3"})
 	s.bm = m
 	c.Assert(bc, Equals, m.config)
@@ -115,15 +126,18 @@ func (s *ButlerTestSuite) TestStartHTTPs(c *C) {
 	err = tmpKey.Close()
 	c.Assert(err, IsNil)
 
-	bc := config.NewButlerConfig()
-	u := &url.URL{}
+	u, err := url.Parse("https://localhost")
+	c.Assert(err, IsNil)
+	opts := &config.ButlerConfigOpts{
+		InsecureSkipVerify: true,
+		URL:                u}
+	bc, err := config.NewButlerConfig(opts)
 	bc.Config = config.NewConfigSettings()
 	bc.Config.Globals.HTTPProto = "https"
 	bc.Config.Globals.HTTPPort = 58532
 	bc.Config.Globals.EnableHTTPLog = false
 	bc.Config.Globals.HTTPTLSCert = tmpCert.Name()
 	bc.Config.Globals.HTTPTLSKey = tmpKey.Name()
-	bc.URL = u
 	s.bm.Update(bc)
 	c.Assert(bc, Equals, s.bm.config)
 

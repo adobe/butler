@@ -23,7 +23,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/adobe/butler/internal/methods"
+	//"github.com/adobe/butler/internal/methods"
 	"github.com/adobe/butler/internal/metrics"
 	"github.com/adobe/butler/internal/reloaders"
 
@@ -32,7 +32,7 @@ import (
 )
 
 type ButlerConfig struct {
-	URL                     *url.URL
+	url                     *url.URL
 	Client                  *ConfigClient
 	Config                  *ConfigSettings
 	FirstRun                bool
@@ -41,19 +41,20 @@ type ButlerConfig struct {
 	Interval                int
 	Timeout                 int
 	RawConfig               []byte
-	Retries                 int
-	RetryWaitMin            int
-	RetryWaitMax            int
-	Scheduler               *gocron.Scheduler
+	//Retries                 int
+	//RetryWaitMin            int
+	//RetryWaitMax            int
+	Scheduler *gocron.Scheduler
 	// some http specific stuff
-	HTTPAuthType  string
-	HTTPAuthUser  string
-	HTTPAuthToken string
+	//HTTPAuthType  string
+	//HTTPAuthUser  string
+	//HTTPAuthToken string
 	// some s3 specific stuff
-	S3Region           string
-	S3Bucket           string
-	Endpoints          []string
+	//S3Region           string
+	//S3Bucket           string
+	//Endpoints          []string
 	InsecureSkipVerify bool
+	MethodOpts         MethodOpts
 }
 
 var (
@@ -72,20 +73,46 @@ func (bc *ButlerConfig) SetScheme(s string) error {
 		res = errors.New(errMsg)
 	} else {
 		log.Debugf("Config::SetScheme(): setting bc.Scheme=%s", scheme)
-		bc.URL.Scheme = scheme
+		bc.url.Scheme = scheme
 	}
 	return res
+}
+
+func (bc *ButlerConfig) Scheme() string {
+	return bc.url.Scheme
 }
 
 func (bc *ButlerConfig) SetPath(p string) error {
 	newPath := filepath.Clean(p)
 	log.Debugf("Config::SetPath(): setting bc.Path=%s", newPath)
-	bc.URL.Path = newPath
+	bc.url.Path = newPath
 	return nil
 }
 
-func (bc *ButlerConfig) GetPath() string {
-	return bc.URL.Path
+func (bc *ButlerConfig) SetMethodOpts(opts MethodOpts) error {
+	log.Debugf("Config::SetMethodOpts(): opts=%#v", opts)
+	bc.MethodOpts = opts
+	return nil
+}
+
+func (bc *ButlerConfig) Path() string {
+	return bc.url.Path
+}
+
+func (bc *ButlerConfig) Host() string {
+	return bc.url.Host
+}
+
+func (bc *ButlerConfig) URL() *url.URL {
+	return bc.url
+}
+
+func (bc *ButlerConfig) SetURL(u *url.URL) {
+	bc.url = u
+}
+
+func (bc *ButlerConfig) Opts() MethodOpts {
+	return bc.MethodOpts
 }
 
 func (bc *ButlerConfig) SetInterval(t int) error {
@@ -122,67 +149,6 @@ func (bc *ButlerConfig) SetTimeout(t int) error {
 	return nil
 }
 
-func (bc *ButlerConfig) SetHTTPAuthType(t string) error {
-	bc.HTTPAuthType = t
-	return nil
-}
-
-func (bc *ButlerConfig) SetHTTPAuthToken(t string) error {
-	bc.HTTPAuthToken = t
-	return nil
-}
-
-func (bc *ButlerConfig) SetHTTPAuthUser(t string) error {
-	bc.HTTPAuthUser = t
-	return nil
-}
-
-func (bc *ButlerConfig) SetRegion(r string) error {
-	bc.S3Region = r
-	return nil
-}
-
-func (bc *ButlerConfig) SetEndpoints(e []string) error {
-	bc.Endpoints = e
-	return nil
-}
-
-func (bc *ButlerConfig) SetRegionAndBucket(r string, b string) error {
-	if bc.Client != nil {
-		method, err := methods.NewS3MethodWithRegionAndBucket(r, b)
-		if err != nil {
-			return err
-		}
-		log.Debugf("ButlerConfig::SetRegionAndBucket(): method=%#v", method)
-		bc.Client.Method = method
-
-	} else {
-		return errors.New("ButlerConfig::SetRegionAndBucket(): bc.Client does not exist")
-	}
-
-	bc.S3Region = r
-	bc.S3Bucket = b
-	return nil
-}
-
-func (bc *ButlerConfig) SetRetries(t int) error {
-	log.Debugf("Config::SetRetries(): setting bc.Retries=%v", t)
-	bc.Retries = t
-	return nil
-}
-
-func (bc *ButlerConfig) SetRetryWaitMin(t int) error {
-	log.Debugf("Config::SetRetryWaitMin(): setting bc.RetryWaitMin=%v", t)
-	bc.RetryWaitMin = t
-	return nil
-}
-
-func (bc *ButlerConfig) SetRetryWaitMax(t int) error {
-	log.Debugf("Config::SetRetryWaitMax(): setting bc.RetryWaitMax=%v", t)
-	bc.RetryWaitMax = t
-	return nil
-}
-
 func (bc *ButlerConfig) SetLogLevel(level log.Level) {
 	log.SetLevel(level)
 	log.SetFormatter(&log.TextFormatter{FullTimestamp: true})
@@ -198,62 +164,10 @@ func (bc *ButlerConfig) Init() error {
 	log.Infof("Config::Init(): initializing butler config.")
 	var err error
 
-	method, err := methods.New(nil, bc.URL.Scheme, nil)
-	if err != nil {
-		if err.Error() == "Generic method handler is not very useful" {
-			log.Errorf("Config::Init(): could not initialize butler config (check if using valid scheme). err=%s", err.Error())
-			return fmt.Errorf("\"%s\" is an invalid config retrieval method.", bc.URL.Scheme)
-
-		} else {
-			log.Errorf("Config::Init(): could not initialize butler config. err=%s", err.Error())
-			return err
-		}
-	}
-	log.Warnf("ButlerConfig::Init() Above \"NewHttpMethod(): could not convert\" warnings may be safely disregarded.")
-
-	client, err := NewConfigClient(bc.URL.Scheme)
+	client, err := NewConfigClient(bc)
 	if err != nil {
 		log.Errorf("Config::Init(): could not initialize butler config. err=%s", err.Error())
 		return err
-	}
-	client.Method = method
-
-	switch bc.URL.Scheme {
-	case "http", "https":
-		client.SetTimeout(bc.Timeout)
-		client.SetRetryMax(bc.Retries)
-		client.SetRetryWaitMin(bc.RetryWaitMin)
-		client.SetRetryWaitMax(bc.RetryWaitMax)
-		// this is a bit hokey
-		m := method.(methods.HTTPMethod)
-		m.AuthType = bc.HTTPAuthType
-		m.AuthToken = bc.HTTPAuthToken
-		m.AuthUser = bc.HTTPAuthUser
-		m.InsecureSkipVerify = bc.InsecureSkipVerify
-		client.Method = m
-	case "s3", "S3":
-		pathSplit := strings.Split(bc.URL.Path, "/")
-		bucket := pathSplit[0]
-		bc.SetRegionAndBucket(bc.S3Region, bucket)
-		client.Method, err = methods.NewS3MethodWithRegionAndBucket(bc.S3Region, bc.URL.Host)
-		if err != nil {
-			return err
-		}
-	case "file":
-		client.Method, err = methods.NewFileMethodWithURL(bc.URL)
-		if err != nil {
-			return err
-		}
-	case "blob":
-		client.Method, err = methods.NewBlobMethodWithAccount(bc.URL.Host)
-		if err != nil {
-			return err
-		}
-	case "etcd":
-		client.Method, err = methods.NewEtcdMethodWithEndpoints(bc.Endpoints, bc.InsecureSkipVerify)
-		if err != nil {
-			return err
-		}
 	}
 
 	bc.Client = client
@@ -265,39 +179,39 @@ func (bc *ButlerConfig) Init() error {
 
 func (bc *ButlerConfig) Handler() error {
 	log.Infof("ButlerConfig::Handler()[count=%v]: entering.", handlerCounter)
-	response, err := bc.Client.Get(bc.URL)
+	response, err := bc.Client.Get(bc.URL())
 
 	if err != nil {
 		log.Errorf("ButlerConfig::Handler()[count=%v]: Cannot retrieve butler configuration. err=%s", handlerCounter, err.Error())
 		log.Errorf("ButlerConfig::Handler()[count=%v]: done.", handlerCounter)
 		handlerCounter++
-		metrics.SetButlerContactVal(metrics.FAILURE, bc.URL.Host, bc.URL.Path)
+		metrics.SetButlerContactVal(metrics.FAILURE, bc.Host(), bc.Path())
 		return err
 	}
 	defer response.GetResponseBody().Close()
 
 	if response.GetResponseStatusCode() != 200 {
-		metrics.SetButlerContactVal(metrics.FAILURE, bc.URL.Host, bc.URL.Path)
-		log.Errorf("ButlerConfig::Handler()[count=%v]: Did not receive 200 response code for %s. code=%d", handlerCounter, bc.URL.String(), response.GetResponseStatusCode())
+		metrics.SetButlerContactVal(metrics.FAILURE, bc.Host(), bc.Path())
+		log.Errorf("ButlerConfig::Handler()[count=%v]: Did not receive 200 response code for %s. code=%d", handlerCounter, bc.URL().String(), response.GetResponseStatusCode())
 		log.Errorf("ButlerConfig::Handler()[count=%v] done.", handlerCounter)
 		handlerCounter++
-		errMsg := fmt.Sprintf("Did not receive 200 response code for %s. code=%d", bc.URL.String(), response.GetResponseStatusCode())
+		errMsg := fmt.Sprintf("Did not receive 200 response code for %s. code=%d", bc.URL().String(), response.GetResponseStatusCode())
 		return errors.New(errMsg)
 	}
 
 	body, err := ioutil.ReadAll(response.GetResponseBody())
 	if err != nil {
-		metrics.SetButlerContactVal(metrics.FAILURE, bc.URL.Host, bc.URL.Path)
-		log.Errorf("ButlerConfig::Handler()[count=%v]: Could not read response body for %s. err=%s", handlerCounter, bc.URL.String(), err)
+		metrics.SetButlerContactVal(metrics.FAILURE, bc.Host(), bc.Path())
+		log.Errorf("ButlerConfig::Handler()[count=%v]: Could not read response body for %s. err=%s", handlerCounter, bc.URL().String(), err)
 		log.Errorf("ButlerConfig::Handler()[count=%v] done.", handlerCounter)
 		handlerCounter++
-		errMsg := fmt.Sprintf("Could not read response body for %s. err=%s", bc.URL.String(), err)
+		errMsg := fmt.Sprintf("Could not read response body for %s. err=%s", bc.URL().String(), err)
 		return errors.New(errMsg)
 	}
 
 	err = ValidateConfig(NewValidateOpts().WithData(body).WithFileName("butler.toml").WithManager("butler-config"))
 	if err != nil {
-		metrics.SetButlerContactVal(metrics.FAILURE, bc.URL.Host, bc.URL.Path)
+		metrics.SetButlerContactVal(metrics.FAILURE, bc.Host(), bc.Path())
 		return err
 	}
 
@@ -307,7 +221,7 @@ func (bc *ButlerConfig) Handler() error {
 			if bc.Config.Globals.ExitOnFailure {
 				log.Fatal(err)
 			} else {
-				metrics.SetButlerContactVal(metrics.FAILURE, bc.URL.Host, bc.URL.Path)
+				metrics.SetButlerContactVal(metrics.FAILURE, bc.Host(), bc.Path())
 				return err
 			}
 		} else {
@@ -322,7 +236,7 @@ func (bc *ButlerConfig) Handler() error {
 			if bc.Config.Globals.ExitOnFailure {
 				log.Fatal(err)
 			} else {
-				metrics.SetButlerContactVal(metrics.FAILURE, bc.URL.Host, bc.URL.Path)
+				metrics.SetButlerContactVal(metrics.FAILURE, bc.Host(), bc.Path())
 				return err
 			}
 		} else {
@@ -360,7 +274,7 @@ func (bc *ButlerConfig) Handler() error {
 			bc.SetCMPrevInterval(bc.GetCMInterval())
 		}
 	}
-	metrics.SetButlerContactVal(metrics.SUCCESS, bc.URL.Host, bc.URL.Path)
+	metrics.SetButlerContactVal(metrics.SUCCESS, bc.Host(), bc.Path())
 	log.Infof("ButlerConfig::Handler()[count=%v]: done.", handlerCounter)
 	handlerCounter++
 	return nil

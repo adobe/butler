@@ -21,7 +21,7 @@ GO:=go
 pkgs=$(shell $(GO) list ./... | egrep -v "(vendor)")
 
 export DOCKERHUB_USER=$(shell echo "$$DOCKERHUB_USER")
-export BUTLER_VERSION=1.3.0
+export BUTLER_VERSION=1.4.0
 export VERSION=v$(BUTLER_VERSION)
 
 default: ci
@@ -98,10 +98,12 @@ help:
 	@printf "make test-accept\t\tRuns acceptance testing.\n"
 	@printf "make test-unit\t\t\tRuns unit testing.\n"
 	@printf "make run\t\t\tRun butler on local system.\n"
+	@printf "make start-etcd\t\t\tRun a local etcd instance for testing.\n"
 	@printf "make start-alertmanager\t\tRun a local alertmanager instance for testing.\n"
 	@printf "make start-prometheus\t\tRun a local prometheus v1 instance for testing.\n"
 	@printf "make start-prometheus2\t\tRun a local prometheus v2 instance for testing.\n"
 	@printf "make start-am-prom\t\tRun a local alertmanager and prometheus instance for testing.\n"
+	@printf "make stop-etcd\t\t\tStop the local etcd instance for testing.\n"
 	@printf "make stop-alertmanager\t\tStop the local test alertmanager instance.\n"
 	@printf "make stop-prometheus\t\tStop the local test prometheus instance.\n"
 	@printf "make stop-am-prom\t\tStop the local test alertmanager and prometheus instance.\n"
@@ -110,6 +112,9 @@ help:
 
 run:
 	$(GO) run -ldflags "-X main.version=$(VERSION)" cmd/butler/main.go -config.path http://localhost/butler/config/butler.toml -config.retrieve-interval 10 -log.level debug
+
+start-etcd:
+	@docker run --rm -it --name=etcd -d -p 4001:4001 -p 2379:2379 -p 2380:2380 -v /tmp:/tmp quay.io/coreos/etcd:v3.2.17 etcd --name etcd --initial-cluster-state new --advertise-client-urls http://127.0.0.1:2379,http://127.0.0.1:4001 --listen-client-urls http://0.0.0.0:2379,http://0.0.0.0:4001 --initial-cluster-token etcd-cluster-1 --initial-cluster etcd=http://127.0.0.1:2380 --initial-advertise-peer-urls http://127.0.0.1:2380
 
 start-prometheus:
 	@docker run --rm -it --name=prometheus -d -p 9090:9090 -v /opt/prometheus:/etc/prometheus prom/prometheus:v1.8.2 -config.file=/etc/prometheus/prometheus.yml -storage.local.path=/prometheus -storage.local.memory-chunks=104857
@@ -123,6 +128,9 @@ start-alertmanager:
 start-am-prom: start-prometheus start-alertmanager
 #	@docker run --rm -it --name=prometheus -d -p 9090:9090 -v /opt/prometheus:/etc/prometheus prom/prometheus -config.file=/etc/prometheus/prometheus.yml -storage.local.path=/prometheus -storage.local.memory-chunks=104857
 #	@docker run --rm -it --name=alertmanager -d -p 9093:9093 -v /opt/alertmanager:/etc/alertmanager prom/alertmanager -config.file=/etc/alertmanager/alertmanager.yml
+
+stop-etcd:
+	@docker stop etcd
 
 stop-prometheus:
 	@docker stop prometheus

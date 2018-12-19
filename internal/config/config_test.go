@@ -210,11 +210,13 @@ var TestManagerOptsFail4 = []byte(`[testing.localhost]
 
 func (s *ConfigTestSuite) SetUpSuite(c *C) {
 	s.TestServer = httptest.NewServer(&TestHTTPHandler{})
-	s.Config = NewButlerConfig()
 	u, err := url.Parse(s.TestServer.URL)
+	opts := &ButlerConfigOpts{
+		InsecureSkipVerify: false,
+		LogLevel:           log.DebugLevel,
+		URL:                u}
+	s.Config, err = NewButlerConfig(opts)
 	c.Assert(err, IsNil)
-	s.Config.URL = u
-	log.SetLevel(log.DebugLevel)
 }
 
 func (s *ConfigTestSuite) TearDownSuite(c *C) {
@@ -226,26 +228,66 @@ func (s *ConfigTestSuite) TestConfigSchedulerInterval(c *C) {
 }
 
 func (s *ConfigTestSuite) TestNewConfigClientHttp(c *C) {
-	c1, err1 := NewConfigClient("http")
-	c2, err2 := NewConfigClient("https")
+	u1, err := url.Parse("http://localhost")
+	c.Assert(err, IsNil)
+	u2, err := url.Parse("https://localhost")
+	c.Assert(err, IsNil)
+	opts1 := &ButlerConfigOpts{
+		InsecureSkipVerify: false,
+		LogLevel:           log.DebugLevel,
+		URL:                u1}
+	bc1, err := NewButlerConfig(opts1)
+	bc1.SetMethodOpts(HttpMethodOpts{Scheme: u1.Scheme})
+
+	c.Assert(err, IsNil)
+	opts2 := &ButlerConfigOpts{
+		InsecureSkipVerify: false,
+		LogLevel:           log.DebugLevel,
+		URL:                u2}
+	bc2, err := NewButlerConfig(opts2)
+	bc2.SetMethodOpts(HttpMethodOpts{Scheme: u2.Scheme})
+	c.Assert(err, IsNil)
+	c1, err1 := NewConfigClient(bc1)
+	c2, err2 := NewConfigClient(bc2)
 	c.Assert(err1, IsNil)
 	c.Assert(err2, IsNil)
 	c.Assert(c1.Scheme, Equals, "http")
-	c.Assert(c2.Scheme, Equals, "http")
+	c.Assert(c2.Scheme, Equals, "https")
 	log.Debugf("c1=%#v c2=%#v\n", c1, c2)
 }
 
 func (s *ConfigTestSuite) TestNewConfigClientDefault(c *C) {
-	c1, err1 := NewConfigClient("hiya")
-	c.Assert(err1, NotNil)
-	c.Assert(c1.Scheme, Equals, "")
+	u, err := url.Parse("hiya://localhost")
+	c.Assert(err, IsNil)
+	opts := &ButlerConfigOpts{
+		InsecureSkipVerify: false,
+		LogLevel:           log.DebugLevel,
+		URL:                u}
+	bc, err := NewButlerConfig(opts)
+	_ = bc
+	c.Assert(err, NotNil)
+	//c1, err1 := NewConfigClient(bc)
+	//c.Assert(err1, NotNil)
+	//c.Assert(c1.Scheme, Equals, "")
+	//_ = err1
+	// = c1
 }
 
 func (s *ConfigTestSuite) TestConfigConfigHandler_InternalServerError(c *C) {
 	var err error
 	TestHTTPCase = 0
-	s.Config.SetScheme(s.Config.URL.Scheme)
-	s.Config.SetPath(s.Config.URL.Path)
+	u, err := url.Parse(s.TestServer.URL)
+	c.Assert(err, IsNil)
+	opts := &ButlerConfigOpts{
+		InsecureSkipVerify: false,
+		LogLevel:           log.DebugLevel,
+		URL:                u}
+	bc, err := NewButlerConfig(opts)
+	c.Assert(err, IsNil)
+	bcOpts := HttpMethodOpts{Scheme: u.Scheme}
+	bc.SetMethodOpts(bcOpts)
+	s.Config = bc
+	c.Logf("bc=%#v", bc)
 	s.Config.Init()
 	err = s.Config.Handler()
 	//log.Infof("err=%#v\n", err.Error())

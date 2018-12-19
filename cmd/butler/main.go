@@ -113,17 +113,19 @@ func main() {
 		log.Fatalf("Cannot properly parse -config.path. -config.path must be in URL form. -config.path=%v", environment.GetVar(*configPath))
 	}
 
-	bc := config.NewButlerConfig()
-	bc.URL = newURL
-	bc.SetLogLevel(SetLogLevel(newConfigLogLevel))
-	err = bc.SetScheme(bc.URL.Scheme)
-	if err != nil {
-		log.Fatalf("Unsupported butler scheme. scheme=%v", bc.URL.Scheme)
+	opts := &config.ButlerConfigOpts{
+		InsecureSkipVerify: *configTlsInsecureSkipVerify,
+		LogLevel:           SetLogLevel(newConfigLogLevel),
+		URL:                newURL,
 	}
-	bc.SetPath(bc.URL.Path)
+	bc, err := config.NewButlerConfig(opts)
+	if err != nil {
+		log.Fatalf("Unsupported butler scheme. scheme=%v", bc.Scheme())
+	}
 
-	switch bc.URL.Scheme {
+	switch bc.Scheme() {
 	case "http", "https":
+		opts := config.HttpMethodOpts{Scheme: bc.Scheme()}
 		newConfigHTTPAuthType := strings.ToLower(environment.GetVar(*configHTTPAuthType))
 		if newConfigHTTPAuthType != "" {
 			if environment.GetVar(*configHTTPAuthUser) != "" && environment.GetVar(*configHTTPAuthToken) != "" {
@@ -132,9 +134,9 @@ func main() {
 			}
 			switch newConfigHTTPAuthType {
 			case "basic", "digest", "token-key":
-				bc.SetHTTPAuthType(newConfigHTTPAuthType)
-				bc.SetHTTPAuthToken(*configHTTPAuthToken)
-				bc.SetHTTPAuthUser(*configHTTPAuthUser)
+				opts.HTTPAuthType = newConfigHTTPAuthType
+				opts.HTTPAuthToken = *configHTTPAuthToken
+				opts.HTTPAuthUser = *configHTTPAuthUser
 				break
 			default:
 				log.Fatalf("Unsupported HTTP Authentication Type: %s", newConfigHTTPAuthType)
@@ -146,7 +148,7 @@ func main() {
 			newConfigHTTPTimeout = defaultHTTPTimeout
 		}
 		log.Debugf("main(): setting HttpTimeout to %d", newConfigHTTPTimeout)
-		bc.SetTimeout(newConfigHTTPTimeout)
+		opts.Timeout = newConfigHTTPTimeout
 
 		// Set the HTTP Retries Counter
 		newConfigHTTPRetries, _ := strconv.Atoi(environment.GetVar(*configHTTPRetries))
@@ -154,7 +156,7 @@ func main() {
 			newConfigHTTPRetries = defaultHTTPRetries
 		}
 		log.Debugf("main(): setting HttpRetries to %d", newConfigHTTPRetries)
-		bc.SetRetries(newConfigHTTPRetries)
+		opts.Retries = newConfigHTTPRetries
 
 		// Set the HTTP Holdoff Values
 		newConfigHTTPRetryWaitMin, _ := strconv.Atoi(environment.GetVar(*configHTTPRetryWaitMin))
@@ -166,26 +168,44 @@ func main() {
 			newConfigHTTPRetryWaitMax = defaultHTTPRetryWaitMax
 		}
 		log.Debugf("main(): setting RetryWaitMin[%d] and RetryWaitMax[%d]", newConfigHTTPRetryWaitMin, newConfigHTTPRetryWaitMax)
-		bc.SetRetryWaitMin(newConfigHTTPRetryWaitMin)
-		bc.SetRetryWaitMax(newConfigHTTPRetryWaitMax)
-		bc.InsecureSkipVerify = *configTlsInsecureSkipVerify
-	case "s3", "S3":
+		opts.RetryWaitMin = newConfigHTTPRetryWaitMin
+		opts.RetryWaitMax = newConfigHTTPRetryWaitMax
+		bc.SetMethodOpts(opts)
+	case "s3":
+		opts := config.S3MethodOpts{Scheme: bc.Scheme()}
 		if *configS3Region == "" {
 			log.Fatalf("You must provide a -s3.region for use with the s3 downloader.")
 		}
 		newConfigS3Region := environment.GetVar(*configS3Region)
 		log.Debugf("main(): setting s3 region=%v", newConfigS3Region)
-		bc.SetRegion(newConfigS3Region)
+		opts.Region = newConfigS3Region
+		pathSplit := strings.Split(bc.Path(), "/")[0]
+		opts.Bucket = pathSplit
+		bc.SetMethodOpts(opts)
 	case "blob":
-		os.Setenv("BUTLER_STORAGE_ACCOUNT", bc.URL.Host)
+		opts := config.BlobMethodOpts{Scheme: bc.Scheme(),
+			AccountName: bc.Host(),
+			AccountKey:  os.Getenv("ACCOUNT_KEY")}
+		bc.SetMethodOpts(opts)
 	case "etcd":
+		u := bc.URL()
+		newU := fmt.Sprintf("%v://%v/%v%v", u.Scheme, u.Host, u.Host, u.Path)
+		rewriteURL, _ := url.Parse(newU)
+		bc.SetURL(rewriteURL)
+		opts := config.EtcdMethodOpts{Scheme: bc.Scheme()}
 		if *configEtcdEndpoints == "" {
 			log.Fatalf("You must provide a valid -etcd.endpoints for use with the etcd downloader.")
 		}
 		newConfigEtcdEndpoints := environment.GetVar(*configEtcdEndpoints)
 		log.Debugf("main(): setting etcd endpoints=%v", newConfigEtcdEndpoints)
-		bc.SetEndpoints(strings.Split(newConfigEtcdEndpoints, ","))
-		bc.InsecureSkipVerify = *configTlsInsecureSkipVerify
+		opts.Endpoints = strings.Split(newConfigEtcdEndpoints, ",")
+		bc.SetMethodOpts(opts)
+	case "file":
+		opts := config.FileMethodOpts{Scheme: bc.Scheme()}
+		bc.SetMethodOpts(opts)
+	default:
+		opts := config.GenericMethodOpts{Scheme: bc.Scheme()}
+		bc.SetMethodOpts(opts)
 	}
 
 	// Set the butler configuration retrieval interval
@@ -213,7 +233,6 @@ func main() {
 			if butlerTesting {
 				log.Fatalf("Cannot retrieve butler configuration. err=%s butlerTesting=%#v", err.Error(), butlerTesting)
 			}
-			//log.Error("Cannot retrieve butler configuration. err=%s", err.Error())
 			log.Warnf("main(): Sleeping 5 seconds.")
 			time.Sleep(5 * time.Second)
 		} else {

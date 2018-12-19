@@ -48,6 +48,7 @@ var TestViperConfigBlob = []byte(`[test-manager]
     additional-config = ["alerts/commonalerts.yml", "butler/butler.yml"]
     [test-manager.repo.blob]
       storage-account-name = "stegentestblobva7"
+      storage-account-key = "aGl5YWhpeWFoaXlh"
 `)
 
 var TestViperConfigBlobEnv = []byte(`[test-manager]
@@ -65,6 +66,7 @@ var TestViperConfigBlobEnv = []byte(`[test-manager]
     additional-config = ["alerts/commonalerts.yml", "butler/butler.yml"]
     [test-manager.repo.blob]
       storage-account-name = "env:STORAGE_ACCOUNT"
+      storage-account-key = "env:STORAGE_KEY"
 `)
 
 var TestViperConfigBlobNoAccount = []byte(`[test-manager]
@@ -97,25 +99,17 @@ func (s *BlobTestSuite) TestNewBlobMethod(c *C) {
 	c.Assert(err, IsNil)
 
 	// Reset some environment
-	os.Unsetenv("BUTLER_STORAGE_TOKEN")
-	os.Unsetenv("BUTLER_STORAGE_ACCOUNT")
+	os.Unsetenv("ACCOUNT_NAME")
+	os.Unsetenv("ACCOUNT_KEY")
 
 	// setup some stuff
 	manager := "test-manager"
 	entry := "test-manager.repo.blob"
 
-	// This will error due to no BUTLER_STORAGE_TOKEN
 	method, err := NewBlobMethod(&manager, &entry)
 	m := method.(BlobMethod)
-	c.Assert(m.StorageAccount, Equals, "")
-	c.Assert(m.AzureClient.HTTPClient, IsNil)
-	c.Assert(err, NotNil)
-
-	// Let's setup a fake token
-	os.Setenv("BUTLER_STORAGE_TOKEN", "hiya")
-	method, err = NewBlobMethod(&manager, &entry)
-	m = method.(BlobMethod)
 	c.Assert(m.StorageAccount, Equals, "stegentestblobva7")
+	c.Assert(m.StorageKey, Equals, "aGl5YWhpeWFoaXlh")
 	c.Assert(m.AzureClient.HTTPClient, NotNil)
 	c.Assert(err, IsNil)
 
@@ -124,15 +118,15 @@ func (s *BlobTestSuite) TestNewBlobMethod(c *C) {
 	c.Assert(err, IsNil)
 
 	// Let's override the storage account
-	os.Setenv("BUTLER_STORAGE_ACCOUNT", "newblob")
+	os.Setenv("ACCOUNT_NAME", "newblob")
 	method, err = NewBlobMethod(&manager, &entry)
 	m = method.(BlobMethod)
-	c.Assert(m.StorageAccount, Equals, "newblob")
-	c.Assert(m.AzureClient.HTTPClient, NotNil)
-	c.Assert(err, IsNil)
+	c.Assert(m.StorageAccount, Equals, "")
+	c.Assert(m.AzureClient.HTTPClient, IsNil)
+	c.Assert(err, NotNil)
 
-	os.Unsetenv("BUTLER_STORAGE_TOKEN")
-	os.Unsetenv("BUTLER_STORAGE_ACCOUNT")
+	os.Unsetenv("ACCOUNT_NAME")
+	os.Unsetenv("ACCOUNT_KEY")
 
 	// test out the environment stuff
 	err = viper.ReadConfig(bytes.NewBuffer(TestViperConfigBlobEnv))
@@ -140,24 +134,20 @@ func (s *BlobTestSuite) TestNewBlobMethod(c *C) {
 	method, err = NewBlobMethod(&manager, &entry)
 	c.Assert(err, NotNil)
 
-	os.Setenv("STORAGE_ACCOUNT", "boombam")
-	os.Setenv("BUTLER_STORAGE_TOKEN", "hiya")
+	os.Setenv("ACCOUNT_NAME", "boombam")
+	os.Setenv("ACCOUNT_KEY", "hiya")
 	method, err = NewBlobMethod(&manager, &entry)
 	c.Assert(err, IsNil)
 	m = method.(BlobMethod)
 	c.Assert(m.StorageAccount, Equals, "boombam")
-	os.Unsetenv("STORAGE_ACCOUNT")
-	os.Unsetenv("BUTLER_STORAGE_TOKEN")
+	os.Unsetenv("ACCOUNT_NAME")
+	os.Unsetenv("ACCOUNT_KEY")
 }
 
-func (s *BlobTestSuite) TestNewBlobMethodWithAccount(c *C) {
+func (s *BlobTestSuite) TestNewBlobMethodWithAccountAndKey(c *C) {
 	// load config
 	err := viper.ReadConfig(bytes.NewBuffer(TestViperConfigBlob))
 	c.Assert(err, IsNil)
-
-	// Reset some environment
-	os.Unsetenv("BUTLER_STORAGE_TOKEN")
-	os.Unsetenv("BUTLER_STORAGE_ACCOUNT")
 
 	// setup some stuff
 	//manager := "test-manager"
@@ -166,24 +156,28 @@ func (s *BlobTestSuite) TestNewBlobMethodWithAccount(c *C) {
 	// Let's setup a fake token
 	os.Setenv("BUTLER_STORAGE_TOKEN", "hiya")
 
-	method, err := NewBlobMethodWithAccount("stegentestblobva7")
+	method, err := NewBlobMethodWithAccountAndKey("stegentestblobva7", "aGl5YWhpeWFoaXlh")
 	m := method.(BlobMethod)
 	c.Assert(m.StorageAccount, Equals, "stegentestblobva7")
+	c.Assert(m.StorageKey, Equals, "aGl5YWhpeWFoaXlh")
 	c.Assert(err, IsNil)
 
-	method, err = NewBlobMethodWithAccount("")
+	method, err = NewBlobMethodWithAccountAndKey("", "")
 	m = method.(BlobMethod)
 	c.Assert(m.StorageAccount, Equals, "")
+	c.Assert(m.StorageKey, Equals, "")
 	c.Assert(err, NotNil)
 
 	os.Setenv("STORAGE_ACCOUNT", "boombam")
-	method, err = NewBlobMethodWithAccount("env:STORAGE_ACCOUNT")
+	os.Setenv("STORAGE_KEY", "aGl5YWhpeWFoaXlh")
+	method, err = NewBlobMethodWithAccountAndKey("env:STORAGE_ACCOUNT", "env:STORAGE_KEY")
 	m = method.(BlobMethod)
 	c.Assert(m.StorageAccount, Equals, "boombam")
+	c.Assert(m.StorageKey, Equals, "aGl5YWhpeWFoaXlh")
 	c.Assert(err, IsNil)
 
-	os.Unsetenv("BUTLER_STORAGE_TOKEN")
-	os.Unsetenv("BUTLER_STORAGE_ACCOUNT")
+	os.Unsetenv("STORAGE_ACCOUNT")
+	os.Unsetenv("STORAGE_KEY")
 }
 
 func (s *BlobTestSuite) TestGet(c *C) {

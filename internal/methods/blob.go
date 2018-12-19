@@ -92,8 +92,8 @@ func NewBlobMethodWithAccountAndKey(account string, key string) (Method, error) 
 	}
 	result.StorageKey = environment.GetVar(key)
 
-	os.Setenv("ACCOUNT_KEY", result.StorageKey)
-	os.Setenv("ACCOUNT_NAME", result.StorageAccount)
+	//os.Setenv("ACCOUNT_KEY", result.StorageKey)
+	//os.Setenv("ACCOUNT_NAME", result.StorageAccount)
 
 	client, err = storage.NewBasicClient(result.StorageAccount, result.StorageKey)
 	if err != nil {

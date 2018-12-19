@@ -32,10 +32,13 @@ import (
 )
 
 type S3Method struct {
-	Bucket     string                `mapstructure:"bucket" json:"bucket"`
-	Manager    *string               `json:"-"`
-	Region     string                `mapstructure:"region" json:"region"`
-	Downloader *s3manager.Downloader `json:"-"`
+	AccessKeyId     string                `mapstructure:"access-key-id" json:"access-key-id"`
+	Bucket          string                `mapstructure:"bucket" json:"bucket"`
+	Downloader      *s3manager.Downloader `json:"-"`
+	Manager         *string               `json:"-"`
+	Region          string                `mapstructure:"region" json:"region"`
+	SecretAccessKey string                `mapstructure:"secret-access-key" json:"-"`
+	SessionToken    string                `mapstructure:"session-token" json:"-"`
 }
 
 func NewS3Method(manager *string, entry *string) (Method, error) {

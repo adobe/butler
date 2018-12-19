@@ -20,8 +20,11 @@ import (
 )
 
 type Method interface {
-	//Get(string) (*Response, error)
 	Get(*url.URL) (*Response, error)
+}
+
+type MethodOpts interface {
+	GetScheme() string
 }
 
 type Response struct {

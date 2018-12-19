@@ -24,6 +24,15 @@ import (
 	"github.com/spf13/viper"
 )
 
+type FileMethod struct {
+	URL  *url.URL `json:"-"`
+	Path string   `mapstructure:"path" json:"path"`
+}
+
+type FileMethodOpts struct {
+	Scheme string
+}
+
 func NewFileMethod(manager *string, entry *string) (Method, error) {
 	var (
 		err    error
@@ -58,11 +67,6 @@ func NewFileMethodWithURL(u *url.URL) (Method, error) {
 	return result, err
 }
 
-type FileMethod struct {
-	URL  *url.URL `json:"-"`
-	Path string   `mapstructure:"path" json:"path"`
-}
-
 func (f FileMethod) Get(u *url.URL) (*Response, error) {
 	var (
 		err      error
@@ -79,4 +83,8 @@ func (f FileMethod) Get(u *url.URL) (*Response, error) {
 	response.statusCode = 200
 	response.body = ioutil.NopCloser(bytes.NewReader(fileData))
 	return &response, nil
+}
+
+func (o FileMethodOpts) GetScheme() string {
+	return o.Scheme
 }

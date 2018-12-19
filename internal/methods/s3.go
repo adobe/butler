@@ -24,6 +24,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
@@ -32,13 +33,22 @@ import (
 )
 
 type S3Method struct {
-	AccessKeyId     string                `mapstructure:"access-key-id" json:"access-key-id"`
+	AccessKeyID     string                `mapstructure:"access-key-id" json:"access-key-id"`
 	Bucket          string                `mapstructure:"bucket" json:"bucket"`
 	Downloader      *s3manager.Downloader `json:"-"`
 	Manager         *string               `json:"-"`
 	Region          string                `mapstructure:"region" json:"region"`
 	SecretAccessKey string                `mapstructure:"secret-access-key" json:"-"`
 	SessionToken    string                `mapstructure:"session-token" json:"-"`
+}
+
+type S3MethodOpts struct {
+	AccessKeyID     string
+	Bucket          string
+	Region          string
+	Scheme          string
+	SecretAccessKey string
+	SessionToken    string
 }
 
 func NewS3Method(manager *string, entry *string) (Method, error) {
@@ -63,7 +73,27 @@ func NewS3Method(manager *string, entry *string) (Method, error) {
 		}
 	}
 
-	sess, err := session.NewSession(&aws.Config{Region: aws.String(result.Region)})
+	result.AccessKeyID = environment.GetVar(result.AccessKeyID)
+	if result.AccessKeyID == "" {
+		result.AccessKeyID = os.Getenv("AWS_ACCESS_KEY_ID")
+	}
+
+	result.SecretAccessKey = environment.GetVar(result.SecretAccessKey)
+	if result.SecretAccessKey == "" {
+		result.SecretAccessKey = os.Getenv("AWS_SECRET_ACCESS_KEY")
+	}
+
+	result.SessionToken = environment.GetVar(result.SessionToken)
+	if result.SessionToken == "" {
+		result.SessionToken = os.Getenv("AWS_SESSION_TOKEN")
+	}
+
+	sess, err := session.NewSession(&aws.Config{
+		Region: aws.String(result.Region),
+		Credentials: credentials.NewStaticCredentials(result.AccessKeyID,
+			result.SecretAccessKey,
+			result.SessionToken),
+	})
 	if err != nil {
 		return S3Method{}, errors.New("could not start s3 session")
 	}
@@ -76,10 +106,15 @@ func NewS3Method(manager *string, entry *string) (Method, error) {
 	return result, err
 }
 
-func NewS3MethodWithRegionAndBucket(region string, bucket string) (Method, error) {
+func NewS3MethodWithOpts(opts S3MethodOpts) (Method, error) {
 	var result S3Method
 
-	sess, err := session.NewSession(&aws.Config{Region: aws.String(region)})
+	sess, err := session.NewSession(&aws.Config{
+		Region: aws.String(opts.Region),
+		Credentials: credentials.NewStaticCredentials(opts.AccessKeyID,
+			opts.SecretAccessKey,
+			opts.SessionToken),
+	})
 	if err != nil {
 		return S3Method{}, errors.New("could not start s3 session")
 	}
@@ -87,8 +122,8 @@ func NewS3MethodWithRegionAndBucket(region string, bucket string) (Method, error
 
 	result.Downloader = downloader
 	result.Manager = nil
-	result.Region = region
-	result.Bucket = bucket
+	result.Region = opts.Region
+	result.Bucket = opts.Bucket
 	return result, err
 }
 
@@ -144,4 +179,8 @@ func (s S3Method) Get(u *url.URL) (*Response, error) {
 
 	// Perhaps we need to do more stuff here
 	return &response, nil
+}
+
+func (o S3MethodOpts) GetScheme() string {
+	return o.Scheme
 }

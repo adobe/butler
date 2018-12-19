@@ -22,6 +22,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/adobe/butler/internal/methods"
 	"github.com/adobe/butler/internal/reloaders"
 
 	"github.com/bouk/monkey"
@@ -237,7 +238,7 @@ func (s *ConfigTestSuite) TestNewConfigClientHttp(c *C) {
 		LogLevel:           log.DebugLevel,
 		URL:                u1}
 	bc1, err := NewButlerConfig(opts1)
-	bc1.SetMethodOpts(HttpMethodOpts{Scheme: u1.Scheme})
+	bc1.SetMethodOpts(methods.HTTPMethodOpts{Scheme: u1.Scheme})
 
 	c.Assert(err, IsNil)
 	opts2 := &ButlerConfigOpts{
@@ -245,7 +246,7 @@ func (s *ConfigTestSuite) TestNewConfigClientHttp(c *C) {
 		LogLevel:           log.DebugLevel,
 		URL:                u2}
 	bc2, err := NewButlerConfig(opts2)
-	bc2.SetMethodOpts(HttpMethodOpts{Scheme: u2.Scheme})
+	bc2.SetMethodOpts(methods.HTTPMethodOpts{Scheme: u2.Scheme})
 	c.Assert(err, IsNil)
 	c1, err1 := NewConfigClient(bc1)
 	c2, err2 := NewConfigClient(bc2)
@@ -284,8 +285,7 @@ func (s *ConfigTestSuite) TestConfigConfigHandler_InternalServerError(c *C) {
 		URL:                u}
 	bc, err := NewButlerConfig(opts)
 	c.Assert(err, IsNil)
-	bcOpts := HttpMethodOpts{Scheme: u.Scheme}
-	bc.SetMethodOpts(bcOpts)
+	bc.SetMethodOpts(methods.HTTPMethodOpts{Scheme: u.Scheme})
 	s.Config = bc
 	c.Logf("bc=%#v", bc)
 	s.Config.Init()

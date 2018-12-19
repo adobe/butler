@@ -39,6 +39,11 @@ type EtcdMethod struct {
 	Manager               *string        `json:"-"`
 }
 
+type EtcdMethodOpts struct {
+	Endpoints []string
+	Scheme    string
+}
+
 func getTransport(insecureSkipVerify bool) *http.Transport {
 	return &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
@@ -132,4 +137,8 @@ func (e EtcdMethod) Get(u *url.URL) (*Response, error) {
 
 func GetEtcdKey(ctx context.Context, e EtcdMethod, key string, opts *client.GetOptions) (*client.Response, error) {
 	return e.KeysAPI.Get(ctx, key, opts)
+}
+
+func (o EtcdMethodOpts) GetScheme() string {
+	return o.Scheme
 }

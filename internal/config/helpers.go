@@ -779,7 +779,7 @@ func NewConfigClient(bc *ButlerConfig) (*ConfigClient, error) {
 	log.Warnf("ButlerConfig::Init() Above \"NewHttpMethod(): could not convert\" warnings may be safely disregarded.")
 	switch opts.GetScheme() {
 	case "http", "https":
-		o := opts.(HttpMethodOpts)
+		o := opts.(methods.HTTPMethodOpts)
 		m := method.(methods.HTTPMethod)
 		m.AuthType = o.HTTPAuthType
 		m.AuthToken = o.HTTPAuthToken
@@ -794,28 +794,28 @@ func NewConfigClient(bc *ButlerConfig) (*ConfigClient, error) {
 		c.SetRetryWaitMin(o.RetryWaitMin)
 		c.Method = m
 	case "s3":
-		o := opts.(S3MethodOpts)
+		o := opts.(methods.S3MethodOpts)
 		c.Scheme = o.GetScheme()
-		c.Method, err = methods.NewS3MethodWithRegionAndBucket(o.Region, bc.Host())
+		c.Method, err = methods.NewS3MethodWithOpts(o)
 		if err != nil {
 			return &ConfigClient{}, err
 		}
 	case "file":
-		o := opts.(FileMethodOpts)
+		o := opts.(methods.FileMethodOpts)
 		c.Scheme = o.GetScheme()
 		c.Method, err = methods.NewFileMethodWithURL(bc.URL())
 		if err != nil {
 			return &ConfigClient{}, err
 		}
 	case "blob":
-		o := opts.(BlobMethodOpts)
+		o := opts.(methods.BlobMethodOpts)
 		c.Scheme = o.GetScheme()
 		c.Method, err = methods.NewBlobMethodWithAccountAndKey(o.AccountName, o.AccountKey)
 		if err != nil {
 			return &ConfigClient{}, err
 		}
 	case "etcd":
-		o := opts.(EtcdMethodOpts)
+		o := opts.(methods.EtcdMethodOpts)
 		c.Scheme = o.GetScheme()
 		c.Method, err = methods.NewEtcdMethodWithEndpoints(o.Endpoints, bc.InsecureSkipVerify)
 		if err != nil {

@@ -13,15 +13,18 @@ governing permissions and limitations under the License.
 package methods
 
 import (
-	log "github.com/sirupsen/logrus"
+	//log "github.com/sirupsen/logrus"
 	"io"
 	"net/url"
 	"strings"
 )
 
 type Method interface {
-	//Get(string) (*Response, error)
 	Get(*url.URL) (*Response, error)
+}
+
+type MethodOpts interface {
+	GetScheme() string
 }
 
 type Response struct {
@@ -39,8 +42,6 @@ func (r Response) GetResponseStatusCode() int {
 
 func New(manager *string, method string, entry *string) (Method, error) {
 	method = strings.ToLower(method)
-	// stegen comment this out
-	log.Debugf("methods.New() manager=%v method=%v entry=%v", manager, method, entry)
 	switch method {
 	case "http", "https":
 		return NewHTTPMethod(manager, entry)

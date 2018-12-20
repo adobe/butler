@@ -233,6 +233,7 @@ func (c *ConfigSettings) ParseConfig(config []byte) error {
 			opts := fmt.Sprintf("%s.%s", m.Name, u)
 			m.ManagerOpts[opts].SetParentManager(m.Name)
 			repo := strings.Replace(u, "/", "", -1)
+			// stripping a leading slash
 			if strings.HasPrefix(m.ManagerOpts[opts].RepoPath, "/") {
 				path = strings.Replace(m.ManagerOpts[opts].RepoPath, "/", "", 1)
 			} else {

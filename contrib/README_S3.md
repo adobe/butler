@@ -114,3 +114,9 @@ The 'region' is the AWS region of the bucket
 
 #### Example
 `region = "us-west-2"`
+
+### access-key-id
+The access-key-id for the s3 resource. If it is left blank, it will default to the environment.
+
+### secret-access-key
+The secret-access-key for s3 resource. If it is left blank, it will default to the environment.

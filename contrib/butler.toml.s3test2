@@ -89,6 +89,10 @@ title = "Butler Configuration"
     [prometheus.prom.s3]
       bucket = "butler-test-1"
       region = "us-west-2"
+      access-key-id = "12345"
+      secret-access-key = "secret"
+      # This is optional. You should prefer the key id and access key
+      session-token = "session-token"
 
   ## These are the options for reloading the alertmanager config-handler
   [prometheus.reloader]

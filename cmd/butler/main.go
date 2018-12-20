@@ -24,6 +24,7 @@ import (
 
 	"github.com/adobe/butler/internal/config"
 	"github.com/adobe/butler/internal/environment"
+	"github.com/adobe/butler/internal/methods"
 	"github.com/adobe/butler/internal/monitor"
 
 	"github.com/jasonlvhit/gocron"
@@ -68,10 +69,8 @@ func SetLogLevel(l string) log.Level {
 
 func main() {
 	var (
-		err                         error
-		versionFlag                 = flag.Bool("version", false, "Print version information.")
-		configPath                  = flag.String("config.path", "", "Full remote path to butler configuration file (eg: full URL scheme://path).")
-		configInterval              = flag.String("config.retrieve-interval", fmt.Sprintf("%v", defaultButlerConfigInterval), "The interval, in seconds, to retrieve new butler configuration files.")
+		butlerTest                  = flag.Bool("test", false, "Are we testing butler? (probably not!)")
+		configEtcdEndpoints         = flag.String("etcd.endpoints", "", "The endpoints to connect to etcd.")
 		configHTTPTimeout           = flag.String("http.timeout", fmt.Sprintf("%v", defaultHTTPTimeout), "The http timeout, in seconds, for GET requests to obtain the butler configuration file.")
 		configHTTPRetries           = flag.String("http.retries", fmt.Sprintf("%v", defaultHTTPRetries), "The number of http retries for GET requests to obtain the butler configuration files")
 		configHTTPRetryWaitMin      = flag.String("http.retry_wait_min", fmt.Sprintf("%v", defaultHTTPRetryWaitMin), "The minimum amount of time to wait before attemping to retry the http config get operation.")
@@ -79,11 +78,16 @@ func main() {
 		configHTTPAuthToken         = flag.String("http.auth_token", "", "HTTP auth token to use for HTTP authentication.")
 		configHTTPAuthType          = flag.String("http.auth_type", "", "HTTP auth type (eg: basic / digest / token-key) to use. If empty (by default) do not use HTTP authentication.")
 		configHTTPAuthUser          = flag.String("http.auth_user", "", "HTTP auth user to use for HTTP authentication")
-		configS3Region              = flag.String("s3.region", "", "The S3 Region that the config file resides.")
-		configEtcdEndpoints         = flag.String("etcd.endpoints", "", "The endpoints to connect to etcd.")
-		configTlsInsecureSkipVerify = flag.Bool("tls.insecure-skip-verify", false, "Disable SSL verification for etcd and https.")
+		configInterval              = flag.String("config.retrieve-interval", fmt.Sprintf("%v", defaultButlerConfigInterval), "The interval, in seconds, to retrieve new butler configuration files.")
 		configLogLevel              = flag.String("log.level", "info", "The butler log level. Log levels are: debug, info, warn, error, fatal, panic.")
-		butlerTest                  = flag.Bool("test", false, "Are we testing butler? (probably not!)")
+		configPath                  = flag.String("config.path", "", "Full remote path to butler configuration file (eg: full URL scheme://path).")
+		configS3Region              = flag.String("s3.region", "", "The S3 Region that the config file resides.")
+		configS3AccessKeyID         = flag.String("s3.access-key-id", "", "The AWS Access Key ID (Should probably use environment variable AWS_ACCESS_KEY_ID).")
+		configS3SecretAccessKey     = flag.String("s3.secret-access-key", "", "The AWS Secret Access Key (Should probably use environment variable AWS_SECRET_ACCESS_KEY).")
+		configS3SessionToken        = flag.String("s3.session-token", "", "(Optional) The AWS Session Token (Should probably use environment variable AWS_SESSION_TOKEN).")
+		configTLSInsecureSkipVerify = flag.Bool("tls.insecure-skip-verify", false, "Disable SSL verification for etcd and https.")
+		err                         error
+		versionFlag                 = flag.Bool("version", false, "Print version information.")
 	)
 	flag.Parse()
 	newConfigLogLevel := environment.GetVar(*configLogLevel)
@@ -114,7 +118,7 @@ func main() {
 	}
 
 	opts := &config.ButlerConfigOpts{
-		InsecureSkipVerify: *configTlsInsecureSkipVerify,
+		InsecureSkipVerify: *configTLSInsecureSkipVerify,
 		LogLevel:           SetLogLevel(newConfigLogLevel),
 		URL:                newURL,
 	}
@@ -125,7 +129,7 @@ func main() {
 
 	switch bc.Scheme() {
 	case "http", "https":
-		opts := config.HttpMethodOpts{Scheme: bc.Scheme()}
+		opts := methods.HTTPMethodOpts{Scheme: bc.Scheme()}
 		newConfigHTTPAuthType := strings.ToLower(environment.GetVar(*configHTTPAuthType))
 		if newConfigHTTPAuthType != "" {
 			if environment.GetVar(*configHTTPAuthUser) != "" && environment.GetVar(*configHTTPAuthToken) != "" {
@@ -172,18 +176,38 @@ func main() {
 		opts.RetryWaitMax = newConfigHTTPRetryWaitMax
 		bc.SetMethodOpts(opts)
 	case "s3":
-		opts := config.S3MethodOpts{Scheme: bc.Scheme()}
+		opts := methods.S3MethodOpts{Scheme: bc.Scheme()}
 		if *configS3Region == "" {
 			log.Fatalf("You must provide a -s3.region for use with the s3 downloader.")
+		}
+		accessKeyID := environment.GetVar(*configS3AccessKeyID)
+		if accessKeyID == "" {
+			opts.AccessKeyID = os.Getenv("AWS_ACCESS_KEY_ID")
+		} else {
+			opts.AccessKeyID = accessKeyID
+		}
+
+		secretAccessKey := environment.GetVar(*configS3SecretAccessKey)
+		if secretAccessKey == "" {
+			opts.SecretAccessKey = os.Getenv("AWS_SECRET_ACCESS_KEY")
+		} else {
+			opts.SecretAccessKey = secretAccessKey
+		}
+
+		sessionToken := environment.GetVar(*configS3SessionToken)
+		if sessionToken == "" {
+			opts.SessionToken = os.Getenv("AWS_SESSION_TOKEN")
+		} else {
+			opts.SessionToken = sessionToken
 		}
 		newConfigS3Region := environment.GetVar(*configS3Region)
 		log.Debugf("main(): setting s3 region=%v", newConfigS3Region)
 		opts.Region = newConfigS3Region
-		pathSplit := strings.Split(bc.Path(), "/")[0]
-		opts.Bucket = pathSplit
+		log.Debugf("main(): setting s3 bucket=%v", bc.Host())
+		opts.Bucket = bc.Host()
 		bc.SetMethodOpts(opts)
 	case "blob":
-		opts := config.BlobMethodOpts{Scheme: bc.Scheme(),
+		opts := methods.BlobMethodOpts{Scheme: bc.Scheme(),
 			AccountName: bc.Host(),
 			AccountKey:  os.Getenv("ACCOUNT_KEY")}
 		bc.SetMethodOpts(opts)
@@ -192,7 +216,7 @@ func main() {
 		newU := fmt.Sprintf("%v://%v/%v%v", u.Scheme, u.Host, u.Host, u.Path)
 		rewriteURL, _ := url.Parse(newU)
 		bc.SetURL(rewriteURL)
-		opts := config.EtcdMethodOpts{Scheme: bc.Scheme()}
+		opts := methods.EtcdMethodOpts{Scheme: bc.Scheme()}
 		if *configEtcdEndpoints == "" {
 			log.Fatalf("You must provide a valid -etcd.endpoints for use with the etcd downloader.")
 		}
@@ -201,10 +225,10 @@ func main() {
 		opts.Endpoints = strings.Split(newConfigEtcdEndpoints, ",")
 		bc.SetMethodOpts(opts)
 	case "file":
-		opts := config.FileMethodOpts{Scheme: bc.Scheme()}
+		opts := methods.FileMethodOpts{Scheme: bc.Scheme()}
 		bc.SetMethodOpts(opts)
 	default:
-		opts := config.GenericMethodOpts{Scheme: bc.Scheme()}
+		opts := methods.GenericMethodOpts{Scheme: bc.Scheme()}
 		bc.SetMethodOpts(opts)
 	}
 

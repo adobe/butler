@@ -33,6 +33,12 @@ type BlobMethod struct {
 	BlobClient     storage.BlobStorageClient `json:"-"`
 }
 
+type BlobMethodOpts struct {
+	Scheme      string
+	AccountName string
+	AccountKey  string
+}
+
 func NewBlobMethod(manager *string, entry *string) (Method, error) {
 	var (
 		client storage.Client
@@ -92,9 +98,6 @@ func NewBlobMethodWithAccountAndKey(account string, key string) (Method, error) 
 	}
 	result.StorageKey = environment.GetVar(key)
 
-	//os.Setenv("ACCOUNT_KEY", result.StorageKey)
-	//os.Setenv("ACCOUNT_NAME", result.StorageAccount)
-
 	client, err = storage.NewBasicClient(result.StorageAccount, result.StorageKey)
 	if err != nil {
 		return BlobMethod{}, fmt.Errorf("blob client error. err=%v", err)
@@ -136,4 +139,8 @@ func (b *BlobMethod) SetStorageAccount(a string) {
 
 func (b *BlobMethod) SetStorageKey(k string) {
 	b.StorageKey = environment.GetVar(k)
+}
+
+func (o BlobMethodOpts) GetScheme() string {
+	return o.Scheme
 }

@@ -23,7 +23,7 @@ import (
 	"strings"
 	"time"
 
-	//"github.com/adobe/butler/internal/methods"
+	"github.com/adobe/butler/internal/methods"
 	"github.com/adobe/butler/internal/metrics"
 	"github.com/adobe/butler/internal/reloaders"
 
@@ -41,20 +41,9 @@ type ButlerConfig struct {
 	Interval                int
 	Timeout                 int
 	RawConfig               []byte
-	//Retries                 int
-	//RetryWaitMin            int
-	//RetryWaitMax            int
-	Scheduler *gocron.Scheduler
-	// some http specific stuff
-	//HTTPAuthType  string
-	//HTTPAuthUser  string
-	//HTTPAuthToken string
-	// some s3 specific stuff
-	//S3Region           string
-	//S3Bucket           string
-	//Endpoints          []string
-	InsecureSkipVerify bool
-	MethodOpts         MethodOpts
+	Scheduler               *gocron.Scheduler
+	InsecureSkipVerify      bool
+	MethodOpts              methods.MethodOpts
 }
 
 var (
@@ -89,8 +78,7 @@ func (bc *ButlerConfig) SetPath(p string) error {
 	return nil
 }
 
-func (bc *ButlerConfig) SetMethodOpts(opts MethodOpts) error {
-	log.Debugf("Config::SetMethodOpts(): opts=%#v", opts)
+func (bc *ButlerConfig) SetMethodOpts(opts methods.MethodOpts) error {
 	bc.MethodOpts = opts
 	return nil
 }
@@ -111,7 +99,7 @@ func (bc *ButlerConfig) SetURL(u *url.URL) {
 	bc.url = u
 }
 
-func (bc *ButlerConfig) Opts() MethodOpts {
+func (bc *ButlerConfig) Opts() methods.MethodOpts {
 	return bc.MethodOpts
 }
 

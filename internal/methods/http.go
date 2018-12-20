@@ -42,6 +42,32 @@ const (
 	defaultTimeout      = 10
 )
 
+type HTTPMethod struct {
+	Client                *retryablehttp.Client `json:"-"`
+	Manager               *string               `json:"-"`
+	Host                  string                `mapstruecture:"host" json:"host,omitempty"`
+	Retries               string                `mapstructure:"retries" json:"retries"`
+	RetryWaitMax          string                `mapstructure:"retry-wait-max" json:"retry-wait-max"`
+	RetryWaitMin          string                `mapstructure:"retry-wait-min" json:"retry-wait-min"`
+	Timeout               string                `mapstructure:"timeout" json:"timeout"`
+	AuthType              string                `mapstructure:"auth-type" json:"auth-type,omitempty"`
+	AuthToken             string                `mapstructure:"auth-token" json:"-"`
+	AuthUser              string                `mapstructure:"auth-user" json:"auth-user,omitempty"`
+	CfgInsecureSkipVerify string                `mapstructure:"insecure-skip-verify" json:"-"`
+	InsecureSkipVerify    bool                  `json:"insecure-skip-verify"`
+}
+
+type HTTPMethodOpts struct {
+	HTTPAuthType  string
+	HTTPAuthToken string
+	HTTPAuthUser  string
+	Retries       int
+	RetryWaitMin  int
+	RetryWaitMax  int
+	Scheme        string
+	Timeout       int
+}
+
 func NewHTTPMethod(manager *string, entry *string) (Method, error) {
 	var (
 		err    error
@@ -95,21 +121,6 @@ func NewHTTPMethod(manager *string, entry *string) (Method, error) {
 	result.Client.CheckRetry = result.MethodRetryPolicy
 	result.Manager = manager
 	return result, err
-}
-
-type HTTPMethod struct {
-	Client                *retryablehttp.Client `json:"-"`
-	Manager               *string               `json:"-"`
-	Host                  string                `mapstruecture:"host" json:"host,omitempty"`
-	Retries               string                `mapstructure:"retries" json:"retries"`
-	RetryWaitMax          string                `mapstructure:"retry-wait-max" json:"retry-wait-max"`
-	RetryWaitMin          string                `mapstructure:"retry-wait-min" json:"retry-wait-min"`
-	Timeout               string                `mapstructure:"timeout" json:"timeout"`
-	AuthType              string                `mapstructure:"auth-type" json:"auth-type,omitempty"`
-	AuthToken             string                `mapstructure:"auth-token" json:"-"`
-	AuthUser              string                `mapstructure:"auth-user" json:"auth-user,omitempty"`
-	CfgInsecureSkipVerify string                `mapstructure:"insecure-skip-verify" json:"-"`
-	InsecureSkipVerify    bool                  `json:"insecure-skip-verify"`
 }
 
 func (h HTTPMethod) Get(u *url.URL) (*Response, error) {
@@ -255,4 +266,8 @@ func digestDigestParts(resp *http.Response) map[string]string {
 		}
 	}
 	return result
+}
+
+func (o HTTPMethodOpts) GetScheme() string {
+	return o.Scheme
 }

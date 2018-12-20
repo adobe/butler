@@ -342,12 +342,7 @@ func (bmo *ManagerOpts) DownloadConfigFile(file string) *os.File {
 			log.Fatal(msg)
 		}
 
-		if bmo.Method == "s3" {
-			prefix := bmo.Method + "://"
-			file = strings.TrimPrefix(file, prefix)
-		}
-
-		if bmo.Method == "file" {
+		if (bmo.Method == "file") || (bmo.Method == "s3") {
 			// the file argument for the Get()'ing configs are passed in like:
 			// file://repo/full/path/to/file. We need to strip out file:// and
 			// repo to get the actual path on the filesystem. So that is what

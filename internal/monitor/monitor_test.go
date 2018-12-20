@@ -27,6 +27,7 @@ import (
 	//"time"
 
 	"github.com/adobe/butler/internal/config"
+	"github.com/adobe/butler/internal/methods"
 	//log "github.com/sirupsen/logrus"
 )
 
@@ -77,7 +78,7 @@ func (s *ButlerTestSuite) TestNewMonitor(c *C) {
 		URL:                u}
 	bc, err := config.NewButlerConfig(opts)
 	c.Assert(err, IsNil)
-	bc.SetMethodOpts(config.HttpMethodOpts{Scheme: bc.Scheme()})
+	bc.SetMethodOpts(methods.HTTPMethodOpts{Scheme: bc.Scheme()})
 	m := NewMonitor().WithOpts(&Opts{Config: bc, Version: "1.2.3"})
 	c.Assert(bc, Equals, m.config)
 }

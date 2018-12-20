@@ -17,11 +17,15 @@ import (
 	"net/url"
 )
 
-func NewGenericMethod(manager *string, entry *string) (Method, error) {
-	return GenericMethod{}, errors.New("Generic method handler is not very useful")
+type GenericMethod struct {
 }
 
-type GenericMethod struct {
+type GenericMethodOpts struct {
+	Scheme string
+}
+
+func NewGenericMethod(manager *string, entry *string) (Method, error) {
+	return GenericMethod{}, errors.New("Generic method handler is not very useful")
 }
 
 func (m GenericMethod) Get(u *url.URL) (*Response, error) {
@@ -29,4 +33,8 @@ func (m GenericMethod) Get(u *url.URL) (*Response, error) {
 		result *Response
 	)
 	return result, errors.New("Generic method handler is not very useful")
+}
+
+func (o GenericMethodOpts) GetScheme() string {
+	return "generic"
 }

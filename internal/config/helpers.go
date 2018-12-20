@@ -766,7 +766,9 @@ func NewConfigClient(bc *ButlerConfig) (*ConfigClient, error) {
 	var c ConfigClient
 	opts := bc.MethodOpts
 	method, err := methods.New(nil, opts.GetScheme(), nil)
-	if err != nil {
+	// we can skip this check if it's blob.
+	// should figure out a better way for this
+	if (err != nil) && (opts.GetScheme() != "blob") {
 		if err.Error() == "Generic method handler is not very useful" {
 			log.Errorf("Config::Init(): could not initialize butler config (check if using valid scheme). err=%s", err.Error())
 			return &ConfigClient{}, fmt.Errorf("\"%s\" is an invalid config retrieval method.", bc.Scheme())

@@ -23,8 +23,8 @@ COPY ./internal/methods/*.go /root/butler/internal/methods/
 COPY ./internal/reloaders/*.go /root/butler/internal/reloaders/
 COPY ./internal/metrics/*.go /root/butler/internal/metrics/
 COPY ./internal/monitor/*.go /root/butler/internal/monitor/
-COPY ./internal/environment/*.go /root/butler/internal/environment
-COPY ./internal/alog/*.go /root/butler/internal/alog
+COPY ./internal/environment/*.go /root/butler/internal/environment/
+COPY ./internal/alog/*.go /root/butler/internal/alog/
 COPY ./vendor /root/butler/vendor
 ### required to build
 

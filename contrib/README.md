@@ -387,9 +387,13 @@ Here is an example:
 The blob retrieval option only has one option that can be used. If you use this option, then you are do not have to set the BUTLER_STORAGE_ACCOUNT environment variable.
 
 1. storage-account-name
+1. storage-account-key
 
 #### storage-account-name
 The `storage-account-name` option is name of the Azure Storage Account
+
+#### storage-account-key
+The `storage-account-name` option is key for the Azure Storage Account
 
 Here is an example:
 
@@ -407,4 +411,5 @@ Here is an example:
     [a.repo1.domain.com.blob]
       # Alternatively to this you can et 
       storage-account-name = "blobstorageaccountname"
+      storage-account-key = "env:BLOB_STORAGE_KEY"
 ```

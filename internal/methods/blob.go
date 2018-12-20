@@ -57,14 +57,14 @@ func NewBlobMethod(manager *string, entry *string) (Method, error) {
 	result.StorageKey = environment.GetVar(result.StorageKey)
 
 	if (result.StorageKey == "") && (environment.GetVar(os.Getenv("ACCOUNT_KEY")) == "") {
-		return BlobMethod{}, errors.New("blob storage token undefined. Please set storage-account-key.")
+		return BlobMethod{}, errors.New("blob storage token undefined. Please set storage-account-key or ACCOUNT_KEY environment variable.")
 	}
 	if result.StorageKey == "" {
 		result.StorageKey = environment.GetVar(os.Getenv("ACCOUNT_KEY"))
 	}
 
 	if (result.StorageAccount == "") && (environment.GetVar(os.Getenv("ACCOUNT_NAME")) == "") {
-		return BlobMethod{}, errors.New("blob storage-account-name undefined.")
+		return BlobMethod{}, errors.New("blob storage-account-name undefined. Please set, or use ACCOUNT_NAME environment variable.")
 	}
 	if result.StorageAccount == "" {
 		result.StorageAccount = environment.GetVar(os.Getenv("ACCOUNT_NAME"))

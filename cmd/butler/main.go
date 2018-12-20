@@ -71,6 +71,8 @@ func main() {
 	var (
 		butlerTest                  = flag.Bool("test", false, "Are we testing butler? (probably not!)")
 		configEtcdEndpoints         = flag.String("etcd.endpoints", "", "The endpoints to connect to etcd.")
+		configBlobAccountKey        = flag.String("blob.account-key", "", "The Azure Blob storage account key (Should probably use the environment variable ACCOUNT_KEY).")
+		configBlobAccountName       = flag.String("blob.account-name", "", "The Azure Blob storage account name (Should probably use the environment variable ACCOUNT_NAME).")
 		configHTTPTimeout           = flag.String("http.timeout", fmt.Sprintf("%v", defaultHTTPTimeout), "The http timeout, in seconds, for GET requests to obtain the butler configuration file.")
 		configHTTPRetries           = flag.String("http.retries", fmt.Sprintf("%v", defaultHTTPRetries), "The number of http retries for GET requests to obtain the butler configuration files")
 		configHTTPRetryWaitMin      = flag.String("http.retry_wait_min", fmt.Sprintf("%v", defaultHTTPRetryWaitMin), "The minimum amount of time to wait before attemping to retry the http config get operation.")
@@ -207,9 +209,19 @@ func main() {
 		opts.Bucket = bc.Host()
 		bc.SetMethodOpts(opts)
 	case "blob":
-		opts := methods.BlobMethodOpts{Scheme: bc.Scheme(),
-			AccountName: bc.Host(),
-			AccountKey:  os.Getenv("ACCOUNT_KEY")}
+		opts := methods.BlobMethodOpts{Scheme: bc.Scheme()}
+		accountKey := environment.GetVar(*configBlobAccountKey)
+		if accountKey == "" {
+			opts.AccountKey = os.Getenv("ACCOUNT_KEY")
+		} else {
+			opts.AccountKey = accountKey
+		}
+		accountName := environment.GetVar(*configBlobAccountName)
+		if accountName == "" {
+			opts.AccountName = bc.Host()
+		} else {
+			opts.AccountName = accountName
+		}
 		bc.SetMethodOpts(opts)
 	case "etcd":
 		u := bc.URL()

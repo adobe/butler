@@ -28,7 +28,7 @@ For example, look at the following (incomplete) definition:
   repos = ["Folder1", "Folder2"]
   ...
   [a.Folder1]
-  ^^^^^^^^^^^^^^^^^^^^ This is where the Repository Handler configurationn option should reside.
+  ^^^^^^^^^^^^^^^^^^^^ This is where the Repository Handler configuration option should reside.
 ```
 
 There are 4 options that can be configured under the Repository Handler configuration section.

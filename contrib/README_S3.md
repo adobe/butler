@@ -41,7 +41,7 @@ For example, look at the following (incomplete) definition:
   repos = ["Folder1", "Folder2"]
   ...
   [a.Folder1]
-  ^^^^^^^^^^^^^^^^^^^^ This is where the Repository Handler configurationn option should reside.
+  ^^^^^^^^^^^^^^^^^^^^ This is where the Repository Handler configuration option should reside.
 ```
 
 There are 4 options that can be configured under the Repository Handler configuration section.
@@ -101,7 +101,7 @@ For example, look at the following (incomplete) definition:
     method = "S3"
     ...
     [a.Folder1.S3]
-    ^^^^^^^^^^^^^^^^^^^^^^^^^ This is wehre the Repository Handler Retrieval Options should reside.
+    ^^^^^^^^^^^^^^^^^^^^^^^^^ This is where the Repository Handler Retrieval Options should reside.
 ```
 ### bucket
 The `bucket` is the AWS S3 bucket name where the files are hosted.

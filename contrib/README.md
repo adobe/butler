@@ -2,7 +2,7 @@
 ## Overview
 The butler configuration file is a TOML based configuration file. It was felt that TOML is a simpler format to syntactically support, versus YAML or JSON. It is similar to the windows INI format, and you can read more about it at the [TOML](https://github.com/toml-lang/toml) website.
 
-The butler configuaration is broken down into two main sections sections:
+The butler configuration is broken down into two main sections sections:
 
 1. Globals
 1. Managers
@@ -129,7 +129,7 @@ The `clean-files` configuration option either enables or disables butler from de
 `clean-files = "true"`
 
 ### mustache-subs
-The `mustache-subs` configuration option defines an array of mustache substitutions that should be attempted on EVERY configuration file that butler managages. The mustache substitutions should be in the form of mustache=substitution format.
+The `mustache-subs` configuration option defines an array of mustache substitutions that should be attempted on EVERY configuration file that butler manages. The mustache substitutions should be in the form of mustache=substitution format.
 
 #### Default Value
 An empty array
@@ -180,7 +180,7 @@ For example, look at the following (incomplete) definition:
   repos = ["repo1.domain.com", "repo2.domain.com"]
   ...
   [a.repo1.domain.com]
-  ^^^^^^^^^^^^^^^^^^^^ This is where the Repository Handler configurationn option should reside.
+  ^^^^^^^^^^^^^^^^^^^^ This is where the Repository Handler configuration option should reside.
 ```
 
 There are 4 options that can be configured under the Repository Handler configuration section.
@@ -221,7 +221,7 @@ The `primary-config` option is an array of strings, that are configuration files
 `primary-config = ["config1.yml", "additional/config2.yml"]`
 
 ### additional-config
-The `additional-config` option is an array strings, which are additional configuration files which will be put on the filesystem under `dest-path` as they are defined within the option. They will be retrieved relative to the `repo-path`. If the file is called `additional/config2.yml`, then it will be retrieverd from `<repo url>/butler/configs/prometheus/additional/config2.yml` and placed on the filesystem as `<dest-path>/additional/config2.yml`
+The `additional-config` option is an array strings, which are additional configuration files which will be put on the filesystem under `dest-path` as they are defined within the option. They will be retrieved relative to the `repo-path`. If the file is called `additional/config2.yml`, then it will be retrieved from `<repo url>/butler/configs/prometheus/additional/config2.yml` and placed on the filesystem as `<dest-path>/additional/config2.yml`
 
 #### Default Value
 []

@@ -40,9 +40,9 @@ Usage of ./butler:
   -http.retries string
         The number of http retries for GET requests to obtain the butler configuration files (default "5")
   -http.retry_wait_max string
-        The maximum amount of time to wait before attemping to retry the http config get operation. (default "15")
+        The maximum amount of time to wait before attempting to retry the http config get operation. (default "15")
   -http.retry_wait_min string
-        The minimum amount of time to wait before attemping to retry the http config get operation. (default "5")
+        The minimum amount of time to wait before attempting to retry the http config get operation. (default "5")
   -http.timeout string
         The http timeout, in seconds, for GET requests to obtain the butler configuration file. (default "10")
   -log.level string
@@ -64,7 +64,7 @@ Usage of ./butler:
 Valid schemes are: blob (Azure), etcd, file, http (or https), and s3 (AWS)
 
 ### Use of Environment Variables
-Butler supports the usre of environment variables. Any field that is prefixed with `env:` will be looked up in the environment. This will work for all command line options, and MOST configuration file options.
+Butler supports the use of environment variables. Any field that is prefixed with `env:` will be looked up in the environment. This will work for all command line options, and MOST configuration file options.
 
 There are only a few places in the configuration file where environment variables will not be used. Any value that is used which defines a new section/nest for the butler configuration will not look up any environment variables. This is due to how the configuration file is nested.
 
@@ -249,9 +249,9 @@ Butler has some unit testing, and some acceptance testing.
 
 The unit testing is using the check.v1 testing package (gopkg.in/check.v1). The code coverage is not very impressive, but we continue to add test cases as we go. If you want to run the unit tests, just run `make test-unit`.
 
-The acceptance testing tries to do some tests of how butler operates overall. You can provide a the butler binary with a configuration file, and run it with the `-test` flag. What this tells butler to do is to just perform a full config operation once. If there are percieved failures, it'll quit out with unix status code 1. For example, if it's unable to parse a configuration, or get some variables that it needs, it will exit out. It should also, hopefully, catch bugs which aren't caught in the unit testing, where panics may get invoked from calls that are made from functions that cannot be easily unit tested, but could be caught when running against actual configuration.
+The acceptance testing tries to do some tests of how butler operates overall. You can provide a the butler binary with a configuration file, and run it with the `-test` flag. What this tells butler to do is to just perform a full config operation once. If there are perceived failures, it'll quit out with unix status code 1. For example, if it's unable to parse a configuration, or get some variables that it needs, it will exit out. It should also, hopefully, catch bugs which aren't caught in the unit testing, where panics may get invoked from calls that are made from functions that cannot be easily unit tested, but could be caught when running against actual configuration.
 
-Out of the box, it tests some http:// https:// file:// endoints, which it can handle internally.
+Out of the box, it tests some http:// https:// file:// endpoints, which it can handle internally.
 
 There are two additional scripts which can test against s3:// and blob:// storage. For both of these, you must set the appropriate environment variables for authenticating to the respective AWS or Azure storage service.
 ### Blob Testing
@@ -289,7 +289,7 @@ The actual script that gets executed is `./files/tests/scripts/s3.sh`
 If you want to run the acceptance testing, just run `make test-accept`.
 
 ## Health Checks
-butler provides DCOS health checks by exposing an http service with a /health-check endpoint. It exposes various configuration, and realtime information in JSON format regarding the butler process.
+butler provides DCOS health checks by exposing an http service with a /health-check endpoint. It exposes various configuration, and real time information in JSON format regarding the butler process.
 ```
 [12:54]pts/11:13(stegen@woden):[~]% http get localhost:8080/health-check
 HTTP/1.1 200 OK

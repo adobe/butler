@@ -22,8 +22,7 @@ There are various ways that you can run butler. We will ultimately deploy butler
 
 ### Command Line Usage
 ```
-[16:06]pts/22:49(stegen@woden):[~]%
-./butler -h
+$ ./butler -h
 Usage of ./butler:
   -config.path string
         Full remote path to butler configuration file (eg: full URL scheme://path).
@@ -56,9 +55,6 @@ Usage of ./butler:
   -version
         Print version information.
 
-[16:08]pts/22:50(stegen@woden):[~]%
-
-
 ```
 
 Valid schemes are: blob (Azure), etcd, file, http (or https), and s3 (AWS)
@@ -81,12 +77,8 @@ You should get the gist at this point. Refer to the butler.toml.sample configura
 ### Example Command Line Usage
 #### HTTP/HTTPS CLI
 ```
-[14:24]pts/12:21(stegen@woden):[~]% ./butler -config.path http://localhost/butler/config/butler.toml -config.retrieve-interval 10 -log.level info
+$ ./butler -config.path http://localhost/butler/config/butler.toml -config.retrieve-interval 10 -log.level info
 INFO[2017-10-11T14:24:29+01:00] Starting Butler CMS version v1.2.1
-^C
-
-[master]
-[14:24]pts/12:22(stegen@woden):[~]%
 ```
 When you execute butler with the above arguments, you are asking butler to grab its configuration file from http://localhost/butler/config/butler.toml, and try to re-retrieve and refresh it every 10 seconds. It will also use the default log level of INFO. If you need more verbosity to your output, specify `debug` as the logging level argument.
 
@@ -105,15 +97,13 @@ With any of these flags, they can be retrieved form the environment. Refer to th
 
 #### etcd CLI
 ```
-[12:34]pts/16:3(stegen@woden):[~]% ./butler -config.path etcd://etcd.mesos/butler/butler.toml -etcd.endpoints http://etcd.mesos:1026 -log.level info
+$ ./butler -config.path etcd://etcd.mesos/butler/butler.toml -etcd.endpoints http://etcd.mesos:1026 -log.level info
 INFO[2018-05-10T11:34:05Z] Starting Butler CMS version v1.2.1
 INFO[2018-05-10T11:34:05Z] Config::Init(): initializing butler config.
 WARN[2018-05-10T11:34:05Z] ButlerConfig::Init() Above \"NewHttpMethod(): could not convert\" warnings may be safely disregarded.
 INFO[2018-05-10T11:34:05Z] Config::Init(): butler config initialized.
 INFO[2018-05-10T11:34:05Z] ButlerConfig::Handler(): entering.
 INFO[2018-05-10T11:34:05Z] Config::RunCMHandler(): entering
-^C
-[12:34]pts/16:4(stegen@woden):[~]%
 ```
 
 You can grab the butler.toml directly from etcd, and you can also create a repo which utilizes etcd within the butler.toml. Refer to [this example](https://github.com/adobe/butler/blob/master/contrib/butler.toml.etcdtest).
@@ -127,12 +117,8 @@ Note that this should support both etcd v2 and v3.
 
 #### S3 CLI
 ```
-[14:24]pts/12:21(stegen@woden):[~]% ./butler -config.path s3://s3-bucket/config/butler.toml -config.retrieve-interval 10 -log.level info -s3.region <aws-region>
+$ ./butler -config.path s3://s3-bucket/config/butler.toml -config.retrieve-interval 10 -log.level info -s3.region <aws-region>
 INFO[2017-10-11T14:24:29+01:00] Starting Butler CMS version v1.2.1
-^C
-
-[master]
-[14:24]pts/12:22(stegen@woden):[~]%
 ```
 When you execute butler with the above arguments, you are asking butler to grab its configuration file from S3 storage using bucket `s3-bucket`, file key `config/butler.toml` and the aws-region as specified by `s3.region`, and try to re-retrieve and refresh it every 10 seconds. It will also use the default log level of INFO. If you need more verbosity to your output, specify `debug` as the logging level argument.
 
@@ -145,7 +131,7 @@ The following environment variable is optional
 
 The command line option looks like this:
 
-`[14:24]pts/12:21(stegen@woden):[~]% ./butler -config.path blob://azure-storage-account/azure-blob-container/butler.toml -config.retrieve-interval 10 -log.level info`
+`./butler -config.path blob://azure-storage-account/azure-blob-container/butler.toml -config.retrieve-interval 10 -log.level info`
 
 ### DCOS Deployment JSON
 ```
@@ -291,7 +277,7 @@ If you want to run the acceptance testing, just run `make test-accept`.
 ## Health Checks
 butler provides DCOS health checks by exposing an http service with a /health-check endpoint. It exposes various configuration, and realtime information in JSON format regarding the butler process.
 ```
-[12:54]pts/11:13(stegen@woden):[~]% http get localhost:8080/health-check
+$ http get localhost:8080/health-check
 HTTP/1.1 200 OK
 Content-Type: application/json
 Date: Thu, 12 Oct 2017 10:44:50 GMT
@@ -447,14 +433,11 @@ Transfer-Encoding: chunked
     "retrieve-interval": 10, 
     "version": "v1.0.0"
 }
-
-[master]
-[13:02]pts/11:14(stegen@woden):[~]%
 ```
 ## Prometheus Metrics
 butler provides native Prometheus of the butler go binary by exposing an http service with a /metrics endpoint. This includes both butler specific metric information (prefixed with `butler_`), and internal go and process related metrics (prefixed with `go_` and `process_`)
 ```
-[13:04]pts/11:15(stegen@woden):[~]% http get localhost:8080/metrics 
+$ http get localhost:8080/metrics 
 HTTP/1.1 200 OK
 Content-Encoding: gzip
 Content-Length: 1381
@@ -587,10 +570,6 @@ process_start_time_seconds 1.50107052601e+09
 # HELP process_virtual_memory_bytes Virtual memory size in bytes.
 # TYPE process_virtual_memory_bytes gauge
 process_virtual_memory_bytes 2.39341568e+08
-
-
-[master]
-[13:04]pts/11:16(stegen@woden):[~]%
 ```
 ### Contributing
 

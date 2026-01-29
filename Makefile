@@ -13,7 +13,7 @@ SHELL := /bin/bash
 
 # Project configuration
 SERVICE_NAME := butler
-BUTLER_VERSION := 1.4.0
+BUTLER_VERSION := $(shell cat VERSION)
 VERSION := v$(BUTLER_VERSION)
 
 # Git information
@@ -125,9 +125,29 @@ vet:
 check: fmt vet lint
 
 ########################################################################################################################
-# Docker Hub publishing
+# Publishing
 ########################################################################################################################
 
+# Push to configured registry (set REGISTRY and REGISTRY_PREFIX env vars)
+push: build
+	@echo "> Pushing butler image to registry"
+	@if [ -z "$(REGISTRY)" ]; then \
+		echo "Error: REGISTRY environment variable not set"; \
+		echo "Usage: REGISTRY=myregistry.com REGISTRY_PREFIX=docker-local/ make push"; \
+		exit 1; \
+	fi
+	docker buildx bake butler --push
+
+# Push all images (butler + debug) to configured registry
+push-all: build-all
+	@echo "> Pushing all images to registry"
+	@if [ -z "$(REGISTRY)" ]; then \
+		echo "Error: REGISTRY environment variable not set"; \
+		exit 1; \
+	fi
+	docker buildx bake default --push
+
+# Legacy DockerHub push (for backwards compatibility)
 push-dockerhub: build
 	@printf "Enter DockerHub "
 	@docker login -u $(DOCKERHUB_USER)

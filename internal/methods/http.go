@@ -1,5 +1,5 @@
 /*
-Copyright 2017 Adobe. All rights reserved.
+Copyright 2017-2026 Adobe. All rights reserved.
 This file is licensed to you under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License. You may obtain a copy
 of the License at http://www.apache.org/licenses/LICENSE-2.0
@@ -13,6 +13,7 @@ governing permissions and limitations under the License.
 package methods
 
 import (
+	"context"
 	"crypto/md5"
 	"crypto/rand"
 	"crypto/tls"
@@ -20,7 +21,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -111,8 +111,7 @@ func NewHTTPMethod(manager *string, entry *string) (Method, error) {
 	}
 
 	result.Client = retryablehttp.NewClient()
-	result.Client.Logger.SetFlags(0)
-	result.Client.Logger.SetOutput(ioutil.Discard)
+	result.Client.Logger = nil
 	result.Client.HTTPClient.Timeout = time.Duration(newTimeout) * time.Second
 	result.Client.HTTPClient.Transport = transport
 	result.Client.RetryMax = newRetries
@@ -197,7 +196,7 @@ func (h HTTPMethod) Get(u *url.URL) (*Response, error) {
 	return &res, err
 }
 
-func (h *HTTPMethod) MethodRetryPolicy(resp *http.Response, err error) (bool, error) {
+func (h *HTTPMethod) MethodRetryPolicy(ctx context.Context, resp *http.Response, err error) (bool, error) {
 	// This is actually the default RetryPolicy from the go-retryablehttp library. The only
 	// change is the metrics monitor. We want to keep track of all the reload failures.
 	if (err != nil) && (h.Manager != nil) {

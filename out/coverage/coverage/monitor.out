@@ -1,0 +1,24 @@
+mode: set
+github.com/adobe/butler/internal/monitor/monitor.go:21.28,23.2 1 1
+github.com/adobe/butler/internal/monitor/monitor.go:27.49,31.2 3 1
+github.com/adobe/butler/internal/monitor/monitor.go:64.27,71.18 2 1
+github.com/adobe/butler/internal/monitor/monitor.go:71.18,76.3 4 1
+github.com/adobe/butler/internal/monitor/monitor.go:78.2,78.43 1 1
+github.com/adobe/butler/internal/monitor/monitor.go:78.43,83.3 2 1
+github.com/adobe/butler/internal/monitor/monitor.go:83.8,85.3 1 1
+github.com/adobe/butler/internal/monitor/monitor.go:86.2,87.50 2 1
+github.com/adobe/butler/internal/monitor/monitor.go:87.50,89.17 2 1
+github.com/adobe/butler/internal/monitor/monitor.go:89.17,91.4 1 0
+github.com/adobe/butler/internal/monitor/monitor.go:92.3,94.17 3 1
+github.com/adobe/butler/internal/monitor/monitor.go:94.17,96.4 1 0
+github.com/adobe/butler/internal/monitor/monitor.go:97.8,100.17 2 1
+github.com/adobe/butler/internal/monitor/monitor.go:100.17,102.4 1 0
+github.com/adobe/butler/internal/monitor/monitor.go:104.2,104.27 1 1
+github.com/adobe/butler/internal/monitor/monitor.go:109.32,113.21 4 1
+github.com/adobe/butler/internal/monitor/monitor.go:113.21,116.17 2 1
+github.com/adobe/butler/internal/monitor/monitor.go:116.17,118.4 1 0
+github.com/adobe/butler/internal/monitor/monitor.go:120.2,121.12 2 1
+github.com/adobe/butler/internal/monitor/monitor.go:128.51,132.2 3 1
+github.com/adobe/butler/internal/monitor/monitor.go:138.67,146.16 3 1
+github.com/adobe/butler/internal/monitor/monitor.go:146.16,149.3 2 0
+github.com/adobe/butler/internal/monitor/monitor.go:151.2,152.30 2 1

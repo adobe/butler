@@ -48,6 +48,9 @@ type Manager struct {
 	ManagerTimeoutOk       bool                    `json:"manager-timeout-ok"`
 	CfgSkipButlerHeader    string                  `mapstructure:"skip-butler-header" json:"-"`
 	SkipButlerHeader       bool                    `json:"skip-butler-header"`
+	CfgWatchOnly           string                  `mapstructure:"watch-only" json:"-"`
+	WatchOnly              bool                    `json:"watch-only"`
+	FileHashes             map[string]string       `json:"-"` // In-memory hash storage for watch-only mode
 	ManagerOpts            map[string]*ManagerOpts `json:"opts"`
 	Reloader               reloaders.Reloader      `mapstructure:"-" json:"reloader,omitempty"`
 	ReloadManager          bool                    `json:"-"`

@@ -34,6 +34,9 @@ type ChanEvent interface {
 	SetTmpFile(string, string, string) error
 	CopyPrimaryConfigFiles(map[string]*ManagerOpts) bool
 	CopyAdditionalConfigFiles(string) bool
+	// Watch-only mode methods - compare hashes without writing files
+	ComparePrimaryConfigHashes(map[string]*ManagerOpts, map[string]string) (bool, map[string]string)
+	CompareAdditionalConfigHashes(map[string]string) (bool, map[string]string)
 }
 
 // ConfigChanEvent is the object passed around in the channel which contains
@@ -221,4 +224,84 @@ func (c *ConfigChanEvent) CopyAdditionalConfigFiles(destDir string) bool {
 		}
 	}
 	return IsModified
+}
+
+// ComparePrimaryConfigHashes compares hashes of primary config files without writing to disk.
+// This is used in watch-only mode. Returns true if any file has changed, along with updated hashes.
+func (c *ConfigChanEvent) ComparePrimaryConfigHashes(opts map[string]*ManagerOpts, storedHashes map[string]string) (bool, map[string]string) {
+	var (
+		primaryConfigs []string
+		hasChanged     bool
+	)
+	newHashes := make(map[string]string)
+
+	// Copy existing hashes
+	for k, v := range storedHashes {
+		newHashes[k] = v
+	}
+
+	// Get list of primary config files in order
+	for _, opt := range opts {
+		for _, config := range opt.PrimaryConfig {
+			primaryConfigs = append(primaryConfigs, config)
+		}
+	}
+
+	// Compare hashes for each primary config file
+	for _, f := range primaryConfigs {
+		for _, t := range c.GetTmpFileMap() {
+			if t.Name == f {
+				hashKey := fmt.Sprintf("primary:%s", f)
+				storedHash := storedHashes[hashKey]
+
+				changed, newHash, err := CompareHashOnly(t.File, storedHash, c.Manager)
+				if err != nil {
+					log.Errorf("ConfigChanEvent::ComparePrimaryConfigHashes(): error computing hash for %s: %v", f, err)
+					continue
+				}
+
+				newHashes[hashKey] = newHash
+				if changed {
+					hasChanged = true
+					log.Infof("ConfigChanEvent::ComparePrimaryConfigHashes(): primary config %s has changed", f)
+				}
+				break
+			}
+		}
+	}
+
+	return hasChanged, newHashes
+}
+
+// CompareAdditionalConfigHashes compares hashes of additional config files without writing to disk.
+// This is used in watch-only mode. Returns true if any file has changed, along with updated hashes.
+func (c *ConfigChanEvent) CompareAdditionalConfigHashes(storedHashes map[string]string) (bool, map[string]string) {
+	var hasChanged bool
+	newHashes := make(map[string]string)
+
+	// Copy existing hashes
+	for k, v := range storedHashes {
+		newHashes[k] = v
+	}
+
+	log.Debugf("ConfigChanEvent::CompareAdditionalConfigHashes(): entering")
+
+	for _, f := range c.GetTmpFileMap() {
+		hashKey := fmt.Sprintf("additional:%s", f.Name)
+		storedHash := storedHashes[hashKey]
+
+		changed, newHash, err := CompareHashOnly(f.File, storedHash, c.Manager)
+		if err != nil {
+			log.Errorf("ConfigChanEvent::CompareAdditionalConfigHashes(): error computing hash for %s: %v", f.Name, err)
+			continue
+		}
+
+		newHashes[hashKey] = newHash
+		if changed {
+			hasChanged = true
+			log.Infof("ConfigChanEvent::CompareAdditionalConfigHashes(): additional config %s has changed", f.Name)
+		}
+	}
+
+	return hasChanged, newHashes
 }

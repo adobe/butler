@@ -62,6 +62,14 @@ title = "Butler Configuration"
   ## Default: "false"
   skip-butler-header = "false"
 
+  ## Watch-only mode. When set to "true", butler will only monitor files for changes
+  ## using hash comparison and trigger reloads, WITHOUT writing any files to dest-path.
+  ## This is useful for Kubernetes ConfigMap monitoring where the files are already
+  ## mounted at repo-path and you just need butler to detect changes and trigger reloads.
+  ## When watch-only is enabled, dest-path becomes optional.
+  ## Default: "false"
+  watch-only = "false"
+
   ## These are the mustache substitutions that we'll attempt to make on the merged configuration files
   mustache-subs = ["cluster-cluster-id=cluster01-dev-or1", "endpoint=external", "envvar=env:ENVIRONMENT_VAR"]
 

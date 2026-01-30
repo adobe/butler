@@ -9,7 +9,7 @@
 # governing permissions and limitations under the License.
 
 SHELL := /bin/bash
-.PHONY: build test test-unit test-accept clean help fmt lint vet check build-local ci all
+.PHONY: build test test-all test-unit test-accept clean help fmt lint vet check build-local ci all
 
 # Project configuration
 SERVICE_NAME := butler
@@ -69,7 +69,11 @@ build-multiplatform:
 # Test targets using docker buildx bake
 ########################################################################################################################
 
-test: test-unit test-accept
+test: test-unit
+	@echo "Unit tests passed"
+	@echo "Note: Run 'make test-accept' separately for acceptance tests (requires valid TLS certs)"
+
+test-all: test-unit test-accept
 	@echo "All tests passed"
 
 test-unit:
@@ -251,7 +255,8 @@ help:
 	@printf "  make build-multiplatform Build for amd64 and arm64\n"
 	@printf "\n"
 	@printf "Test targets:\n"
-	@printf "  make test               Run all tests (unit + acceptance)\n"
+	@printf "  make test               Run unit tests (default)\n"
+	@printf "  make test-all           Run all tests (unit + acceptance)\n"
 	@printf "  make test-unit          Run unit tests in container\n"
 	@printf "  make test-accept        Run acceptance tests in container\n"
 	@printf "  make test-local         Run tests locally (no Docker)\n"

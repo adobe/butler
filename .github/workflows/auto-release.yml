@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      packages: write
+      # packages: write  # Uncomment when enabling Docker push to ghcr.io
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -132,50 +132,53 @@ jobs:
             core.setOutput('list', commitList);
             console.log('Commits:', commits.data.length);
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and push butler image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: docker/Dockerfile
-          target: butler
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: |
-            ghcr.io/${{ github.repository }}:${{ steps.new_version.outputs.version }}
-            ghcr.io/${{ github.repository }}:latest
-          build-args: |
-            VERSION=${{ steps.new_version.outputs.version }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build and push butler-debug image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: docker/Dockerfile
-          target: butler-debug
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: |
-            ghcr.io/${{ github.repository }}-debug:${{ steps.new_version.outputs.version }}
-            ghcr.io/${{ github.repository }}-debug:latest
-          build-args: |
-            VERSION=${{ steps.new_version.outputs.version }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      # NOTE: Docker build and push steps are commented out due to org package permissions.
+      # Uncomment these steps when you have permission to push to ghcr.io
+      #
+      # - name: Set up QEMU
+      #   uses: docker/setup-qemu-action@v3
+      #
+      # - name: Set up Docker Buildx
+      #   uses: docker/setup-buildx-action@v3
+      #
+      # - name: Log in to GitHub Container Registry
+      #   uses: docker/login-action@v3
+      #   with:
+      #     registry: ghcr.io
+      #     username: ${{ github.actor }}
+      #     password: ${{ secrets.GITHUB_TOKEN }}
+      #
+      # - name: Build and push butler image
+      #   uses: docker/build-push-action@v5
+      #   with:
+      #     context: .
+      #     file: docker/Dockerfile
+      #     target: butler
+      #     platforms: linux/amd64,linux/arm64
+      #     push: true
+      #     tags: |
+      #       ghcr.io/${{ github.repository }}:${{ steps.new_version.outputs.version }}
+      #       ghcr.io/${{ github.repository }}:latest
+      #     build-args: |
+      #       VERSION=${{ steps.new_version.outputs.version }}
+      #     cache-from: type=gha
+      #     cache-to: type=gha,mode=max
+      #
+      # - name: Build and push butler-debug image
+      #   uses: docker/build-push-action@v5
+      #   with:
+      #     context: .
+      #     file: docker/Dockerfile
+      #     target: butler-debug
+      #     platforms: linux/amd64,linux/arm64
+      #     push: true
+      #     tags: |
+      #       ghcr.io/${{ github.repository }}-debug:${{ steps.new_version.outputs.version }}
+      #       ghcr.io/${{ github.repository }}-debug:latest
+      #     build-args: |
+      #       VERSION=${{ steps.new_version.outputs.version }}
+      #     cache-from: type=gha
+      #     cache-to: type=gha,mode=max
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
@@ -196,10 +199,3 @@ jobs:
             ## Commits
             
             ${{ steps.commits.outputs.list }}
-            
-            ## Container Images
-            
-            ```bash
-            docker pull ghcr.io/${{ github.repository }}:${{ steps.new_version.outputs.version }}
-            docker pull ghcr.io/${{ github.repository }}-debug:${{ steps.new_version.outputs.version }}
-            ```

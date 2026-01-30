@@ -242,7 +242,76 @@ The command line option looks like this:
 ## Butler Configuration File
 Refer to the contrib/ directory for more information about the butler.toml configuration file, and all its features.
 
+### Skipping Butler Header/Footer Validation
+
+By default, butler requires all managed configuration files to have `#butlerstart` at the beginning and `#butlerend` at the end. This ensures butler is managing legitimate configuration files.
+
+However, for some use cases (like Kubernetes ConfigMaps or other configurations that cannot easily include these markers), you can disable this validation per-manager by setting `skip-butler-header = "true"`:
+
+```toml
+[mymanager]
+  repos = ["myrepo"]
+  skip-butler-header = "true"
+  # ... other options
+```
+
+When `skip-butler-header` is enabled:
+- Butler will **not** require `#butlerstart` and `#butlerend` markers
+- YAML syntax validation still occurs for `.yaml`/`.yml` files
+- JSON syntax validation still occurs for `.json` files
+- Text files are accepted without any validation
+
 ## Building
+
+## Releases
+
+Butler uses GitHub Actions to automatically create releases when PRs are merged to the main branch.
+
+### Release Labels
+
+Every PR must have one of the following labels to indicate the type of version bump:
+
+| Label | Version Bump | Example |
+|-------|--------------|---------|
+| `release:major` | Major version | `v1.0.0` → `v2.0.0` |
+| `release:minor` | Minor version | `v1.0.0` → `v1.1.0` |
+| `release:patch` | Patch version | `v1.0.0` → `v1.0.1` |
+| `release:skip` | No release | Skips automatic release |
+
+**When to use each label:**
+- **`release:major`**: Breaking changes, incompatible API changes
+- **`release:minor`**: New features, backwards-compatible additions
+- **`release:patch`**: Bug fixes, documentation updates, minor changes
+- **`release:skip`**: CI/CD changes, README updates that don't need a release
+
+### Automatic Releases
+
+When a PR is merged to `main` or `master` (without `release:skip` label), the auto-release workflow will:
+
+1. Read the release label to determine version bump type
+2. Update the `VERSION` file and create a git tag
+3. Build and push container images to ghcr.io
+4. Create a GitHub Release with auto-generated notes
+
+### Setting Up Labels
+
+The required labels are automatically created when you first push to main. You can also manually trigger the setup:
+
+```bash
+# Via GitHub CLI
+gh workflow run setup-labels.yml
+
+# Or go to Actions → Setup Labels → Run workflow
+```
+
+### Manual Releases
+
+To create a release manually, push a version tag:
+
+```bash
+git tag v1.3.0
+git push origin v1.3.0
+```
 
 ## Testing
 Butler has some unit testing, and some acceptance testing.

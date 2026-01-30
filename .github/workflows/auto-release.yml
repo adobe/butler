@@ -164,21 +164,25 @@ jobs:
       #     cache-to: type=gha,mode=max
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ steps.new_version.outputs.version }}
-          name: Release ${{ steps.new_version.outputs.version }}
-          generate_release_notes: true
-          draft: false
-          prerelease: false
-          body: |
-            ## What's Changed
-            
-            This release was automatically created when PR #${{ github.event.pull_request.number }} was merged.
-            
-            **PR Title:** ${{ github.event.pull_request.title }}
-            **Version Bump:** ${{ steps.bump_type.outputs.bump }}
-            
-            ## Commits
-            
-            ${{ steps.commits.outputs.list }}
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PAT }}
+        run: |
+          # Create the release notes file
+          cat << 'EOF' > release_notes.md
+          ## What's Changed
+
+          This release was automatically created when PR #${{ github.event.pull_request.number }} was merged.
+
+          **PR Title:** ${{ github.event.pull_request.title }}
+          **Version Bump:** ${{ steps.bump_type.outputs.bump }}
+
+          ## Commits
+
+          ${{ steps.commits.outputs.list }}
+          EOF
+
+          # Create the release using gh CLI
+          gh release create "${{ steps.new_version.outputs.version }}" \
+            --title "Release ${{ steps.new_version.outputs.version }}" \
+            --notes-file release_notes.md \
+            --generate-notes

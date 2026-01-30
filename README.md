@@ -7,6 +7,50 @@ The Butler CMS (butler) tool is designed to grab any configuration files, define
 
 The butler configuration file is a [TOML](https://github.com/toml-lang/toml) formatted file. You can store the file locally (using a mounted filesystem), or on a remote server. The proper formatting for the config file can be found [here](https://github.com/adobe/butler/tree/master/contrib)
 
+## CI/CD
+
+Butler uses GitHub Actions for continuous integration and deployment.
+
+### Workflows
+
+| Workflow | Trigger | Description |
+|----------|---------|-------------|
+| **CI** | Push to main/master, PRs | Runs unit tests and builds images |
+| **PR Build** | Pull requests | Builds preview images tagged with PR number |
+| **Release** | Tags (`v*`) | Builds and publishes to ghcr.io |
+| **Cleanup** | PR closed | Removes PR preview images |
+
+### Container Images
+
+Images are published to GitHub Container Registry:
+
+```bash
+# Pull the latest release
+docker pull ghcr.io/adobe/butler:latest
+
+# Pull a specific version
+docker pull ghcr.io/adobe/butler:v1.4.0
+
+# Pull a PR preview (for testing)
+docker pull ghcr.io/adobe/butler:pr-123
+```
+
+### Creating a Release
+
+To create a new release:
+
+```bash
+# Tag the release
+git tag v1.4.0
+git push origin v1.4.0
+```
+
+The release workflow will automatically:
+1. Run unit tests
+2. Build multi-platform images (amd64 + arm64)
+3. Push to ghcr.io with version tags
+4. Create a GitHub Release with auto-generated notes
+
 ### Butler at 30,000 feet
 Here is a quick diagram that contains all the elements of what butler does, and how it is intended to interact with other systems.
 

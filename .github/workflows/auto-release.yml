@@ -25,16 +25,13 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Get current version
+      - name: Get latest tag version
         id: current_version
         run: |
-          if [ -f VERSION ]; then
-            VERSION=$(cat VERSION | tr -d '[:space:]')
-          else
-            VERSION="v0.0.0"
-          fi
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
-          echo "Current version: ${VERSION}"
+          # Get the latest tag, or default to v0.0.0 if no tags exist
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "version=${LATEST_TAG}" >> $GITHUB_OUTPUT
+          echo "Current version (from tags): ${LATEST_TAG}"
 
       - name: Determine version bump type from labels
         id: bump_type
@@ -93,20 +90,6 @@ jobs:
           NEW_VERSION="v${MAJOR}.${MINOR}.${PATCH}"
           echo "version=${NEW_VERSION}" >> $GITHUB_OUTPUT
           echo "New version: ${NEW_VERSION} (${BUMP} bump)"
-
-      - name: Update VERSION file
-        run: |
-          echo "${{ steps.new_version.outputs.version }}" > VERSION
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add VERSION
-          git commit -m "Bump version to ${{ steps.new_version.outputs.version }}"
-          git push
-
-      - name: Create and push tag
-        run: |
-          git tag ${{ steps.new_version.outputs.version }}
-          git push origin ${{ steps.new_version.outputs.version }}
 
       - name: Get commits in PR
         id: commits

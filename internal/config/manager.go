@@ -31,24 +31,26 @@ import (
 )
 
 type Manager struct {
-	Name                string                  `json:"name"`
-	Repos               []string                `mapstructure:"repos" json:"repos"`
-	CfgCleanFiles       string                  `mapstructure:"clean-files" json:"-"`
-	CleanFiles          bool                    `json:"clean-files"`
-	GoodCache           bool                    `json:"good-cache"`
-	LastRun             time.Time               `json:"last-run"`
-	MustacheSubsArray   []string                `mapstructure:"mustache-subs" json:"-"`
-	MustacheSubs        map[string]string       `json:"mustache-subs"`
-	CfgEnableCache      string                  `mapstructure:"enable-cache" json:"-"`
-	EnableCache         bool                    `json:"enable-cache"`
-	CachePath           string                  `mapstructure:"cache-path" json:"cache-path"`
-	DestPath            string                  `mapstructure:"dest-path" json:"dest-path"`
-	PrimaryConfigName   string                  `mapstructure:"primary-config-name" json:"primary-config-name"`
-	CfgManagerTimeoutOk string                  `mapstructure:"manager-timeout-ok" json:"-"`
-	ManagerTimeoutOk    bool                    `json:"manager-timeout-ok"`
-	ManagerOpts         map[string]*ManagerOpts `json:"opts"`
-	Reloader            reloaders.Reloader      `mapstructure:"-" json:"reloader,omitempty"`
-	ReloadManager       bool                    `json:"-"`
+	Name                   string                  `json:"name"`
+	Repos                  []string                `mapstructure:"repos" json:"repos"`
+	CfgCleanFiles          string                  `mapstructure:"clean-files" json:"-"`
+	CleanFiles             bool                    `json:"clean-files"`
+	GoodCache              bool                    `json:"good-cache"`
+	LastRun                time.Time               `json:"last-run"`
+	MustacheSubsArray      []string                `mapstructure:"mustache-subs" json:"-"`
+	MustacheSubs           map[string]string       `json:"mustache-subs"`
+	CfgEnableCache         string                  `mapstructure:"enable-cache" json:"-"`
+	EnableCache            bool                    `json:"enable-cache"`
+	CachePath              string                  `mapstructure:"cache-path" json:"cache-path"`
+	DestPath               string                  `mapstructure:"dest-path" json:"dest-path"`
+	PrimaryConfigName      string                  `mapstructure:"primary-config-name" json:"primary-config-name"`
+	CfgManagerTimeoutOk    string                  `mapstructure:"manager-timeout-ok" json:"-"`
+	ManagerTimeoutOk       bool                    `json:"manager-timeout-ok"`
+	CfgSkipButlerHeader    string                  `mapstructure:"skip-butler-header" json:"-"`
+	SkipButlerHeader       bool                    `json:"skip-butler-header"`
+	ManagerOpts            map[string]*ManagerOpts `json:"opts"`
+	Reloader               reloaders.Reloader      `mapstructure:"-" json:"reloader,omitempty"`
+	ReloadManager          bool                    `json:"-"`
 }
 
 type ManagerOpts struct {
@@ -140,7 +142,7 @@ func (bm *Manager) DownloadPrimaryConfigFiles(c chan ChanEvent) error {
 			// we did not get a correct configuration, or that there is an
 			// issue with the upstream
 			filename := opts.GetPrimaryRemoteConfigFiles()[i]
-			if err := ValidateConfig(NewValidateOpts().WithContentType(opts.ContentType).WithFileName(filename).WithData(f).WithManager(bm.Name)); err != nil {
+			if err := ValidateConfig(NewValidateOpts().WithContentType(opts.ContentType).WithFileName(filename).WithData(f).WithManager(bm.Name).WithSkipButlerHeader(bm.SkipButlerHeader)); err != nil {
 				log.Errorf("%s for %s.", err.Error(), u)
 				metrics.SetButlerConfigVal(metrics.FAILURE, opts.Repo, opts.GetPrimaryRemoteConfigFiles()[i])
 
@@ -217,7 +219,7 @@ func (bm *Manager) DownloadAdditionalConfigFiles(c chan ChanEvent) error {
 			// we did not get a correct configuration, or that there is an
 			// issue with the upstream
 			filename := opts.GetAdditionalRemoteConfigFiles()[i]
-			if err := ValidateConfig(NewValidateOpts().WithContentType(opts.ContentType).WithFileName(filename).WithData(f).WithManager(bm.Name)); err != nil {
+			if err := ValidateConfig(NewValidateOpts().WithContentType(opts.ContentType).WithFileName(filename).WithData(f).WithManager(bm.Name).WithSkipButlerHeader(bm.SkipButlerHeader)); err != nil {
 				metrics.SetButlerConfigVal(metrics.FAILURE, opts.Repo, opts.GetAdditionalRemoteConfigFiles()[i])
 
 				// Set this metrics global as failure here, since we aren't sure whether or not it was a parse error or

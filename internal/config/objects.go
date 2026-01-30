@@ -95,14 +95,15 @@ type ConfigGlobals struct {
 }
 
 type ValidateOpts struct {
-	ContentType string
-	Data        interface{}
-	FileName    string
-	Manager     string
+	ContentType      string
+	Data             interface{}
+	FileName         string
+	Manager          string
+	SkipButlerHeader bool
 }
 
 func NewValidateOpts() *ValidateOpts {
-	return &ValidateOpts{ContentType: "text"}
+	return &ValidateOpts{ContentType: "text", SkipButlerHeader: false}
 }
 
 func (o *ValidateOpts) WithContentType(t string) *ValidateOpts {
@@ -122,5 +123,10 @@ func (o *ValidateOpts) WithFileName(f string) *ValidateOpts {
 
 func (o *ValidateOpts) WithManager(m string) *ValidateOpts {
 	o.Manager = m
+	return o
+}
+
+func (o *ValidateOpts) WithSkipButlerHeader(s bool) *ValidateOpts {
+	o.SkipButlerHeader = s
 	return o
 }

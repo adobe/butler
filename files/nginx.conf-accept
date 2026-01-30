@@ -95,8 +95,7 @@ http {
 	}
 
 	server {
-		listen			443;
-		ssl			on;
+		listen			443 ssl;
 		ssl_certificate		/certs/test.crt;
 		ssl_certificate_key	/certs/test.ky;
 		root			/www;

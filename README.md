@@ -7,6 +7,50 @@ The Butler CMS (butler) tool is designed to grab any configuration files, define
 
 The butler configuration file is a [TOML](https://github.com/toml-lang/toml) formatted file. You can store the file locally (using a mounted filesystem), or on a remote server. The proper formatting for the config file can be found [here](https://github.com/adobe/butler/tree/master/contrib)
 
+## CI/CD
+
+Butler uses GitHub Actions for continuous integration and deployment.
+
+### Workflows
+
+| Workflow | Trigger | Description |
+|----------|---------|-------------|
+| **CI** | Push to main/master, PRs | Runs unit tests and builds images |
+| **PR Build** | Pull requests | Builds preview images tagged with PR number |
+| **Release** | Tags (`v*`) | Builds and publishes to ghcr.io |
+| **Cleanup** | PR closed | Removes PR preview images |
+
+### Container Images
+
+Images are published to GitHub Container Registry:
+
+```bash
+# Pull the latest release
+docker pull ghcr.io/adobe/butler:latest
+
+# Pull a specific version
+docker pull ghcr.io/adobe/butler:v1.4.0
+
+# Pull a PR preview (for testing)
+docker pull ghcr.io/adobe/butler:pr-123
+```
+
+### Creating a Release
+
+To create a new release:
+
+```bash
+# Tag the release
+git tag v1.4.0
+git push origin v1.4.0
+```
+
+The release workflow will automatically:
+1. Run unit tests
+2. Build multi-platform images (amd64 + arm64)
+3. Push to ghcr.io with version tags
+4. Create a GitHub Release with auto-generated notes
+
 ### Butler at 30,000 feet
 Here is a quick diagram that contains all the elements of what butler does, and how it is intended to interact with other systems.
 
@@ -22,7 +66,7 @@ There are various ways that you can run butler. We will ultimately deploy butler
 
 ### Command Line Usage
 ```
-[16:06]pts/22:49(stegen@woden):[~]%
+%
 ./butler -h
 Usage of ./butler:
   -config.path string
@@ -56,7 +100,7 @@ Usage of ./butler:
   -version
         Print version information.
 
-[16:08]pts/22:50(stegen@woden):[~]%
+%
 
 
 ```
@@ -81,12 +125,12 @@ You should get the gist at this point. Refer to the butler.toml.sample configura
 ### Example Command Line Usage
 #### HTTP/HTTPS CLI
 ```
-[14:24]pts/12:21(stegen@woden):[~]% ./butler -config.path http://localhost/butler/config/butler.toml -config.retrieve-interval 10 -log.level info
+% ./butler -config.path http://localhost/butler/config/butler.toml -config.retrieve-interval 10 -log.level info
 INFO[2017-10-11T14:24:29+01:00] Starting Butler CMS version v1.2.1
 ^C
 
 [master]
-[14:24]pts/12:22(stegen@woden):[~]%
+%
 ```
 When you execute butler with the above arguments, you are asking butler to grab its configuration file from http://localhost/butler/config/butler.toml, and try to re-retrieve and refresh it every 10 seconds. It will also use the default log level of INFO. If you need more verbosity to your output, specify `debug` as the logging level argument.
 
@@ -105,7 +149,7 @@ With any of these flags, they can be retrieved form the environment. Refer to th
 
 #### etcd CLI
 ```
-[12:34]pts/16:3(stegen@woden):[~]% ./butler -config.path etcd://etcd.mesos/butler/butler.toml -etcd.endpoints http://etcd.mesos:1026 -log.level info
+% ./butler -config.path etcd://etcd.mesos/butler/butler.toml -etcd.endpoints http://etcd.mesos:1026 -log.level info
 INFO[2018-05-10T11:34:05Z] Starting Butler CMS version v1.2.1
 INFO[2018-05-10T11:34:05Z] Config::Init(): initializing butler config.
 WARN[2018-05-10T11:34:05Z] ButlerConfig::Init() Above \"NewHttpMethod(): could not convert\" warnings may be safely disregarded.
@@ -113,7 +157,7 @@ INFO[2018-05-10T11:34:05Z] Config::Init(): butler config initialized.
 INFO[2018-05-10T11:34:05Z] ButlerConfig::Handler(): entering.
 INFO[2018-05-10T11:34:05Z] Config::RunCMHandler(): entering
 ^C
-[12:34]pts/16:4(stegen@woden):[~]%
+%
 ```
 
 You can grab the butler.toml directly from etcd, and you can also create a repo which utilizes etcd within the butler.toml. Refer to [this example](https://github.com/adobe/butler/blob/master/contrib/butler.toml.etcdtest).
@@ -127,12 +171,12 @@ Note that this should support both etcd v2 and v3.
 
 #### S3 CLI
 ```
-[14:24]pts/12:21(stegen@woden):[~]% ./butler -config.path s3://s3-bucket/config/butler.toml -config.retrieve-interval 10 -log.level info -s3.region <aws-region>
+% ./butler -config.path s3://s3-bucket/config/butler.toml -config.retrieve-interval 10 -log.level info -s3.region <aws-region>
 INFO[2017-10-11T14:24:29+01:00] Starting Butler CMS version v1.2.1
 ^C
 
 [master]
-[14:24]pts/12:22(stegen@woden):[~]%
+%
 ```
 When you execute butler with the above arguments, you are asking butler to grab its configuration file from S3 storage using bucket `s3-bucket`, file key `config/butler.toml` and the aws-region as specified by `s3.region`, and try to re-retrieve and refresh it every 10 seconds. It will also use the default log level of INFO. If you need more verbosity to your output, specify `debug` as the logging level argument.
 
@@ -145,7 +189,7 @@ The following environment variable is optional
 
 The command line option looks like this:
 
-`[14:24]pts/12:21(stegen@woden):[~]% ./butler -config.path blob://azure-storage-account/azure-blob-container/butler.toml -config.retrieve-interval 10 -log.level info`
+`% ./butler -config.path blob://azure-storage-account/azure-blob-container/butler.toml -config.retrieve-interval 10 -log.level info`
 
 ### DCOS Deployment JSON
 ```
@@ -244,54 +288,230 @@ Refer to the contrib/ directory for more information about the butler.toml confi
 
 ## Building
 
-## Testing
-Butler has some unit testing, and some acceptance testing.
+Butler uses Docker Buildx Bake for building container images. All build configuration is defined in `docker-bake.hcl`.
 
-The unit testing is using the check.v1 testing package (gopkg.in/check.v1). The code coverage is not very impressive, but we continue to add test cases as we go. If you want to run the unit tests, just run `make test-unit`.
+### Prerequisites
 
-The acceptance testing tries to do some tests of how butler operates overall. You can provide a the butler binary with a configuration file, and run it with the `-test` flag. What this tells butler to do is to just perform a full config operation once. If there are percieved failures, it'll quit out with unix status code 1. For example, if it's unable to parse a configuration, or get some variables that it needs, it will exit out. It should also, hopefully, catch bugs which aren't caught in the unit testing, where panics may get invoked from calls that are made from functions that cannot be easily unit tested, but could be caught when running against actual configuration.
+- Docker with Buildx support (Docker 19.03+)
+- Make (optional, but recommended)
 
-Out of the box, it tests some http:// https:// file:// endoints, which it can handle internally.
+### Quick Start
 
-There are two additional scripts which can test against s3:// and blob:// storage. For both of these, you must set the appropriate environment variables for authenticating to the respective AWS or Azure storage service.
-### Blob Testing
-To test against Blob storage, you will need to export two environment variables:
-1. `BUTLER_BLOB_TEST_CONFIGS`
-1. `BUTLER_BLOB_TEST_RESPONSES`
+```bash
+# Build the butler image
+make build
 
-`BUTLER_BLOB_TEST_CONFIGS` is a space delimited list of urls to test against.
-`BUTLER_BLOB_TEST_RESPONSES` is a space delimited list of return codes which are expected against the list of delimited urls.
+# Build all images (butler + debug)
+make build-all
 
-Here is an example:
+# Build for multiple platforms (amd64 + arm64)
+make build-multiplatform
 ```
-export BUTLER_BLOB_TEST_CONFIGS="blob://stegentestblobva7/butler/butler1.toml blob://stegentestblobva7/butler/butler2.toml blob://stegentestblobva7/butler/butler3.toml"
+
+### Build Targets
+
+| Command | Description |
+|---------|-------------|
+| `make build` | Build the butler production image |
+| `make build-all` | Build butler and butler-debug images |
+| `make build-multiplatform` | Build for linux/amd64 and linux/arm64 |
+| `make build-local` | Build binary locally (no Docker) |
+
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `VERSION` | Version tag for the image | `dev` |
+| `REGISTRY` | Docker registry hostname | (none - uses local) |
+| `REGISTRY_PREFIX` | Path prefix within the registry | (none) |
+
+### Pushing to a Registry
+
+To push images to an internal registry (e.g., Artifactory):
+
+```bash
+# Set environment variables
+export REGISTRY="artifactory.example.com"
+export REGISTRY_PREFIX="docker-local/"
+export VERSION="v1.4.0"
+
+# Login to your registry
+docker login $REGISTRY
+
+# Build and push in one step
+make push
+
+# Or push all images (butler + debug)
+make push-all
+```
+
+The images will be tagged as:
+- `artifactory.example.com/docker-local/butler:v1.4.0`
+- `artifactory.example.com/docker-local/butler:latest`
+
+### Using Docker Buildx Bake Directly
+
+You can also use `docker buildx bake` directly:
+
+```bash
+# Show what would be built
+docker buildx bake --print
+
+# Build specific target
+docker buildx bake butler
+
+# Build and push
+docker buildx bake butler --push
+
+# Build with custom variables
+VERSION=v1.4.0 REGISTRY=myregistry.com docker buildx bake butler
+```
+
+## Testing
+Butler has unit testing and acceptance testing, both run inside Docker containers for consistency.
+
+### Running Tests
+
+```bash
+# Run all tests (unit + acceptance)
+make test
+
+# Run unit tests only
+make test-unit
+
+# Run acceptance tests only
+make test-accept
+
+# Run tests locally (no Docker)
+make test-local
+```
+
+### Test Targets
+
+| Command | Description |
+|---------|-------------|
+| `make test` | Run all tests (unit + acceptance) |
+| `make test-unit` | Run unit tests in container, outputs coverage to `out/coverage/` |
+| `make test-accept` | Run acceptance tests in container |
+| `make test-local` | Run tests locally without Docker |
+| `make enter-test-unit` | Interactive shell in unit test container |
+| `make enter-test-accept` | Interactive shell in acceptance test container |
+
+### Unit Tests
+
+Unit tests use the check.v1 testing package (gopkg.in/check.v1). Coverage reports are generated and saved to `out/coverage/`.
+
+```bash
+make test-unit
+# Coverage reports available in out/coverage/
+```
+
+### Acceptance Tests
+
+The acceptance testing tests how butler operates overall. Butler is run with the `-test` flag which performs a full config operation once. If there are failures (unable to parse configuration, missing variables, etc.), it exits with status code 1.
+
+Out of the box, it tests http://, https://, and file:// endpoints.
+
+### Blob (Azure) Testing
+To test against Azure Blob storage, set the following environment variables:
+
+| Variable | Description |
+|----------|-------------|
+| `BUTLER_BLOB_TEST_CONFIGS` | Space-delimited list of blob:// URLs to test |
+| `BUTLER_BLOB_TEST_RESPONSES` | Space-delimited list of expected return codes |
+
+Example:
+```bash
+export BUTLER_BLOB_TEST_CONFIGS="blob://account/container/butler1.toml blob://account/container/butler2.toml"
 export BUTLER_BLOB_TEST_RESPONSES="0 0 1"
 ```
 
-The actual script that gets executed is `./files/tests/scripts/azure.sh`
+The test script is located at `./files/tests/scripts/azure.sh`
 
-### S3 Testing
-To test against S3 storage, you will need to export two environment variables:
-1. `BUTLER_S3_TEST_CONFIGS`
-1. `BUTLER_S3_TEST_RESPONSES`
+### S3 (AWS) Testing
+To test against AWS S3 storage, set the following environment variables:
 
-`BUTLER_S3_TEST_CONFIGS` is a space delimited list of urls to test against.
-`BUTLER_S3_TEST_RESPONSES` is a space delimited list of return codes which are expected against the list of delimited urls.
+| Variable | Description |
+|----------|-------------|
+| `BUTLER_S3_TEST_CONFIGS` | Space-delimited list of s3:// URLs to test |
+| `BUTLER_S3_TEST_RESPONSES` | Space-delimited list of expected return codes |
 
-Here is an example:
-```
-export BUTLER_S3_TEST_CONFIGS="s3://stegen-test-bucket/butler1.toml s3://stegen-test-bucket/butler2.toml s3://stegen-test-bucket/butler3.toml"
+Example:
+```bash
+export BUTLER_S3_TEST_CONFIGS="s3://bucket/butler1.toml s3://bucket/butler2.toml"
 export BUTLER_S3_TEST_RESPONSES="0 1 1"
 ```
 
-The actual script that gets executed is `./files/tests/scripts/s3.sh`
+The test script is located at `./files/tests/scripts/s3.sh`
 
-If you want to run the acceptance testing, just run `make test-accept`.
+## Development
+
+### Code Quality
+
+```bash
+# Format Go code
+make fmt
+
+# Run linter
+make lint
+
+# Run go vet
+make vet
+
+# Run all checks (fmt, vet, lint)
+make check
+```
+
+### Local Development
+
+```bash
+# Build binary locally
+make build-local
+
+# Run butler locally
+make run
+
+# Start local etcd for testing
+make start-etcd
+
+# Start local Prometheus for testing
+make start-prometheus
+```
+
+### Make Targets Reference
+
+Run `make help` for a full list of available targets:
+
+```
+Build targets:
+  make build              Build butler image using docker buildx bake
+  make build-all          Build all images (butler + debug)
+  make build-local        Build local binary (no Docker)
+  make build-multiplatform Build for amd64 and arm64
+
+Test targets:
+  make test               Run all tests (unit + acceptance)
+  make test-unit          Run unit tests in container
+  make test-accept        Run acceptance tests in container
+  make test-local         Run tests locally (no Docker)
+  make enter-test-unit    Interactive unit test container
+  make enter-test-accept  Interactive acceptance test container
+
+Code quality:
+  make fmt                Format Go code
+  make lint               Run linter
+  make vet                Run go vet
+  make check              Run fmt, vet, and lint
+
+Utility:
+  make clean              Remove build artifacts
+  make bake-print         Show docker buildx bake plan
+```
 
 ## Health Checks
 butler provides DCOS health checks by exposing an http service with a /health-check endpoint. It exposes various configuration, and realtime information in JSON format regarding the butler process.
 ```
-[12:54]pts/11:13(stegen@woden):[~]% http get localhost:8080/health-check
+% http get localhost:8080/health-check
 HTTP/1.1 200 OK
 Content-Type: application/json
 Date: Thu, 12 Oct 2017 10:44:50 GMT
@@ -449,12 +669,12 @@ Transfer-Encoding: chunked
 }
 
 [master]
-[13:02]pts/11:14(stegen@woden):[~]%
+%
 ```
 ## Prometheus Metrics
 butler provides native Prometheus of the butler go binary by exposing an http service with a /metrics endpoint. This includes both butler specific metric information (prefixed with `butler_`), and internal go and process related metrics (prefixed with `go_` and `process_`)
 ```
-[13:04]pts/11:15(stegen@woden):[~]% http get localhost:8080/metrics 
+% http get localhost:8080/metrics 
 HTTP/1.1 200 OK
 Content-Encoding: gzip
 Content-Length: 1381
@@ -590,7 +810,7 @@ process_virtual_memory_bytes 2.39341568e+08
 
 
 [master]
-[13:04]pts/11:16(stegen@woden):[~]%
+%
 ```
 ### Contributing
 

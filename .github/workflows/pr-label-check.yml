@@ -1,0 +1,58 @@
+# PR label check - ensures PRs have a release label before merging
+name: PR Label Check
+
+on:
+  pull_request:
+    types: [opened, labeled, unlabeled, synchronize]
+    branches:
+      - main
+      - master
+
+jobs:
+  check-labels:
+    name: Check Release Label
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for release label
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const labels = context.payload.pull_request.labels.map(l => l.name);
+            console.log('Current PR labels:', labels);
+            
+            const releaseLabels = ['release:major', 'release:minor', 'release:patch', 'release:skip'];
+            const hasReleaseLabel = labels.some(label => releaseLabels.includes(label));
+            
+            if (!hasReleaseLabel) {
+              core.setFailed(`
+            ❌ Missing release label!
+            
+            Please add one of the following labels to this PR:
+            
+            • release:major - Breaking change (v1.0.0 → v2.0.0)
+            • release:minor - New feature (v1.0.0 → v1.1.0)  
+            • release:patch - Bug fix or minor change (v1.0.0 → v1.0.1)
+            • release:skip  - Skip automatic release
+            
+            This label determines how the version number will be bumped when the PR is merged.
+              `);
+            } else {
+              const foundLabel = labels.find(label => releaseLabels.includes(label));
+              console.log(`✅ Found release label: ${foundLabel}`);
+            }
+
+      - name: Check for multiple release labels
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const labels = context.payload.pull_request.labels.map(l => l.name);
+            const releaseLabels = ['release:major', 'release:minor', 'release:patch', 'release:skip'];
+            const foundReleaseLabels = labels.filter(label => releaseLabels.includes(label));
+            
+            if (foundReleaseLabels.length > 1) {
+              core.setFailed(`
+            ❌ Multiple release labels found: ${foundReleaseLabels.join(', ')}
+            
+            Please use only ONE release label per PR.
+              `);
+            }

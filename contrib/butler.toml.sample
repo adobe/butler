@@ -55,6 +55,13 @@ title = "Butler Configuration"
   ## Default: false
   clean-files = "true"
 
+  ## Skip butler header/footer validation. When set to "true", butler will not require
+  ## configuration files to have #butlerstart and #butlerend markers. This is useful
+  ## for managing files like Kubernetes ConfigMaps or other configurations that cannot
+  ## easily include butler markers. YAML and JSON syntax validation still occurs.
+  ## Default: "false"
+  skip-butler-header = "false"
+
   ## These are the mustache substitutions that we'll attempt to make on the merged configuration files
   mustache-subs = ["cluster-cluster-id=cluster01-dev-or1", "endpoint=external", "envvar=env:ENVIRONMENT_VAR"]
 

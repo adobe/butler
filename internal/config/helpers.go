@@ -56,6 +56,8 @@ func IsValidScheme(s string) bool {
 // file and ensures that it begins with the proper header, and ends with the
 // proper footer. If it does not begin or end with the proper header/footer,
 // then an error is returned. If the file passes the checks, a nil is returned.
+// If SkipButlerHeader is true, header/footer validation is skipped but other
+// validation (JSON/YAML parsing) still occurs.
 func ValidateConfig(opts *ValidateOpts) error {
 	var (
 		err               error
@@ -63,7 +65,7 @@ func ValidateConfig(opts *ValidateOpts) error {
 		contentTypeSwitch string
 	)
 
-	log.Debugf("ValidateConfig()[count=%v][manager=%v]: checking content-type=%v FileName=%v", cmHandlerCounter, opts.Manager, opts.ContentType, opts.FileName)
+	log.Debugf("ValidateConfig()[count=%v][manager=%v]: checking content-type=%v FileName=%v skip-butler-header=%v", cmHandlerCounter, opts.Manager, opts.ContentType, opts.FileName, opts.SkipButlerHeader)
 	f := opts.Data
 	switch t := f.(type) {
 	case *os.File:
@@ -105,11 +107,16 @@ func ValidateConfig(opts *ValidateOpts) error {
 
 	switch contentTypeSwitch {
 	case "text":
-		err = runTextValidate(file, opts.Manager)
+		if opts.SkipButlerHeader {
+			log.Debugf("ValidateConfig()[count=%v][manager=%v]: skipping butler header/footer validation for text content", cmHandlerCounter, opts.Manager)
+			err = nil
+		} else {
+			err = runTextValidate(file, opts.Manager)
+		}
 	case "json":
 		err = runJSONValidate(file, opts.Manager)
 	case "yaml":
-		err = runYamlValidate(file, opts.Manager)
+		err = runYamlValidate(file, opts.Manager, opts.SkipButlerHeader)
 	default:
 		err = fmt.Errorf("unknown content type %s", opts.ContentType)
 	}
@@ -120,9 +127,12 @@ func ValidateConfig(opts *ValidateOpts) error {
 	}
 
 	// let's rewrite a sanitized temporary config file
-	err = removeButlerHeaderFooter(opts.Data)
-	if err != nil {
-		log.Errorf("ValidateConfig()[count=%v][manager=%v]: returning err=%v for content-type=%v and FileName=%v", cmHandlerCounter, opts.Manager, err.Error(), opts.ContentType, opts.FileName)
+	// Only remove butler header/footer if we're not skipping validation
+	if !opts.SkipButlerHeader {
+		err = removeButlerHeaderFooter(opts.Data)
+		if err != nil {
+			log.Errorf("ValidateConfig()[count=%v][manager=%v]: returning err=%v for content-type=%v and FileName=%v", cmHandlerCounter, opts.Manager, err.Error(), opts.ContentType, opts.FileName)
+		}
 	}
 	return err
 }
@@ -245,7 +255,7 @@ func runJSONValidate(f *bytes.Reader, m string) error {
 	return nil
 }
 
-func runYamlValidate(f *bytes.Reader, m string) error {
+func runYamlValidate(f *bytes.Reader, m string, skipButlerHeader bool) error {
 	var (
 		err  error
 		data []byte
@@ -262,6 +272,12 @@ func runYamlValidate(f *bytes.Reader, m string) error {
 	if err != nil {
 		msg := fmt.Sprintf("runYamlValidate()[count=%v][manager=%v]: could not Unmarshal yaml data into interface. err=%v", cmHandlerCounter, m, err.Error())
 		return errors.New(msg)
+	}
+
+	// Skip butler header/footer validation if requested
+	if skipButlerHeader {
+		log.Debugf("runYamlValidate()[count=%v][manager=%v]: skipping butler header/footer validation", cmHandlerCounter, m)
+		return nil
 	}
 
 	err = runTextValidate(bytes.NewReader(data), m)
@@ -617,6 +633,13 @@ func GetConfigManager(entry string, bc *ConfigSettings) error {
 		Mgr.ManagerTimeoutOk = true
 	} else {
 		Mgr.ManagerTimeoutOk = false
+	}
+
+	envSkipButlerHeader := strings.ToLower(environment.GetVar(Mgr.CfgSkipButlerHeader))
+	if envSkipButlerHeader == "true" {
+		Mgr.SkipButlerHeader = true
+	} else {
+		Mgr.SkipButlerHeader = false
 	}
 
 	Mgr.CachePath = filepath.Clean(environment.GetVar(Mgr.CachePath))

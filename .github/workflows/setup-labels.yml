@@ -1,0 +1,83 @@
+# Setup workflow - ensures required labels exist in the repository
+# Run this manually once, or it will run automatically on first push to main
+name: Setup Labels
+
+on:
+  workflow_dispatch:  # Allow manual trigger
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - '.github/workflows/setup-labels.yml'
+
+jobs:
+  create-labels:
+    name: Create Required Labels
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Create release labels
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const labels = [
+              {
+                name: 'release:major',
+                color: 'b60205',
+                description: 'Breaking change - triggers major version bump (v1.0.0 -> v2.0.0)'
+              },
+              {
+                name: 'release:minor',
+                color: '0e8a16',
+                description: 'New feature - triggers minor version bump (v1.0.0 -> v1.1.0)'
+              },
+              {
+                name: 'release:patch',
+                color: '1d76db',
+                description: 'Bug fix or minor change - triggers patch version bump (v1.0.0 -> v1.0.1)'
+              },
+              {
+                name: 'release:skip',
+                color: 'ffffff',
+                description: 'Skip automatic release for this PR'
+              }
+            ];
+            
+            for (const label of labels) {
+              try {
+                // Try to get the label first
+                await github.rest.issues.getLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: label.name
+                });
+                
+                // Label exists, update it
+                console.log(`Updating label: ${label.name}`);
+                await github.rest.issues.updateLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: label.name,
+                  color: label.color,
+                  description: label.description
+                });
+              } catch (error) {
+                if (error.status === 404) {
+                  // Label doesn't exist, create it
+                  console.log(`Creating label: ${label.name}`);
+                  await github.rest.issues.createLabel({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    name: label.name,
+                    color: label.color,
+                    description: label.description
+                  });
+                } else {
+                  throw error;
+                }
+              }
+            }
+            
+            console.log('All release labels have been created/updated!');

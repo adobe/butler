@@ -175,6 +175,62 @@ var TestConfigCompleteEnvironment = []byte(`[globals]
         timeout = "10"
 `)
 
+// Test config for watch-only mode
+var TestConfigWatchOnly = []byte(`[globals]
+  config-managers = ["test-handler"]
+  scheduler-interval = 300
+  exit-on-config-failure = "false"
+  status-file = "/var/tmp/butler.status"
+  [test-handler]
+    repos = ["localhost"]
+    clean-files = "false"
+    watch-only = "true"
+    skip-butler-header = "true"
+    enable-cache = "false"
+    primary-config-name = "config.yml"
+    [test-handler.localhost]
+      method = "file"
+      repo-path = "/tmp/butler-test"
+      primary-config = ["test.yml"]
+      [test-handler.localhost.file]
+        path = "/tmp/butler-test"
+    [test-handler.reloader]
+      method = "http"
+      [test-handler.reloader.http]
+        host = "localhost"
+        port = "8080"
+        uri = "/reload"
+        method = "post"
+        payload = "{}"
+        content-type = "application/json"
+        retries = "3"
+        retry-wait-min = "1"
+        retry-wait-max = "5"
+        timeout = "10"
+`)
+
+// Test config for watch-only mode with dest-path (should still work)
+var TestConfigWatchOnlyWithDestPath = []byte(`[globals]
+  config-managers = ["test-handler"]
+  scheduler-interval = 300
+  exit-on-config-failure = "false"
+  status-file = "/var/tmp/butler.status"
+  [test-handler]
+    repos = ["localhost"]
+    clean-files = "false"
+    watch-only = "true"
+    skip-butler-header = "true"
+    enable-cache = "false"
+    dest-path = "/tmp/butler-dest"
+    primary-config-name = "config.yml"
+    [test-handler.localhost]
+      method = "file"
+      repo-path = "/tmp/butler-test"
+      primary-config = ["test.yml"]
+      [test-handler.localhost.file]
+        path = "/tmp/butler-test"
+`)
+
 var TestManagerNoURLs = []byte(`[testing]
 `)
 
@@ -489,4 +545,86 @@ func (s *ConfigTestSuite) TestConfigCompleteEnvironment(c *C) {
 	// Cleanup env
 	os.Unsetenv("RELOADER_HOST")
 	os.Unsetenv("MSUB")
+}
+
+func (s *ConfigTestSuite) TestConfigWatchOnlyMode(c *C) {
+	var (
+		err    error
+		config ConfigSettings
+	)
+
+	// Load the watch-only config
+	err = ParseConfig(TestConfigWatchOnly)
+	c.Assert(err, IsNil)
+
+	// Get the configuration
+	err = GetConfigManager("test-handler", &config)
+	c.Assert(err, IsNil)
+
+	// Verify watch-only mode is enabled
+	mgr := config.Managers["test-handler"]
+	c.Assert(mgr.WatchOnly, Equals, true)
+	c.Assert(mgr.SkipButlerHeader, Equals, true)
+	c.Assert(mgr.CleanFiles, Equals, false)
+
+	// Verify FileHashes map is initialized
+	c.Assert(mgr.FileHashes, NotNil)
+
+	// Verify dest-path is empty (optional in watch-only mode)
+	// Note: filepath.Clean("") returns "." so we check for that
+	c.Assert(mgr.DestPath, Equals, "")
+}
+
+func (s *ConfigTestSuite) TestConfigWatchOnlyModeWithDestPath(c *C) {
+	var (
+		err    error
+		config ConfigSettings
+	)
+
+	// Load the watch-only config with dest-path
+	err = ParseConfig(TestConfigWatchOnlyWithDestPath)
+	c.Assert(err, IsNil)
+
+	// Get the configuration
+	err = GetConfigManager("test-handler", &config)
+	c.Assert(err, IsNil)
+
+	// Verify watch-only mode is enabled
+	mgr := config.Managers["test-handler"]
+	c.Assert(mgr.WatchOnly, Equals, true)
+	c.Assert(mgr.SkipButlerHeader, Equals, true)
+
+	// Verify dest-path is set even in watch-only mode (it's optional but allowed)
+	c.Assert(mgr.DestPath, Equals, "/tmp/butler-dest")
+
+	// Verify FileHashes map is initialized
+	c.Assert(mgr.FileHashes, NotNil)
+}
+
+func (s *ConfigTestSuite) TestConfigWatchOnlyModeDisabled(c *C) {
+	var (
+		err    error
+		config ConfigSettings
+	)
+
+	// Load the standard config (watch-only not set)
+	err = ParseConfig(TestConfigCompleteEnvironment)
+	c.Assert(err, IsNil)
+
+	// setup environment for this test
+	os.Setenv("RELOADER_HOST", "localhost")
+	os.Setenv("MSUB", "test")
+	defer os.Unsetenv("RELOADER_HOST")
+	defer os.Unsetenv("MSUB")
+
+	// Get the configuration
+	err = GetConfigManager("test-handler", &config)
+	c.Assert(err, IsNil)
+
+	// Verify watch-only mode is disabled by default
+	mgr := config.Managers["test-handler"]
+	c.Assert(mgr.WatchOnly, Equals, false)
+
+	// Verify FileHashes map is nil when watch-only is disabled
+	c.Assert(mgr.FileHashes, IsNil)
 }

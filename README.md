@@ -305,6 +305,72 @@ When `skip-butler-header` is enabled:
 - JSON syntax validation still occurs for `.json` files
 - Text files are accepted without any validation
 
+### Watch-Only Mode for ConfigMap Monitoring
+
+Butler supports a **watch-only mode** designed for Kubernetes ConfigMap monitoring scenarios. When enabled, butler monitors files for changes using hash comparison and triggers reloads, **without writing any files to disk**.
+
+This is particularly useful when:
+- Configuration files are mounted from Kubernetes ConfigMaps (read-only)
+- You want butler to detect changes and trigger reloads without file I/O overhead
+- The source files are already in place and just need change detection
+
+#### Configuration
+
+Enable watch-only mode per-manager by setting `watch-only = "true"`:
+
+```toml
+[jenkins]
+  repos = ["jcasc-local"]
+  
+  # Enable watch-only mode - detect changes and reload, don't write files
+  watch-only = "true"
+  
+  # When watch-only is true, dest-path is optional
+  # dest-path = "/var/tmp/butler-jcasc"  # Not needed in watch-only mode
+  
+  clean-files = "false"
+  skip-butler-header = "true"
+  enable-cache = "false"
+  primary-config-name = "jcasc-config.yaml"
+
+  [jenkins.jcasc-local]
+    method = "file"
+    repo-path = "/usr/share/jenkins/init.jcasc.d"
+    primary-config = ["05-config-files.yaml", "05-credentials.yaml", "10-defaults.yaml"]
+
+  [jenkins.reloader]
+    method = "https"
+    [jenkins.reloader.https]
+      host = "localhost"
+      port = "4430"
+      uri = "/reload-configuration-as-code/?casc-reload-token=mytoken"
+      method = "post"
+      insecure-skip-verify = "true"
+      retries = "3"
+      timeout = "30"
+```
+
+#### How It Works
+
+1. Butler reads and **hashes** the source files from `repo-path`
+2. Butler compares hashes to the previous run (stored in memory)
+3. If hashes differ → trigger the configured reloader
+4. **Never writes** to `dest-path`
+
+#### Key Behaviors
+
+- **First run**: Always triggers a reload (no previous hashes to compare)
+- **Container restart**: Triggers a reload (in-memory hashes are lost)
+- **No file writes**: Eliminates disk I/O for read-only filesystems
+- **`dest-path` optional**: Not required when `watch-only = "true"`
+- **`clean-files` ignored**: File cleanup is skipped in watch-only mode
+
+#### Use Cases
+
+- **Jenkins JCasC ConfigMap monitoring**: Detect ConfigMap updates and trigger Jenkins reload
+- **Prometheus/Alertmanager configs**: Monitor externally-managed configs
+- **GitOps scenarios**: Configs managed by Helm/ArgoCD, butler just triggers reloads
+
 ## Building
 Butler uses Docker Buildx Bake for building container images. All build configuration is defined in `docker-bake.hcl`.
 

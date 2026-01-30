@@ -7,3 +7,5 @@ env
 *.idea
 .vscode
 debug
+vendor/
+out/

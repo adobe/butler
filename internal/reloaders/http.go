@@ -1,5 +1,5 @@
 /*
-Copyright 2017 Adobe. All rights reserved.
+Copyright 2017-2026 Adobe. All rights reserved.
 This file is licensed to you under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License. You may obtain a copy
 of the License at http://www.apache.org/licenses/LICENSE-2.0
@@ -13,11 +13,11 @@ governing permissions and limitations under the License.
 package reloaders
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	//"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"strconv"
 	"strings"
@@ -70,8 +70,7 @@ func NewHTTPReloader(manager string, method string, entry []byte) (Reloader, err
 	}
 
 	opts.Client = retryablehttp.NewClient()
-	opts.Client.Logger.SetFlags(0)
-	opts.Client.Logger.SetOutput(ioutil.Discard)
+	opts.Client.Logger = nil
 	opts.Client.HTTPClient.Timeout = time.Duration(newTimeout) * time.Second
 	opts.Client.HTTPClient.Transport = transport
 	opts.Client.RetryMax = newRetries
@@ -173,7 +172,7 @@ func (h HTTPReloader) Reload() error {
 	return err
 }
 
-func (h *HTTPReloader) ReloaderRetryPolicy(resp *http.Response, err error) (bool, error) {
+func (h *HTTPReloader) ReloaderRetryPolicy(ctx context.Context, resp *http.Response, err error) (bool, error) {
 	if err != nil {
 		metrics.SetButlerReloaderRetry(metrics.SUCCESS, h.Manager)
 		return true, err

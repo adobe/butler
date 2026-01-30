@@ -1,0 +1,54 @@
+# Cleanup workflow - removes PR preview images when PRs are closed
+name: Cleanup PR Images
+
+on:
+  pull_request:
+    types: [closed]
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  cleanup:
+    name: Delete PR Preview Image
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - name: Delete PR preview image
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            const packageName = context.repo.repo;
+            
+            console.log(`Attempting to delete preview image for PR #${prNumber}`);
+            
+            try {
+              // List package versions
+              const { data: versions } = await github.rest.packages.getAllPackageVersionsForPackageOwnedByUser({
+                package_type: 'container',
+                package_name: packageName,
+                username: context.repo.owner,
+              });
+              
+              // Find versions with PR tag
+              const prVersions = versions.filter(v => 
+                v.metadata?.container?.tags?.some(tag => tag === `pr-${prNumber}`)
+              );
+              
+              for (const version of prVersions) {
+                console.log(`Deleting version ${version.id} with tags: ${version.metadata?.container?.tags?.join(', ')}`);
+                await github.rest.packages.deletePackageVersionForUser({
+                  package_type: 'container',
+                  package_name: packageName,
+                  username: context.repo.owner,
+                  package_version_id: version.id,
+                });
+              }
+              
+              console.log(`Cleanup complete for PR #${prNumber}`);
+            } catch (error) {
+              console.log(`Note: Could not delete preview image: ${error.message}`);
+              // Don't fail the workflow if cleanup fails
+            }

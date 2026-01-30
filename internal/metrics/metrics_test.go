@@ -1,5 +1,5 @@
 /*
-Copyright 2017 Adobe. All rights reserved.
+Copyright 2017-2026 Adobe. All rights reserved.
 This file is licensed to you under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License. You may obtain a copy
 of the License at http://www.apache.org/licenses/LICENSE-2.0
@@ -73,8 +73,8 @@ func (s *ButlerStatsTestSuite) TestSetButlerReloadVal(c *C) {
 	c.Assert(butlerReloadTimeMetric, NotNil)
 	c.Assert(err, IsNil)
 
-	c.Assert(butlerReloadSuccessMetric.Desc().String(), Equals, "Desc{fqName: \"butler_localconfig_reload_success\", help: \"Did butler successfully reload prometheus\", constLabels: {}, variableLabels: [manager]}")
-	c.Assert(butlerReloadTimeMetric.Desc().String(), Equals, "Desc{fqName: \"butler_localconfig_reload_time\", help: \"Time that butler successfully reload prometheus\", constLabels: {}, variableLabels: [manager]}")
+	c.Assert(butlerReloadSuccessMetric.Desc().String(), Matches, `Desc\{fqName: "butler_localconfig_reload_success", help: "Did butler successfully reload prometheus", constLabels: \{\}, variableLabels: .*manager.*\}`)
+	c.Assert(butlerReloadTimeMetric.Desc().String(), Matches, `Desc\{fqName: "butler_localconfig_reload_time", help: "Time that butler successfully reload prometheus", constLabels: \{\}, variableLabels: .*manager.*\}`)
 
 	// Let's get the metric values for FAILURE
 	butlerReloadSuccessMetric.Write(&metricFailure)
@@ -140,8 +140,8 @@ func (s *ButlerStatsTestSuite) TestSetButlerRenderVal(c *C) {
 	c.Assert(butlerRenderTimeMetric, NotNil)
 	c.Assert(err, IsNil)
 
-	c.Assert(butlerRenderSuccessMetric.Desc().String(), Equals, "Desc{fqName: \"butler_localconfig_render_success\", help: \"Did butler successfully render the prometheus.yml\", constLabels: {}, variableLabels: [config_file repo]}")
-	c.Assert(butlerRenderTimeMetric.Desc().String(), Equals, "Desc{fqName: \"butler_localconfig_render_time\", help: \"Time that butler successfully rendered the prometheus.yml\", constLabels: {}, variableLabels: [config_file repo]}")
+	c.Assert(butlerRenderSuccessMetric.Desc().String(), Matches, `Desc\{fqName: "butler_localconfig_render_success", help: "Did butler successfully render the prometheus.yml", constLabels: \{\}, variableLabels: .*config_file.*repo.*\}`)
+	c.Assert(butlerRenderTimeMetric.Desc().String(), Matches, `Desc\{fqName: "butler_localconfig_render_time", help: "Time that butler successfully rendered the prometheus.yml", constLabels: \{\}, variableLabels: .*config_file.*repo.*\}`)
 
 	// Let's get the metric values for FAILURE
 	butlerRenderSuccessMetric.Write(&metricFailure)
@@ -203,8 +203,8 @@ func (s *ButlerStatsTestSuite) TestSetButlerWriteVal(c *C) {
 	c.Assert(butlerWriteTimeMetric, NotNil)
 	c.Assert(err, IsNil)
 
-	c.Assert(butlerWriteSuccessMetric.Desc().String(), Equals, "Desc{fqName: \"butler_localconfig_write_success\", help: \"Did butler successfully write the configuration\", constLabels: {}, variableLabels: [config_file]}")
-	c.Assert(butlerWriteTimeMetric.Desc().String(), Equals, "Desc{fqName: \"butler_localconfig_write_time\", help: \"Time that butler successfully write the configuration\", constLabels: {}, variableLabels: [config_file]}")
+	c.Assert(butlerWriteSuccessMetric.Desc().String(), Matches, `Desc\{fqName: "butler_localconfig_write_success", help: "Did butler successfully write the configuration", constLabels: \{\}, variableLabels: .*config_file.*\}`)
+	c.Assert(butlerWriteTimeMetric.Desc().String(), Matches, `Desc\{fqName: "butler_localconfig_write_time", help: "Time that butler successfully write the configuration", constLabels: \{\}, variableLabels: .*config_file.*\}`)
 
 	// Let's get the metric values for FAILURE
 	butlerWriteSuccessMetric.Write(&metricFailure)

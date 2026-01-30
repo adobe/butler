@@ -76,9 +76,21 @@ http_200x:
     http:
   icmp:
     prober:icmp`)
-	c.Assert(runYamlValidate(bytes.NewReader(testYamlConfigGood), "test-manager"), IsNil)
-	c.Assert(runYamlValidate(bytes.NewReader(testYamlConfigBad1), "test-manager"), NotNil)
-	c.Assert(runYamlValidate(bytes.NewReader(testYamlConfigBad2), "test-manager"), NotNil)
+	// Test with skipButlerHeader = false (default behavior, requires headers)
+	c.Assert(runYamlValidate(bytes.NewReader(testYamlConfigGood), "test-manager", false), IsNil)
+	c.Assert(runYamlValidate(bytes.NewReader(testYamlConfigBad1), "test-manager", false), NotNil)
+	c.Assert(runYamlValidate(bytes.NewReader(testYamlConfigBad2), "test-manager", false), NotNil)
+
+	// Test with skipButlerHeader = true (skips header validation, only checks YAML syntax)
+	var testYamlNoHeaders = []byte(`modules:
+  http_200x:
+    prober: http
+    http:
+  icmp:
+    prober: icmp`)
+	c.Assert(runYamlValidate(bytes.NewReader(testYamlNoHeaders), "test-manager", true), IsNil)
+	// Bad YAML syntax should still fail even with skipButlerHeader = true
+	c.Assert(runYamlValidate(bytes.NewReader(testYamlConfigBad2), "test-manager", true), NotNil)
 }
 
 func (s *ConfigTestSuite) TestgetFileExtension(c *C) {

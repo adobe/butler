@@ -68,6 +68,10 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     GOFLAGS="-mod=mod" go test -v -coverprofile=/tmp/coverage/monitor.out ./internal/monitor && \
     echo "Testing ./internal/metrics..." && \
     GOFLAGS="-mod=mod" go test -v -coverprofile=/tmp/coverage/metrics.out ./internal/metrics && \
+    echo "Testing ./internal/environment..." && \
+    GOFLAGS="-mod=mod" go test -v -coverprofile=/tmp/coverage/environment.out ./internal/environment && \
+    echo "Testing ./internal/alog..." && \
+    GOFLAGS="-mod=mod" go test -v -coverprofile=/tmp/coverage/alog.out ./internal/alog && \
     echo "All tests passed!"
 
 # Combine coverage reports
@@ -99,8 +103,6 @@ RUN mkdir -p /run/nginx /opt/butler /opt/cache
 # Copy test files and scripts
 COPY files/tests/ /www/
 COPY files/certs/ /certs/
-COPY files/build_test_accept.sh /root/build.sh
-COPY files/doit.sh /doit.sh
 
 # Setup certificates
 RUN cp /certs/rootCA.* /usr/local/share/ca-certificates/ 2>/dev/null || true && \

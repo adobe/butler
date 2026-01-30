@@ -1,0 +1,205 @@
+# Auto-release workflow - creates a new release when PRs are merged to main/master
+name: Auto Release
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+      - master
+
+jobs:
+  release:
+    name: Create Release
+    # Only run if the PR was merged (not just closed) and doesn't have skip label
+    if: |
+      github.event.pull_request.merged == true &&
+      !contains(github.event.pull_request.labels.*.name, 'release:skip')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get current version
+        id: current_version
+        run: |
+          if [ -f VERSION ]; then
+            VERSION=$(cat VERSION | tr -d '[:space:]')
+          else
+            VERSION="v0.0.0"
+          fi
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Current version: ${VERSION}"
+
+      - name: Determine version bump type from labels
+        id: bump_type
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const labels = context.payload.pull_request.labels.map(l => l.name);
+            console.log('PR Labels:', labels);
+            
+            let bump = 'patch'; // default
+            
+            if (labels.includes('release:major')) {
+              bump = 'major';
+            } else if (labels.includes('release:minor')) {
+              bump = 'minor';
+            } else if (labels.includes('release:patch')) {
+              bump = 'patch';
+            }
+            
+            console.log(`Version bump type: ${bump}`);
+            core.setOutput('bump', bump);
+
+      - name: Calculate new version
+        id: new_version
+        run: |
+          CURRENT="${{ steps.current_version.outputs.version }}"
+          BUMP="${{ steps.bump_type.outputs.bump }}"
+          
+          # Remove 'v' prefix if present
+          CURRENT="${CURRENT#v}"
+          
+          # Split version into parts
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+          
+          # Default to 0 if empty
+          MAJOR=${MAJOR:-0}
+          MINOR=${MINOR:-0}
+          PATCH=${PATCH:-0}
+          
+          # Bump the appropriate part
+          case "$BUMP" in
+            major)
+              MAJOR=$((MAJOR + 1))
+              MINOR=0
+              PATCH=0
+              ;;
+            minor)
+              MINOR=$((MINOR + 1))
+              PATCH=0
+              ;;
+            patch)
+              PATCH=$((PATCH + 1))
+              ;;
+          esac
+          
+          NEW_VERSION="v${MAJOR}.${MINOR}.${PATCH}"
+          echo "version=${NEW_VERSION}" >> $GITHUB_OUTPUT
+          echo "New version: ${NEW_VERSION} (${BUMP} bump)"
+
+      - name: Update VERSION file
+        run: |
+          echo "${{ steps.new_version.outputs.version }}" > VERSION
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add VERSION
+          git commit -m "Bump version to ${{ steps.new_version.outputs.version }}"
+          git push
+
+      - name: Create and push tag
+        run: |
+          git tag ${{ steps.new_version.outputs.version }}
+          git push origin ${{ steps.new_version.outputs.version }}
+
+      - name: Get commits in PR
+        id: commits
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const commits = await github.rest.pulls.listCommits({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number
+            });
+            
+            let commitList = '';
+            for (const commit of commits.data) {
+              const sha = commit.sha.substring(0, 7);
+              const message = commit.commit.message.split('\n')[0]; // First line only
+              const author = commit.commit.author.name;
+              commitList += `- \`${sha}\` ${message} (@${commit.author?.login || author})\n`;
+            }
+            
+            // Escape for GitHub Actions output
+            commitList = commitList.replace(/%/g, '%25').replace(/\n/g, '%0A').replace(/\r/g, '%0D');
+            core.setOutput('list', commitList);
+            console.log('Commits:', commits.data.length);
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push butler image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/Dockerfile
+          target: butler
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:${{ steps.new_version.outputs.version }}
+            ghcr.io/${{ github.repository }}:latest
+          build-args: |
+            VERSION=${{ steps.new_version.outputs.version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push butler-debug image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/Dockerfile
+          target: butler-debug
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}-debug:${{ steps.new_version.outputs.version }}
+            ghcr.io/${{ github.repository }}-debug:latest
+          build-args: |
+            VERSION=${{ steps.new_version.outputs.version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.new_version.outputs.version }}
+          name: Release ${{ steps.new_version.outputs.version }}
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+          body: |
+            ## What's Changed
+            
+            This release was automatically created when PR #${{ github.event.pull_request.number }} was merged.
+            
+            **PR Title:** ${{ github.event.pull_request.title }}
+            **Version Bump:** ${{ steps.bump_type.outputs.bump }}
+            
+            ## Commits
+            
+            ${{ steps.commits.outputs.list }}
+            
+            ## Container Images
+            
+            ```bash
+            docker pull ghcr.io/${{ github.repository }}:${{ steps.new_version.outputs.version }}
+            docker pull ghcr.io/${{ github.repository }}-debug:${{ steps.new_version.outputs.version }}
+            ```

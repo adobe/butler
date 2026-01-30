@@ -292,10 +292,41 @@ func (bc *ButlerConfig) RunCMHandler() error {
 
 		if PrimaryChan.CanCopyFiles() && AdditionalChan.CanCopyFiles() {
 			log.Debugf("Config::RunCMHandler()[count=%v]: successfully retrieved files. processing...", cmHandlerCounter)
-			p := PrimaryChan.CopyPrimaryConfigFiles(m.ManagerOpts)
-			a := AdditionalChan.CopyAdditionalConfigFiles(m.DestPath)
-			if p || a {
-				ReloadManager = append(ReloadManager, m.Name)
+
+			// Check if watch-only mode is enabled for this manager
+			if m.WatchOnly {
+				// Watch-only mode: compare hashes without writing files
+				log.Debugf("Config::RunCMHandler()[count=%v][manager=%v]: using watch-only mode", cmHandlerCounter, m.Name)
+
+				// Initialize hash map if nil
+				if m.FileHashes == nil {
+					m.FileHashes = make(map[string]string)
+				}
+
+				// Compare primary config hashes
+				pChanged, pHashes := PrimaryChan.ComparePrimaryConfigHashes(m.ManagerOpts, m.FileHashes)
+				// Compare additional config hashes
+				aChanged, aHashes := AdditionalChan.CompareAdditionalConfigHashes(m.FileHashes)
+
+				// Merge the new hashes back
+				for k, v := range pHashes {
+					m.FileHashes[k] = v
+				}
+				for k, v := range aHashes {
+					m.FileHashes[k] = v
+				}
+
+				if pChanged || aChanged {
+					ReloadManager = append(ReloadManager, m.Name)
+					log.Infof("Config::RunCMHandler()[count=%v][manager=%v]: watch-only mode detected changes, will trigger reload", cmHandlerCounter, m.Name)
+				}
+			} else {
+				// Normal mode: copy files to destination
+				p := PrimaryChan.CopyPrimaryConfigFiles(m.ManagerOpts)
+				a := AdditionalChan.CopyAdditionalConfigFiles(m.DestPath)
+				if p || a {
+					ReloadManager = append(ReloadManager, m.Name)
+				}
 			}
 			PrimaryChan.CleanTmpFiles()
 			AdditionalChan.CleanTmpFiles()
@@ -413,6 +444,12 @@ func (bc *ButlerConfig) GetStatusFile() string {
 func (bc *ButlerConfig) CheckPaths() error {
 	log.Debugf("Config::CheckPaths(): entering")
 	for _, m := range bc.Config.Managers {
+		// Skip path creation and cleanup in watch-only mode
+		if m.WatchOnly {
+			log.Debugf("Config::CheckPaths(): skipping path checks for manager %s (watch-only mode)", m.Name)
+			continue
+		}
+
 		for _, f := range m.GetAllLocalPaths() {
 			dir := filepath.Dir(f)
 			if _, err := os.Stat(dir); err != nil {

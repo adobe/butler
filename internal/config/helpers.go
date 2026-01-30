@@ -15,6 +15,8 @@ package config
 import (
 	"bufio"
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -392,6 +394,64 @@ func CompareAndCopy(source string, dest string, m string) bool {
 	}
 }
 
+// ComputeFileHash computes the SHA256 hash of a file and returns it as a hex string.
+// This is used in watch-only mode to detect file changes without writing to disk.
+func ComputeFileHash(filePath string) (string, error) {
+	f, err := os.Open(filePath)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return "", err
+	}
+
+	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
+// ComputeDataHash computes the SHA256 hash of a byte slice and returns it as a hex string.
+// This is used in watch-only mode to hash downloaded content before comparison.
+func ComputeDataHash(data []byte) string {
+	h := sha256.Sum256(data)
+	return hex.EncodeToString(h[:])
+}
+
+// CompareHashOnly compares the hash of a source file against a stored hash.
+// Returns true if the file has changed (hashes differ), false if unchanged.
+// This is used in watch-only mode instead of CompareAndCopy.
+func CompareHashOnly(source string, storedHash string, m string) (bool, string, error) {
+	newHash, err := ComputeFileHash(source)
+	if err != nil {
+		log.Errorf("helpers.CompareHashOnly()[count=%v][manager=%v]: could not compute hash for source=%v err=%#v", cmHandlerCounter, m, source, err)
+		return false, "", err
+	}
+
+	if storedHash == "" {
+		// First run - no stored hash, consider it changed
+		log.Infof("helpers.CompareHashOnly()[count=%v][manager=%v]: No stored hash for \"%s\". First run detected.", cmHandlerCounter, m, source)
+		return true, newHash, nil
+	}
+
+	if newHash != storedHash {
+		// Safely truncate hashes for logging (handle short hashes gracefully)
+		oldHashDisplay := storedHash
+		if len(storedHash) > 16 {
+			oldHashDisplay = storedHash[:16] + "..."
+		}
+		newHashDisplay := newHash
+		if len(newHash) > 16 {
+			newHashDisplay = newHash[:16] + "..."
+		}
+		log.Infof("helpers.CompareHashOnly()[count=%v][manager=%v]: Hash changed for \"%s\". Old=%s New=%s", cmHandlerCounter, m, source, oldHashDisplay, newHashDisplay)
+		return true, newHash, nil
+	}
+
+	log.Debugf("helpers.CompareHashOnly()[count=%v][manager=%v]: Hash unchanged for \"%s\"", cmHandlerCounter, m, source)
+	return false, newHash, nil
+}
+
 // CopyFile copies the src path string to the dst path string. If there is an
 // error, an error is returned, otherwise nil is returned.
 func CopyFile(src string, dst string) error {
@@ -642,6 +702,16 @@ func GetConfigManager(entry string, bc *ConfigSettings) error {
 		Mgr.SkipButlerHeader = false
 	}
 
+	envWatchOnly := strings.ToLower(environment.GetVar(Mgr.CfgWatchOnly))
+	if envWatchOnly == "true" {
+		Mgr.WatchOnly = true
+		// Initialize the hash storage map for watch-only mode
+		Mgr.FileHashes = make(map[string]string)
+		log.Infof("helpers.GetConfigManager()[count=%v][manager=%v]: watch-only mode enabled", cmHandlerCounter, entry)
+	} else {
+		Mgr.WatchOnly = false
+	}
+
 	Mgr.CachePath = filepath.Clean(environment.GetVar(Mgr.CachePath))
 	if Mgr.EnableCache && Mgr.CachePath == "" {
 		msg := fmt.Sprintf("Caching Enabled but manager.cache-path is unset for manager %s", entry)
@@ -650,9 +720,15 @@ func GetConfigManager(entry string, bc *ConfigSettings) error {
 
 	Mgr.DestPath = filepath.Clean(environment.GetVar(Mgr.DestPath))
 	Mgr.PrimaryConfigName = filepath.Clean(environment.GetVar(Mgr.PrimaryConfigName))
-	if Mgr.DestPath == "" {
-		msg := fmt.Sprintf("No dest-path configured for manager %s", entry)
+	// dest-path is only required when NOT in watch-only mode
+	if Mgr.DestPath == "" && !Mgr.WatchOnly {
+		msg := fmt.Sprintf("No dest-path configured for manager %s (required when watch-only is not enabled)", entry)
 		return errors.New(msg)
+	}
+	// In watch-only mode, dest-path is optional but we'll set a default if not provided
+	if Mgr.WatchOnly && Mgr.DestPath == "." {
+		Mgr.DestPath = ""
+		log.Debugf("helpers.GetConfigManager()[count=%v][manager=%v]: watch-only mode - dest-path not required", cmHandlerCounter, entry)
 	}
 
 	Mgr.ManagerOpts = make(map[string]*ManagerOpts)

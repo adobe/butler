@@ -228,17 +228,17 @@ func (c *ConfigChanEvent) CopyAdditionalConfigFiles(destDir string) bool {
 
 // ComparePrimaryConfigHashes compares hashes of primary config files without writing to disk.
 // This is used in watch-only mode. Returns true if any file has changed, along with updated hashes.
+//
+// The returned map contains ONLY entries for primary-config files this call inspected.
+// The caller is responsible for merging it into its own stored-hash map; this function
+// does NOT pre-seed newHashes with all of storedHashes (doing so would cause additional/primary
+// hash maps to clobber each other when both are merged into m.FileHashes by the caller).
 func (c *ConfigChanEvent) ComparePrimaryConfigHashes(opts map[string]*ManagerOpts, storedHashes map[string]string) (bool, map[string]string) {
 	var (
 		primaryConfigs []string
 		hasChanged     bool
 	)
 	newHashes := make(map[string]string)
-
-	// Copy existing hashes
-	for k, v := range storedHashes {
-		newHashes[k] = v
-	}
 
 	// Get list of primary config files in order
 	for _, opt := range opts {
@@ -275,14 +275,12 @@ func (c *ConfigChanEvent) ComparePrimaryConfigHashes(opts map[string]*ManagerOpt
 
 // CompareAdditionalConfigHashes compares hashes of additional config files without writing to disk.
 // This is used in watch-only mode. Returns true if any file has changed, along with updated hashes.
+//
+// The returned map contains ONLY entries for additional-config files this call inspected.
+// See ComparePrimaryConfigHashes for the rationale.
 func (c *ConfigChanEvent) CompareAdditionalConfigHashes(storedHashes map[string]string) (bool, map[string]string) {
 	var hasChanged bool
 	newHashes := make(map[string]string)
-
-	// Copy existing hashes
-	for k, v := range storedHashes {
-		newHashes[k] = v
-	}
 
 	log.Debugf("ConfigChanEvent::CompareAdditionalConfigHashes(): entering")
 

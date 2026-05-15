@@ -304,7 +304,7 @@ func (bc *ButlerConfig) RunCMHandler() error {
 				}
 
 				// DEBUG: log pre-merge state
-				log.Infof("Config::RunCMHandler()[count=%v][manager=%v]: DEBUG pre-merge m.FileHashes len=%d %#v",
+				log.Debugf("Config::RunCMHandler()[count=%v][manager=%v]: pre-merge m.FileHashes len=%d %#v",
 					cmHandlerCounter, m.Name, len(m.FileHashes), m.FileHashes)
 
 				// Compare primary config hashes
@@ -313,7 +313,7 @@ func (bc *ButlerConfig) RunCMHandler() error {
 				aChanged, aHashes := AdditionalChan.CompareAdditionalConfigHashes(m.FileHashes)
 
 				// DEBUG: log what compare returned
-				log.Infof("Config::RunCMHandler()[count=%v][manager=%v]: DEBUG pHashes=%#v aHashes=%#v pChanged=%v aChanged=%v",
+				log.Debugf("Config::RunCMHandler()[count=%v][manager=%v]: pHashes=%#v aHashes=%#v pChanged=%v aChanged=%v",
 					cmHandlerCounter, m.Name, pHashes, aHashes, pChanged, aChanged)
 
 				// Merge the new hashes back
@@ -325,7 +325,7 @@ func (bc *ButlerConfig) RunCMHandler() error {
 				}
 
 				// DEBUG: log post-merge state and the *Manager identity to confirm pointer stability
-				log.Infof("Config::RunCMHandler()[count=%v][manager=%v]: DEBUG post-merge m.FileHashes len=%d %#v (m=%p)",
+				log.Debugf("Config::RunCMHandler()[count=%v][manager=%v]: post-merge m.FileHashes len=%d %#v (m=%p)",
 					cmHandlerCounter, m.Name, len(m.FileHashes), m.FileHashes, m)
 
 				if pChanged || aChanged {

@@ -140,6 +140,7 @@ func (bc *ButlerConfig) SetTimeout(t int) error {
 func (bc *ButlerConfig) SetLogLevel(level log.Level) {
 	log.SetLevel(level)
 	log.SetFormatter(&log.TextFormatter{FullTimestamp: true})
+	log.SetReportCaller(true)
 	bc.LogLevel = level
 	log.Debugf("Config::SetLogLevel(): setting log level to %s", level)
 }

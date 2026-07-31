@@ -95,6 +95,7 @@ func main() {
 	newConfigLogLevel := environment.GetVar(*configLogLevel)
 	log.SetLevel(SetLogLevel(newConfigLogLevel))
 	log.SetFormatter(&log.TextFormatter{FullTimestamp: true})
+	log.SetReportCaller(true)
 
 	if *versionFlag {
 		fmt.Fprintf(os.Stdout, "butler %s\n", version)

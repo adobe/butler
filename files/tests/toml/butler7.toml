@@ -45,4 +45,14 @@ title = "butler configuration"
 #      retry-wait-min = "5"
 #      retry-wait-max = "10"
 #      timeout = "10"
+#
+#  # alternatively, a cmd reloader can be used to run a local
+#  # command/script instead of hitting an http endpoint
+#  [alertmanager.reloader]
+#    method = "cmd"
+#
+#    [alertmanager.reloader.cmd]
+#      command = "/usr/bin/systemctl"
+#      args = ["reload", "alertmanager"]
+#      timeout = "10"
 #butlerend

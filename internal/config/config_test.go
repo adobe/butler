@@ -175,6 +175,36 @@ var TestConfigCompleteEnvironment = []byte(`[globals]
         timeout = "10"
 `)
 
+var TestConfigCmdReloader = []byte(`[globals]
+  config-managers = ["test-handler"]
+  scheduler-interval = 300
+  exit-on-config-failure = "false"
+  status-file = "/var/tmp/butler.status"
+  [test-handler]
+    repos = ["localhost"]
+    clean-files = "true"
+    enable-cache = "false"
+    cache-path = "/opt/cache/prometheus"
+    dest-path = "/opt/prometheus"
+    primary-config-name = "prometheus.yml"
+    [test-handler.localhost]
+      method = "http"
+      repo-path = "/butler/configs"
+      primary-config = ["test.yml"]
+      additional-config = ["test-add.yml"]
+      [test-handler.localhost.http]
+        retries = "5"
+        retry-wait-min = "5"
+        retry-wait-max = "10"
+        timeout = "10"
+    [test-handler.reloader]
+      method = "cmd"
+      [test-handler.reloader.cmd]
+        command = "/bin/echo"
+        args = ["reload", "test-handler"]
+        timeout = "10"
+`)
+
 // Test config for watch-only mode
 var TestConfigWatchOnly = []byte(`[globals]
   config-managers = ["test-handler"]
@@ -545,6 +575,34 @@ func (s *ConfigTestSuite) TestConfigCompleteEnvironment(c *C) {
 	// Cleanup env
 	os.Unsetenv("RELOADER_HOST")
 	os.Unsetenv("MSUB")
+}
+
+func (s *ConfigTestSuite) TestConfigCmdReloaderWiring(c *C) {
+	var (
+		err    error
+		config ConfigSettings
+	)
+
+	// Load the config initially
+	err = ParseConfig(TestConfigCmdReloader)
+	c.Assert(err, IsNil)
+
+	// Get the configuration
+	err = GetConfigManager("test-handler", &config)
+	c.Assert(err, IsNil)
+
+	mgr := config.Managers["test-handler"]
+	c.Assert(mgr.Reloader, NotNil)
+
+	cmdReloader, ok := mgr.Reloader.(reloaders.CmdReloader)
+	c.Assert(ok, Equals, true)
+	c.Assert(cmdReloader.Opts.Command, Equals, "/bin/echo")
+	c.Assert(cmdReloader.Opts.Args, DeepEquals, []string{"reload", "test-handler"})
+
+	// Run the reload through Manager.Reload(), the same call path used by
+	// Config::RunCMHandler()
+	err = mgr.Reload()
+	c.Assert(err, IsNil)
 }
 
 func (s *ConfigTestSuite) TestConfigWatchOnlyMode(c *C) {

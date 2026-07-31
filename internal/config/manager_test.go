@@ -19,38 +19,38 @@ import (
 	. "gopkg.in/check.v1"
 )
 
-func (s *ConfigTestSuite) TestManagerOptsAppendPrimaryConfigURL(c *C) {
+func (s *ConfigTestSuite) TestManagerOptsAppendPrimaryConfigRemotePath(c *C) {
 	opts := &ManagerOpts{}
-	err := opts.AppendPrimaryConfigURL("http://example.com/config.yml")
+	err := opts.AppendPrimaryConfigRemotePath("http://example.com/config.yml")
 	c.Assert(err, IsNil)
-	c.Assert(len(opts.PrimaryConfigsFullURLs), Equals, 1)
-	c.Assert(opts.PrimaryConfigsFullURLs[0], Equals, "http://example.com/config.yml")
+	c.Assert(len(opts.PrimaryConfigsFullRemotePaths), Equals, 1)
+	c.Assert(opts.PrimaryConfigsFullRemotePaths[0], Equals, "http://example.com/config.yml")
 
 	// Append another
-	err = opts.AppendPrimaryConfigURL("http://example.com/config2.yml")
+	err = opts.AppendPrimaryConfigRemotePath("http://example.com/config2.yml")
 	c.Assert(err, IsNil)
-	c.Assert(len(opts.PrimaryConfigsFullURLs), Equals, 2)
+	c.Assert(len(opts.PrimaryConfigsFullRemotePaths), Equals, 2)
 }
 
-func (s *ConfigTestSuite) TestManagerOptsAppendPrimaryConfigFile(c *C) {
+func (s *ConfigTestSuite) TestManagerOptsAppendPrimaryLocalConfigFile(c *C) {
 	opts := &ManagerOpts{}
-	err := opts.AppendPrimaryConfigFile("/opt/prometheus/prometheus.yml")
+	err := opts.AppendPrimaryLocalConfigFile("/opt/prometheus/prometheus.yml")
 	c.Assert(err, IsNil)
 	c.Assert(len(opts.PrimaryConfigsFullLocalPaths), Equals, 1)
 	c.Assert(opts.PrimaryConfigsFullLocalPaths[0], Equals, "/opt/prometheus/prometheus.yml")
 }
 
-func (s *ConfigTestSuite) TestManagerOptsAppendAdditionalConfigURL(c *C) {
+func (s *ConfigTestSuite) TestManagerOptsAppendAdditionalConfigRemotePath(c *C) {
 	opts := &ManagerOpts{}
-	err := opts.AppendAdditionalConfigURL("http://example.com/alerts.yml")
+	err := opts.AppendAdditionalConfigRemotePath("http://example.com/alerts.yml")
 	c.Assert(err, IsNil)
-	c.Assert(len(opts.AdditionalConfigsFullURLs), Equals, 1)
-	c.Assert(opts.AdditionalConfigsFullURLs[0], Equals, "http://example.com/alerts.yml")
+	c.Assert(len(opts.AdditionalConfigsFullRemotePaths), Equals, 1)
+	c.Assert(opts.AdditionalConfigsFullRemotePaths[0], Equals, "http://example.com/alerts.yml")
 }
 
-func (s *ConfigTestSuite) TestManagerOptsAppendAdditionalConfigFile(c *C) {
+func (s *ConfigTestSuite) TestManagerOptsAppendAdditionalLocalConfigFile(c *C) {
 	opts := &ManagerOpts{}
-	err := opts.AppendAdditionalConfigFile("/opt/prometheus/alerts/alert1.yml")
+	err := opts.AppendAdditionalLocalConfigFile("/opt/prometheus/alerts/alert1.yml")
 	c.Assert(err, IsNil)
 	c.Assert(len(opts.AdditionalConfigsFullLocalPaths), Equals, 1)
 	c.Assert(opts.AdditionalConfigsFullLocalPaths[0], Equals, "/opt/prometheus/alerts/alert1.yml")
@@ -63,11 +63,11 @@ func (s *ConfigTestSuite) TestManagerOptsSetParentManager(c *C) {
 	c.Assert(opts.parentManager, Equals, "prometheus")
 }
 
-func (s *ConfigTestSuite) TestManagerOptsGetPrimaryConfigURLs(c *C) {
+func (s *ConfigTestSuite) TestManagerOptsGetPrimaryConfigRemotePaths(c *C) {
 	opts := &ManagerOpts{
-		PrimaryConfigsFullURLs: []string{"http://a.com/1.yml", "http://b.com/2.yml"},
+		PrimaryConfigsFullRemotePaths: []string{"http://a.com/1.yml", "http://b.com/2.yml"},
 	}
-	urls := opts.GetPrimaryConfigURLs()
+	urls := opts.GetPrimaryConfigRemotePaths()
 	c.Assert(len(urls), Equals, 2)
 	c.Assert(urls[0], Equals, "http://a.com/1.yml")
 }
@@ -90,11 +90,11 @@ func (s *ConfigTestSuite) TestManagerOptsGetPrimaryRemoteConfigFiles(c *C) {
 	c.Assert(files[0], Equals, "config1.yml")
 }
 
-func (s *ConfigTestSuite) TestManagerOptsGetAdditionalConfigURLs(c *C) {
+func (s *ConfigTestSuite) TestManagerOptsGetAdditionalConfigRemotePaths(c *C) {
 	opts := &ManagerOpts{
-		AdditionalConfigsFullURLs: []string{"http://a.com/alerts.yml"},
+		AdditionalConfigsFullRemotePaths: []string{"http://a.com/alerts.yml"},
 	}
-	urls := opts.GetAdditionalConfigURLs()
+	urls := opts.GetAdditionalConfigRemotePaths()
 	c.Assert(len(urls), Equals, 1)
 }
 

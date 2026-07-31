@@ -31,44 +31,44 @@ import (
 )
 
 type Manager struct {
-	Name                   string                  `json:"name"`
-	Repos                  []string                `mapstructure:"repos" json:"repos"`
-	CfgCleanFiles          string                  `mapstructure:"clean-files" json:"-"`
-	CleanFiles             bool                    `json:"clean-files"`
-	GoodCache              bool                    `json:"good-cache"`
-	LastRun                time.Time               `json:"last-run"`
-	MustacheSubsArray      []string                `mapstructure:"mustache-subs" json:"-"`
-	MustacheSubs           map[string]string       `json:"mustache-subs"`
-	CfgEnableCache         string                  `mapstructure:"enable-cache" json:"-"`
-	EnableCache            bool                    `json:"enable-cache"`
-	CachePath              string                  `mapstructure:"cache-path" json:"cache-path"`
-	DestPath               string                  `mapstructure:"dest-path" json:"dest-path"`
-	PrimaryConfigName      string                  `mapstructure:"primary-config-name" json:"primary-config-name"`
-	CfgManagerTimeoutOk    string                  `mapstructure:"manager-timeout-ok" json:"-"`
-	ManagerTimeoutOk       bool                    `json:"manager-timeout-ok"`
-	CfgSkipButlerHeader    string                  `mapstructure:"skip-butler-header" json:"-"`
-	SkipButlerHeader       bool                    `json:"skip-butler-header"`
-	CfgWatchOnly           string                  `mapstructure:"watch-only" json:"-"`
-	WatchOnly              bool                    `json:"watch-only"`
-	FileHashes             map[string]string       `json:"-"` // In-memory hash storage for watch-only mode
-	ManagerOpts            map[string]*ManagerOpts `json:"opts"`
-	Reloader               reloaders.Reloader      `mapstructure:"-" json:"reloader,omitempty"`
-	ReloadManager          bool                    `json:"-"`
+	Name                string                  `json:"name"`
+	Repos               []string                `mapstructure:"repos" json:"repos"`
+	CfgCleanFiles       string                  `mapstructure:"clean-files" json:"-"`
+	CleanFiles          bool                    `json:"clean-files"`
+	GoodCache           bool                    `json:"good-cache"`
+	LastRun             time.Time               `json:"last-run"`
+	MustacheSubsArray   []string                `mapstructure:"mustache-subs" json:"-"`
+	MustacheSubs        map[string]string       `json:"mustache-subs"`
+	CfgEnableCache      string                  `mapstructure:"enable-cache" json:"-"`
+	EnableCache         bool                    `json:"enable-cache"`
+	CachePath           string                  `mapstructure:"cache-path" json:"cache-path"`
+	DestPath            string                  `mapstructure:"dest-path" json:"dest-path"`
+	PrimaryConfigName   string                  `mapstructure:"primary-config-name" json:"primary-config-name"`
+	CfgManagerTimeoutOk string                  `mapstructure:"manager-timeout-ok" json:"-"`
+	ManagerTimeoutOk    bool                    `json:"manager-timeout-ok"`
+	CfgSkipButlerHeader string                  `mapstructure:"skip-butler-header" json:"-"`
+	SkipButlerHeader    bool                    `json:"skip-butler-header"`
+	CfgWatchOnly        string                  `mapstructure:"watch-only" json:"-"`
+	WatchOnly           bool                    `json:"watch-only"`
+	FileHashes          map[string]string       `json:"-"` // In-memory hash storage for watch-only mode
+	ManagerOpts         map[string]*ManagerOpts `json:"opts"`
+	Reloader            reloaders.Reloader      `mapstructure:"-" json:"reloader,omitempty"`
+	ReloadManager       bool                    `json:"-"`
 }
 
 type ManagerOpts struct {
-	Method                          string         `mapstructure:"method" json:"method"`
-	RepoPath                        string         `mapstructure:"repo-path" json:"repo-path"`
-	Repo                            string         `json:"repo"`
-	PrimaryConfig                   []string       `mapstructure:"primary-config" json:"primary-config"`
-	AdditionalConfig                []string       `mapstructure:"additional-config" json:"additional-config"`
-	PrimaryConfigsFullURLs          []string       `json:"-"`
-	AdditionalConfigsFullURLs       []string       `json:"-"`
-	PrimaryConfigsFullLocalPaths    []string       `json:"-"`
-	AdditionalConfigsFullLocalPaths []string       `json:"-"`
-	ContentType                     string         `mapstructure:"content-type" json:"content-type"`
-	Opts                            methods.Method `json:"opts"`
-	parentManager                   string
+	Method                           string         `mapstructure:"method" json:"method"`
+	RepoPath                         string         `mapstructure:"repo-path" json:"repo-path"`
+	Repo                             string         `json:"repo"`
+	PrimaryConfig                    []string       `mapstructure:"primary-config" json:"primary-config"`
+	AdditionalConfig                 []string       `mapstructure:"additional-config" json:"additional-config"`
+	PrimaryConfigsFullRemotePaths    []string       `json:"-"`
+	AdditionalConfigsFullRemotePaths []string       `json:"-"`
+	PrimaryConfigsFullLocalPaths     []string       `json:"-"`
+	AdditionalConfigsFullLocalPaths  []string       `json:"-"`
+	ContentType                      string         `mapstructure:"content-type" json:"content-type"`
+	Opts                             methods.Method `json:"opts"`
+	parentManager                    string
 }
 
 func (bm *Manager) Reload() error {
@@ -103,7 +103,7 @@ func (bm *Manager) DownloadPrimaryConfigFiles(c chan ChanEvent) error {
 	// Process the prometheus.yml configuration files
 	// We are going to iterate through each of the potential managers configured
 	for _, opts := range bm.ManagerOpts {
-		for i, u := range opts.GetPrimaryConfigURLs() {
+		for i, u := range opts.GetPrimaryConfigRemotePaths() {
 			log.Debugf("Manager::DownloadPrimaryConfigFiles(): i=%v, u=%v", i, u)
 			log.Debugf("Manager::DownloadPrimaryConfigFiles(): f=%s", opts.GetPrimaryRemoteConfigFiles()[i])
 			f := opts.DownloadConfigFile(u)
@@ -181,7 +181,7 @@ func (bm *Manager) DownloadAdditionalConfigFiles(c chan ChanEvent) error {
 
 	// Process the additional configuration files
 	for _, opts := range bm.ManagerOpts {
-		for i, u := range opts.GetAdditionalConfigURLs() {
+		for i, u := range opts.GetAdditionalConfigRemotePaths() {
 			log.Debugf("Manager::DownloadAdditionalConfigFiles(): i=%v, u=%v", i, u)
 			f := opts.DownloadConfigFile(u)
 			if f == nil {
@@ -285,26 +285,26 @@ func (bm *Manager) GetAllLocalPaths() []string {
 	return result
 }
 
-func (bmo *ManagerOpts) AppendPrimaryConfigURL(c string) error {
-	log.Debugf("ManagerOpts::AppendPrimaryConfigURL(): adding %s to PrimaryConfigsURLs...", c)
-	bmo.PrimaryConfigsFullURLs = append(bmo.PrimaryConfigsFullURLs, c)
+func (bmo *ManagerOpts) AppendPrimaryConfigRemotePath(c string) error {
+	log.Debugf("ManagerOpts::AppendPrimaryConfigRemotePath(): adding %s to PrimaryConfigsFullRemotePaths...", c)
+	bmo.PrimaryConfigsFullRemotePaths = append(bmo.PrimaryConfigsFullRemotePaths, c)
 	return nil
 }
 
-func (bmo *ManagerOpts) AppendPrimaryConfigFile(c string) error {
-	log.Debugf("ManagerOpts::AppendPrimaryConfigFile(): adding %s to PrimaryConfigsFullLocalPaths...", c)
+func (bmo *ManagerOpts) AppendPrimaryLocalConfigFile(c string) error {
+	log.Debugf("ManagerOpts::AppendPrimaryLocalConfigFile(): adding %s to PrimaryConfigsFullLocalPaths...", c)
 	bmo.PrimaryConfigsFullLocalPaths = append(bmo.PrimaryConfigsFullLocalPaths, c)
 	return nil
 }
 
-func (bmo *ManagerOpts) AppendAdditionalConfigURL(c string) error {
-	log.Debugf("ManagerOpts::AppendAdditionalConfigURL(): adding %s to AdditionalConfigsURLs...", c)
-	bmo.AdditionalConfigsFullURLs = append(bmo.AdditionalConfigsFullURLs, c)
+func (bmo *ManagerOpts) AppendAdditionalConfigRemotePath(c string) error {
+	log.Debugf("ManagerOpts::AppendAdditionalConfigRemotePath(): adding %s to AdditionalConfigsFullRemotePaths...", c)
+	bmo.AdditionalConfigsFullRemotePaths = append(bmo.AdditionalConfigsFullRemotePaths, c)
 	return nil
 }
 
-func (bmo *ManagerOpts) AppendAdditionalConfigFile(c string) error {
-	log.Debugf("ManagerOpts::AppendAdditionalConfigFile(): adding %s to AdditionalConfigsFullLocalPaths...", c)
+func (bmo *ManagerOpts) AppendAdditionalLocalConfigFile(c string) error {
+	log.Debugf("ManagerOpts::AppendAdditionalLocalConfigFile(): adding %s to AdditionalConfigsFullLocalPaths...", c)
 	bmo.AdditionalConfigsFullLocalPaths = append(bmo.AdditionalConfigsFullLocalPaths, c)
 	return nil
 }
@@ -314,8 +314,8 @@ func (bmo *ManagerOpts) SetParentManager(c string) error {
 	return nil
 }
 
-func (bmo *ManagerOpts) GetPrimaryConfigURLs() []string {
-	return bmo.PrimaryConfigsFullURLs
+func (bmo *ManagerOpts) GetPrimaryConfigRemotePaths() []string {
+	return bmo.PrimaryConfigsFullRemotePaths
 }
 
 func (bmo *ManagerOpts) GetPrimaryLocalConfigFiles() []string {
@@ -326,8 +326,8 @@ func (bmo *ManagerOpts) GetPrimaryRemoteConfigFiles() []string {
 	return bmo.PrimaryConfig
 }
 
-func (bmo *ManagerOpts) GetAdditionalConfigURLs() []string {
-	return bmo.AdditionalConfigsFullURLs
+func (bmo *ManagerOpts) GetAdditionalConfigRemotePaths() []string {
+	return bmo.AdditionalConfigsFullRemotePaths
 }
 
 func (bmo *ManagerOpts) GetAdditionalLocalConfigFiles() []string {

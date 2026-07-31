@@ -25,7 +25,7 @@ import (
 	"github.com/adobe/butler/internal/methods"
 	"github.com/adobe/butler/internal/reloaders"
 
-	"github.com/bouk/monkey"
+	"bou.ke/monkey"
 	log "github.com/sirupsen/logrus"
 )
 

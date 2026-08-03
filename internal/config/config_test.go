@@ -22,10 +22,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/adobe/butler/internal/metrics"
 	"github.com/adobe/butler/internal/methods"
 	"github.com/adobe/butler/internal/reloaders"
 
-	"github.com/bouk/monkey"
+	"bou.ke/monkey"
+	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -229,6 +231,105 @@ var TestConfigWatchOnlyWithDestPath = []byte(`[globals]
       primary-config = ["test.yml"]
       [test-handler.localhost.file]
         path = "/tmp/butler-test"
+`)
+
+// Fixtures for exercising ConfigSettings.ParseConfig's metric-cleanup
+// behavior: two managers, each with a distinct repo/file, so that removing
+// one manager (or one repo from a surviving manager) between successive
+// ParseConfig calls lets us assert the corresponding metrics were deleted.
+var TestConfigMetricsTwoManagers = []byte(`[globals]
+  config-managers = ["test-metrics-a", "test-metrics-b"]
+  scheduler-interval = 300
+  exit-on-config-failure = "false"
+  [test-metrics-a]
+    repos = ["repo-a"]
+    clean-files = "false"
+    enable-cache = "false"
+    dest-path = "/tmp/butler-metrics-test-a"
+    primary-config-name = "config-a.yml"
+    [test-metrics-a.repo-a]
+      method = "file"
+      repo-path = "/tmp/butler-metrics-test-a"
+      primary-config = ["primary-a.yml"]
+      [test-metrics-a.repo-a.file]
+        path = "/tmp/butler-metrics-test-a"
+  [test-metrics-b]
+    repos = ["repo-b"]
+    clean-files = "false"
+    enable-cache = "false"
+    dest-path = "/tmp/butler-metrics-test-b"
+    primary-config-name = "config-b.yml"
+    [test-metrics-b.repo-b]
+      method = "file"
+      repo-path = "/tmp/butler-metrics-test-b"
+      primary-config = ["primary-b.yml"]
+      [test-metrics-b.repo-b.file]
+        path = "/tmp/butler-metrics-test-b"
+`)
+
+var TestConfigMetricsOneManager = []byte(`[globals]
+  config-managers = ["test-metrics-a"]
+  scheduler-interval = 300
+  exit-on-config-failure = "false"
+  [test-metrics-a]
+    repos = ["repo-a"]
+    clean-files = "false"
+    enable-cache = "false"
+    dest-path = "/tmp/butler-metrics-test-a"
+    primary-config-name = "config-a.yml"
+    [test-metrics-a.repo-a]
+      method = "file"
+      repo-path = "/tmp/butler-metrics-test-a"
+      primary-config = ["primary-a.yml"]
+      [test-metrics-a.repo-a.file]
+        path = "/tmp/butler-metrics-test-a"
+`)
+
+// TestConfigMetricsManagerTwoRepos and TestConfigMetricsManagerOneRepo cover
+// the narrower case from the issue: the manager itself survives, but one of
+// its two repos is dropped. Metrics for the removed repo/file should be
+// deleted while the manager-level metrics (still in use by the surviving
+// repo) must NOT be deleted.
+var TestConfigMetricsManagerTwoRepos = []byte(`[globals]
+  config-managers = ["test-metrics-c"]
+  scheduler-interval = 300
+  exit-on-config-failure = "false"
+  [test-metrics-c]
+    repos = ["repo-c1", "repo-c2"]
+    clean-files = "false"
+    enable-cache = "false"
+    dest-path = "/tmp/butler-metrics-test-c"
+    primary-config-name = "config-c.yml"
+    [test-metrics-c.repo-c1]
+      method = "file"
+      repo-path = "/tmp/butler-metrics-test-c1"
+      primary-config = ["primary-c1.yml"]
+      [test-metrics-c.repo-c1.file]
+        path = "/tmp/butler-metrics-test-c1"
+    [test-metrics-c.repo-c2]
+      method = "file"
+      repo-path = "/tmp/butler-metrics-test-c2"
+      primary-config = ["primary-c2.yml"]
+      [test-metrics-c.repo-c2.file]
+        path = "/tmp/butler-metrics-test-c2"
+`)
+
+var TestConfigMetricsManagerOneRepo = []byte(`[globals]
+  config-managers = ["test-metrics-c"]
+  scheduler-interval = 300
+  exit-on-config-failure = "false"
+  [test-metrics-c]
+    repos = ["repo-c1"]
+    clean-files = "false"
+    enable-cache = "false"
+    dest-path = "/tmp/butler-metrics-test-c"
+    primary-config-name = "config-c.yml"
+    [test-metrics-c.repo-c1]
+      method = "file"
+      repo-path = "/tmp/butler-metrics-test-c1"
+      primary-config = ["primary-c1.yml"]
+      [test-metrics-c.repo-c1.file]
+        path = "/tmp/butler-metrics-test-c1"
 `)
 
 var TestManagerNoURLs = []byte(`[testing]
@@ -627,4 +728,140 @@ func (s *ConfigTestSuite) TestConfigWatchOnlyModeDisabled(c *C) {
 
 	// Verify FileHashes map is nil when watch-only is disabled
 	c.Assert(mgr.FileHashes, IsNil)
+}
+
+// metricHasLabelValue reports whether any series of the named metric family,
+// as currently known to the default Prometheus registry, carries the given
+// label value. Used to check for a specific manager/repo/file's presence or
+// absence without depending on the total series count, which is shared
+// (and thus polluted by other tests) across the whole test binary.
+func metricHasLabelValue(c *C, metricName string, labelName string, labelValue string) bool {
+	families, err := prometheus.DefaultGatherer.Gather()
+	c.Assert(err, IsNil)
+	for _, family := range families {
+		if family.GetName() != metricName {
+			continue
+		}
+		for _, m := range family.GetMetric() {
+			for _, lp := range m.GetLabel() {
+				if lp.GetName() == labelName && lp.GetValue() == labelValue {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+// TestParseConfigDeletesStaleMetricsOnManagerRemoval covers
+// https://github.com/adobe/butler/issues/5: when a manager disappears from
+// the butler configuration between two ParseConfig calls, its Prometheus
+// series must be deleted rather than left reporting stale values forever.
+func (s *ConfigTestSuite) TestParseConfigDeletesStaleMetricsOnManagerRemoval(c *C) {
+	var settings ConfigSettings
+
+	err := settings.ParseConfig(TestConfigMetricsTwoManagers)
+	c.Assert(err, IsNil)
+
+	// Populate metrics for both managers/repos as butler normally would
+	// while processing them.
+	metrics.SetButlerReloadVal(metrics.SUCCESS, "test-metrics-a")
+	metrics.SetButlerReloadVal(metrics.SUCCESS, "test-metrics-b")
+	metrics.SetButlerRemoteRepoUp(metrics.SUCCESS, "test-metrics-a")
+	metrics.SetButlerRemoteRepoUp(metrics.SUCCESS, "test-metrics-b")
+	metrics.SetButlerContactVal(metrics.SUCCESS, "repo-a", "primary-a.yml")
+	metrics.SetButlerContactVal(metrics.SUCCESS, "repo-b", "primary-b.yml")
+
+	c.Assert(metricHasLabelValue(c, "butler_localconfig_reload_success", "manager", "test-metrics-b"), Equals, true)
+	c.Assert(metricHasLabelValue(c, "butler_remoterepo_up", "manager", "test-metrics-b"), Equals, true)
+	c.Assert(metricHasLabelValue(c, "butler_remoterepo_contact_success", "repo", "repo-b"), Equals, true)
+
+	// Now reparse with test-metrics-b removed from the configuration,
+	// simulating an operator deleting that manager/repo from butler.toml.
+	err = settings.ParseConfig(TestConfigMetricsOneManager)
+	c.Assert(err, IsNil)
+
+	// test-metrics-b's series must be gone...
+	c.Assert(metricHasLabelValue(c, "butler_localconfig_reload_success", "manager", "test-metrics-b"), Equals, false)
+	c.Assert(metricHasLabelValue(c, "butler_remoterepo_up", "manager", "test-metrics-b"), Equals, false)
+	c.Assert(metricHasLabelValue(c, "butler_remoterepo_contact_success", "repo", "repo-b"), Equals, false)
+
+	// ...while test-metrics-a's must remain untouched.
+	c.Assert(metricHasLabelValue(c, "butler_localconfig_reload_success", "manager", "test-metrics-a"), Equals, true)
+	c.Assert(metricHasLabelValue(c, "butler_remoterepo_up", "manager", "test-metrics-a"), Equals, true)
+	c.Assert(metricHasLabelValue(c, "butler_remoterepo_contact_success", "repo", "repo-a"), Equals, true)
+}
+
+// TestParseConfigDeletesStaleMetricsOnRepoRemoval covers the narrower case
+// where the manager itself survives a reparse but one of its repos is
+// dropped: only the removed repo's (repo, config_file) series should be
+// deleted, and the manager-level series (still backed by the surviving
+// repo) must be left alone.
+func (s *ConfigTestSuite) TestParseConfigDeletesStaleMetricsOnRepoRemoval(c *C) {
+	var settings ConfigSettings
+
+	err := settings.ParseConfig(TestConfigMetricsManagerTwoRepos)
+	c.Assert(err, IsNil)
+
+	metrics.SetButlerReloadVal(metrics.SUCCESS, "test-metrics-c")
+	metrics.SetButlerRemoteRepoUp(metrics.SUCCESS, "test-metrics-c")
+	metrics.SetButlerContactVal(metrics.SUCCESS, "repo-c1", "primary-c1.yml")
+	metrics.SetButlerContactVal(metrics.SUCCESS, "repo-c2", "primary-c2.yml")
+
+	c.Assert(metricHasLabelValue(c, "butler_remoterepo_contact_success", "repo", "repo-c1"), Equals, true)
+	c.Assert(metricHasLabelValue(c, "butler_remoterepo_contact_success", "repo", "repo-c2"), Equals, true)
+
+	// Reparse with repo-c2 dropped from test-metrics-c, but the manager itself survives.
+	err = settings.ParseConfig(TestConfigMetricsManagerOneRepo)
+	c.Assert(err, IsNil)
+
+	// repo-c2's series must be gone...
+	c.Assert(metricHasLabelValue(c, "butler_remoterepo_contact_success", "repo", "repo-c2"), Equals, false)
+
+	// ...while repo-c1's and the manager-level series must remain, since the
+	// manager is still configured (just with fewer repos).
+	c.Assert(metricHasLabelValue(c, "butler_remoterepo_contact_success", "repo", "repo-c1"), Equals, true)
+	c.Assert(metricHasLabelValue(c, "butler_localconfig_reload_success", "manager", "test-metrics-c"), Equals, true)
+	c.Assert(metricHasLabelValue(c, "butler_remoterepo_up", "manager", "test-metrics-c"), Equals, true)
+}
+
+// TestParseConfigFailedReparseDoesNotDeleteMetrics ensures that if a
+// subsequent ParseConfig call fails (e.g. malformed butler.toml), the
+// previous, still-live managers' metrics are left untouched rather than
+// being wiped out by a botched reparse.
+func (s *ConfigTestSuite) TestParseConfigFailedReparseDoesNotDeleteMetrics(c *C) {
+	var settings ConfigSettings
+
+	err := settings.ParseConfig(TestConfigMetricsTwoManagers)
+	c.Assert(err, IsNil)
+
+	metrics.SetButlerReloadVal(metrics.SUCCESS, "test-metrics-a")
+	metrics.SetButlerReloadVal(metrics.SUCCESS, "test-metrics-b")
+
+	// Attempt to reparse with a broken config (references a manager that
+	// isn't defined as a TOML table at all).
+	err = settings.ParseConfig(TestConfigBrokenIncompleteHandler)
+	c.Assert(err, NotNil)
+
+	// Neither manager's metrics should have been touched by the failed parse.
+	c.Assert(metricHasLabelValue(c, "butler_localconfig_reload_success", "manager", "test-metrics-a"), Equals, true)
+	c.Assert(metricHasLabelValue(c, "butler_localconfig_reload_success", "manager", "test-metrics-b"), Equals, true)
+
+	// And the live manager set should still be the last successfully parsed one.
+	c.Assert(settings.Managers["test-metrics-a"], NotNil)
+	c.Assert(settings.Managers["test-metrics-b"], NotNil)
+}
+
+// TestParseConfigFirstRunDoesNotPanic ensures collectMetricIdentities and
+// deleteStaleMetrics handle a nil/empty prior manager map (the very first
+// ParseConfig call on a fresh ConfigSettings) without panicking or deleting
+// anything spuriously.
+func (s *ConfigTestSuite) TestParseConfigFirstRunDoesNotPanic(c *C) {
+	var settings ConfigSettings
+	c.Assert(settings.Managers, IsNil)
+
+	err := settings.ParseConfig(TestConfigMetricsTwoManagers)
+	c.Assert(err, IsNil)
+	c.Assert(settings.Managers["test-metrics-a"], NotNil)
+	c.Assert(settings.Managers["test-metrics-b"], NotNil)
 }

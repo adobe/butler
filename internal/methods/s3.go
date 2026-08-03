@@ -167,16 +167,19 @@ func (s S3Method) Get(u *url.URL) (*Response, error) {
 	if err != nil {
 		var code int
 		if e, ok := err.(awserr.RequestFailure); ok {
+			// The request reached S3 and got back an actual HTTP error
+			// (eg: 404 for a missing key, 500 for a server-side failure).
+			// Surface that real status code rather than guessing.
 			code = e.StatusCode()
-		}
-		if e, ok := err.(awserr.Error); ok {
+		} else if e, ok := err.(awserr.Error); ok {
 			err2 := e.OrigErr()
 			if err2 != nil {
 				err = err2
 			}
-			// actually couldn't fulfill the reqeust since the host
-			// probably doesn't exist. code = 504 is probably wrong but
-			// whatever... gateway timeout will have to be good enough ;)
+			// The request never got a response from S3 at all (eg: the
+			// host doesn't exist, or a network-level failure). code = 504
+			// is probably wrong but whatever... gateway timeout will have
+			// to be good enough ;)
 			code = 504
 		}
 		tmpFile.Close()

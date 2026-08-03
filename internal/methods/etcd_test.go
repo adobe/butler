@@ -21,7 +21,7 @@ import (
 
 	//log "github.com/sirupsen/logrus"
 
-	"github.com/bouk/monkey"
+	"bou.ke/monkey"
 	"github.com/coreos/etcd/client"
 	"github.com/spf13/viper"
 	. "gopkg.in/check.v1"

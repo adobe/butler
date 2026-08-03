@@ -37,6 +37,7 @@ const (
 	defaultHTTPRetryWaitMax     = 15
 	defaultHTTPRetries          = 5
 	defaultHTTPTimeout          = 10
+	defaultS3Retries            = 3
 )
 
 var (
@@ -87,6 +88,7 @@ func main() {
 		configS3AccessKeyID         = flag.String("s3.access-key-id", "", "The AWS Access Key ID (Should probably use environment variable AWS_ACCESS_KEY_ID).")
 		configS3SecretAccessKey     = flag.String("s3.secret-access-key", "", "The AWS Secret Access Key (Should probably use environment variable AWS_SECRET_ACCESS_KEY).")
 		configS3SessionToken        = flag.String("s3.session-token", "", "(Optional) The AWS Session Token (Should probably use environment variable AWS_SESSION_TOKEN).")
+		configS3Retries             = flag.String("s3.retries", fmt.Sprintf("%v", defaultS3Retries), "The number of s3 retries for GET requests to obtain the butler configuration files")
 		configTLSInsecureSkipVerify = flag.Bool("tls.insecure-skip-verify", false, "Disable SSL verification for etcd and https.")
 		err                         error
 		versionFlag                 = flag.Bool("version", false, "Print version information.")
@@ -207,6 +209,14 @@ func main() {
 		opts.Region = newConfigS3Region
 		log.Debugf("main(): setting s3 bucket=%v", bc.Host())
 		opts.Bucket = bc.Host()
+
+		// Set the S3 Retries Counter
+		newConfigS3Retries, _ := strconv.Atoi(environment.GetVar(*configS3Retries))
+		if newConfigS3Retries == 0 {
+			newConfigS3Retries = defaultS3Retries
+		}
+		log.Debugf("main(): setting S3Retries to %d", newConfigS3Retries)
+		opts.Retries = newConfigS3Retries
 		bc.SetMethodOpts(opts)
 	case "blob":
 		opts := methods.BlobMethodOpts{Scheme: bc.Scheme()}

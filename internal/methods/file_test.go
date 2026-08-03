@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	//log "github.com/sirupsen/logrus"
-	"github.com/bouk/monkey"
+	"bou.ke/monkey"
 	"github.com/spf13/viper"
 	. "gopkg.in/check.v1"
 )

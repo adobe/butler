@@ -19,6 +19,7 @@ import (
 	"io/ioutil"
 	"net/url"
 	"os"
+	"strconv"
 
 	"github.com/adobe/butler/internal/environment"
 
@@ -32,12 +33,17 @@ import (
 	"github.com/spf13/viper"
 )
 
+// defaultS3Retries matches aws-sdk-go's own client.DefaultRetryer.NumMaxRetries,
+// so an unset/invalid config value keeps today's implicit SDK behavior.
+const defaultS3Retries = 3
+
 type S3Method struct {
 	AccessKeyID     string                `mapstructure:"access-key-id" json:"access-key-id"`
 	Bucket          string                `mapstructure:"bucket" json:"bucket"`
 	Downloader      *s3manager.Downloader `json:"-"`
 	Manager         *string               `json:"-"`
 	Region          string                `mapstructure:"region" json:"region"`
+	Retries         string                `mapstructure:"retries" json:"retries"`
 	SecretAccessKey string                `mapstructure:"secret-access-key" json:"-"`
 	SessionToken    string                `mapstructure:"session-token" json:"-"`
 }
@@ -46,6 +52,7 @@ type S3MethodOpts struct {
 	AccessKeyID     string
 	Bucket          string
 	Region          string
+	Retries         int
 	Scheme          string
 	SecretAccessKey string
 	SessionToken    string
@@ -88,8 +95,15 @@ func NewS3Method(manager *string, entry *string) (Method, error) {
 		result.SessionToken = os.Getenv("AWS_SESSION_TOKEN")
 	}
 
+	newRetries, _ := strconv.Atoi(environment.GetVar(result.Retries))
+	if newRetries == 0 {
+		log.Warnf("NewS3Method(): could not convert %v to integer for retries, defaulting to %v. This is probably undesired.", result.Retries, defaultS3Retries)
+		newRetries = defaultS3Retries
+	}
+
 	sess, err := session.NewSession(&aws.Config{
-		Region: aws.String(result.Region),
+		Region:     aws.String(result.Region),
+		MaxRetries: aws.Int(newRetries),
 		Credentials: credentials.NewStaticCredentials(result.AccessKeyID,
 			result.SecretAccessKey,
 			result.SessionToken),
@@ -109,8 +123,14 @@ func NewS3Method(manager *string, entry *string) (Method, error) {
 func NewS3MethodWithOpts(opts S3MethodOpts) (Method, error) {
 	var result S3Method
 
+	newRetries := opts.Retries
+	if newRetries == 0 {
+		newRetries = defaultS3Retries
+	}
+
 	sess, err := session.NewSession(&aws.Config{
-		Region: aws.String(opts.Region),
+		Region:     aws.String(opts.Region),
+		MaxRetries: aws.Int(newRetries),
 		Credentials: credentials.NewStaticCredentials(opts.AccessKeyID,
 			opts.SecretAccessKey,
 			opts.SessionToken),
@@ -123,6 +143,7 @@ func NewS3MethodWithOpts(opts S3MethodOpts) (Method, error) {
 	result.Downloader = downloader
 	result.Manager = nil
 	result.Region = opts.Region
+	result.Retries = strconv.Itoa(newRetries)
 	result.Bucket = opts.Bucket
 	return result, err
 }
@@ -146,16 +167,19 @@ func (s S3Method) Get(u *url.URL) (*Response, error) {
 	if err != nil {
 		var code int
 		if e, ok := err.(awserr.RequestFailure); ok {
+			// The request reached S3 and got back an actual HTTP error
+			// (eg: 404 for a missing key, 500 for a server-side failure).
+			// Surface that real status code rather than guessing.
 			code = e.StatusCode()
-		}
-		if e, ok := err.(awserr.Error); ok {
+		} else if e, ok := err.(awserr.Error); ok {
 			err2 := e.OrigErr()
 			if err2 != nil {
 				err = err2
 			}
-			// actually couldn't fulfill the reqeust since the host
-			// probably doesn't exist. code = 504 is probably wrong but
-			// whatever... gateway timeout will have to be good enough ;)
+			// The request never got a response from S3 at all (eg: the
+			// host doesn't exist, or a network-level failure). code = 504
+			// is probably wrong but whatever... gateway timeout will have
+			// to be good enough ;)
 			code = 504
 		}
 		tmpFile.Close()

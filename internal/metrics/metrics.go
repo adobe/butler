@@ -181,6 +181,37 @@ func DeleteButlerReloadVal(label string) {
 	butlerReloaderRetry.Delete(prometheus.Labels{"manager": label})
 }
 
+// DeleteButlerManagerVals removes all the manager-scoped gauges (labeled only
+// by "manager") for a manager that no longer exists in the butler configuration.
+func DeleteButlerManagerVals(manager string) {
+	DeleteButlerReloadVal(manager)
+	butlerKnownGoodCached.Delete(prometheus.Labels{"manager": manager})
+	butlerKnownGoodRestored.Delete(prometheus.Labels{"manager": manager})
+	butlerRemoteRepoSanity.Delete(prometheus.Labels{"manager": manager})
+	butlerRemoteRepoUp.Delete(prometheus.Labels{"manager": manager})
+	butlerRepoInSync.Delete(prometheus.Labels{"manager": manager})
+}
+
+// DeleteButlerRepoFileVals removes all the (repo, config_file)-scoped gauges
+// for a repo/file combination that no longer exists in the butler configuration.
+func DeleteButlerRepoFileVals(repo string, file string) {
+	labels := prometheus.Labels{"repo": repo, "config_file": file}
+	butlerConfigValid.Delete(labels)
+	butlerContactRetry.Delete(labels)
+	butlerContactRetryTime.Delete(labels)
+	butlerContactSuccess.Delete(labels)
+	butlerContactTime.Delete(labels)
+	butlerRenderSuccess.Delete(labels)
+	butlerRenderTime.Delete(labels)
+}
+
+// DeleteButlerWriteVal removes the config_file-scoped write gauges for a
+// destination file that no longer exists in the butler configuration.
+func DeleteButlerWriteVal(file string) {
+	butlerWriteSuccess.Delete(prometheus.Labels{"config_file": file})
+	butlerWriteTime.Delete(prometheus.Labels{"config_file": file})
+}
+
 func SetButlerRenderVal(res float64, repo string, file string) {
 	if res == SUCCESS {
 		butlerRenderSuccess.With(prometheus.Labels{"config_file": file, "repo": repo}).Set(SUCCESS)

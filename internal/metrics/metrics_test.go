@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/prometheus/client_model/go"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	log "github.com/sirupsen/logrus"
 	. "gopkg.in/check.v1"
 	"testing"
@@ -241,4 +242,91 @@ func (s *ButlerStatsTestSuite) TestSetButlerWriteVal(c *C) {
 
 func (s *ButlerStatsTestSuite) TestGetStatsLabel(c *C) {
 	c.Assert(GetStatsLabel(s.TestFile), Equals, s.TestFileResult)
+}
+
+func (s *ButlerStatsTestSuite) TestDeleteButlerManagerVals(c *C) {
+	manager := "delete-manager-test"
+
+	SetButlerReloadVal(SUCCESS, manager)
+	SetButlerKnownGoodCachedVal(SUCCESS, manager)
+	SetButlerKnownGoodRestoredVal(SUCCESS, manager)
+	SetButlerRemoteRepoSanity(SUCCESS, manager)
+	SetButlerRemoteRepoUp(SUCCESS, manager)
+	SetButlerRepoInSync(SUCCESS, manager)
+	SetButlerReloaderRetry(SUCCESS, manager)
+
+	before := testutil.CollectAndCount(butlerReloadSuccess) +
+		testutil.CollectAndCount(butlerReloadCount) +
+		testutil.CollectAndCount(butlerReloadTime) +
+		testutil.CollectAndCount(butlerReloaderRetry) +
+		testutil.CollectAndCount(butlerKnownGoodCached) +
+		testutil.CollectAndCount(butlerKnownGoodRestored) +
+		testutil.CollectAndCount(butlerRemoteRepoSanity) +
+		testutil.CollectAndCount(butlerRemoteRepoUp) +
+		testutil.CollectAndCount(butlerRepoInSync)
+	c.Assert(before > 0, Equals, true)
+
+	_, err := butlerReloadSuccess.GetMetricWithLabelValues(manager)
+	c.Assert(err, IsNil)
+
+	DeleteButlerManagerVals(manager)
+
+	// GetMetricWithLabelValues would recreate the series, so instead we
+	// confirm the series count dropped for every manager-scoped metric.
+	after := testutil.CollectAndCount(butlerReloadSuccess) +
+		testutil.CollectAndCount(butlerReloadCount) +
+		testutil.CollectAndCount(butlerReloadTime) +
+		testutil.CollectAndCount(butlerReloaderRetry) +
+		testutil.CollectAndCount(butlerKnownGoodCached) +
+		testutil.CollectAndCount(butlerKnownGoodRestored) +
+		testutil.CollectAndCount(butlerRemoteRepoSanity) +
+		testutil.CollectAndCount(butlerRemoteRepoUp) +
+		testutil.CollectAndCount(butlerRepoInSync)
+	c.Assert(after, Equals, 0)
+}
+
+func (s *ButlerStatsTestSuite) TestDeleteButlerRepoFileVals(c *C) {
+	repo := "delete-repo-test"
+	file := "delete-file-test.yml"
+
+	SetButlerContactVal(SUCCESS, repo, file)
+	SetButlerContactRetryVal(SUCCESS, repo, file)
+	SetButlerRenderVal(SUCCESS, repo, file)
+	SetButlerConfigVal(SUCCESS, repo, file)
+
+	countBefore := testutil.CollectAndCount(butlerContactSuccess) +
+		testutil.CollectAndCount(butlerContactTime) +
+		testutil.CollectAndCount(butlerContactRetry) +
+		testutil.CollectAndCount(butlerContactRetryTime) +
+		testutil.CollectAndCount(butlerRenderSuccess) +
+		testutil.CollectAndCount(butlerRenderTime) +
+		testutil.CollectAndCount(butlerConfigValid)
+	c.Assert(countBefore > 0, Equals, true)
+
+	DeleteButlerRepoFileVals(repo, file)
+
+	countAfter := testutil.CollectAndCount(butlerContactSuccess) +
+		testutil.CollectAndCount(butlerContactTime) +
+		testutil.CollectAndCount(butlerContactRetry) +
+		testutil.CollectAndCount(butlerContactRetryTime) +
+		testutil.CollectAndCount(butlerRenderSuccess) +
+		testutil.CollectAndCount(butlerRenderTime) +
+		testutil.CollectAndCount(butlerConfigValid)
+	c.Assert(countAfter, Equals, 0)
+}
+
+func (s *ButlerStatsTestSuite) TestDeleteButlerWriteVal(c *C) {
+	file := "delete-write-test.yml"
+
+	SetButlerWriteVal(SUCCESS, file)
+
+	countBefore := testutil.CollectAndCount(butlerWriteSuccess) +
+		testutil.CollectAndCount(butlerWriteTime)
+	c.Assert(countBefore > 0, Equals, true)
+
+	DeleteButlerWriteVal(file)
+
+	countAfter := testutil.CollectAndCount(butlerWriteSuccess) +
+		testutil.CollectAndCount(butlerWriteTime)
+	c.Assert(countAfter, Equals, 0)
 }

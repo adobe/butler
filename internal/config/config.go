@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/adobe/butler/internal/environment"
+	"github.com/adobe/butler/internal/metrics"
 	"github.com/adobe/butler/internal/methods"
 
 	"github.com/hashicorp/go-retryablehttp"
@@ -197,6 +198,14 @@ func (c *ConfigSettings) ParseConfig(config []byte) error {
 		}
 	}
 
+	// Snapshot the metric identities known under the previous configuration so
+	// that, once the new configuration has been parsed, we can delete any
+	// Prometheus series for managers/repos/files that no longer exist. Without
+	// this, removed managers or repos leave their last-reported gauge values
+	// stuck in /metrics forever, since prometheus.GaugeVec entries persist
+	// until explicitly deleted.
+	oldMetricIDs := collectMetricIdentities(c.Managers)
+
 	Config.Managers = make(map[string]*Manager)
 	// Now let's start processing the managers. This is going
 	for _, entry := range Config.Globals.Managers {
@@ -262,5 +271,90 @@ func (c *ConfigSettings) ParseConfig(config []byte) error {
 		}
 	}
 
+	// Now that the new configuration is fully built, diff it against the
+	// snapshot taken before the reparse and delete any stale metric series
+	// for managers/repos/files that disappeared from the configuration.
+	newMetricIDs := collectMetricIdentities(c.Managers)
+	deleteStaleMetrics(oldMetricIDs, newMetricIDs)
+
 	return nil
+}
+
+// metricIdentities holds the set of label combinations that the various
+// butler Prometheus gauges are currently reporting under, keyed so that they
+// can be diffed between successive configuration parses.
+type metricIdentities struct {
+	managers  map[string]bool
+	repoFiles map[[2]string]bool
+	files     map[string]bool
+}
+
+// collectMetricIdentities walks a manager map and enumerates every label
+// combination ("manager"; "repo"+"config_file"; "config_file") that butler's
+// metrics package could currently have a gauge series for.
+func collectMetricIdentities(managers map[string]*Manager) metricIdentities {
+	ids := metricIdentities{
+		managers:  make(map[string]bool),
+		repoFiles: make(map[[2]string]bool),
+		files:     make(map[string]bool),
+	}
+
+	for name, m := range managers {
+		if m == nil {
+			continue
+		}
+		ids.managers[name] = true
+
+		for _, opts := range m.ManagerOpts {
+			if opts == nil {
+				continue
+			}
+			for _, f := range opts.GetPrimaryRemoteConfigFiles() {
+				ids.repoFiles[[2]string{opts.Repo, f}] = true
+			}
+			for _, f := range opts.GetAdditionalRemoteConfigFiles() {
+				ids.repoFiles[[2]string{opts.Repo, f}] = true
+			}
+		}
+
+		if m.PrimaryConfigName != "" {
+			ids.files[metrics.GetStatsLabel(fmt.Sprintf("%s/%s", m.DestPath, m.PrimaryConfigName))] = true
+		}
+		for _, opts := range m.ManagerOpts {
+			if opts == nil {
+				continue
+			}
+			for _, f := range opts.GetAdditionalRemoteConfigFiles() {
+				ids.files[metrics.GetStatsLabel(fmt.Sprintf("%s/%s", m.DestPath, f))] = true
+			}
+		}
+	}
+
+	return ids
+}
+
+// deleteStaleMetrics removes every Prometheus series present in oldIDs but
+// absent from newIDs, i.e. everything that belonged to a manager, repo, or
+// file that has been removed from the butler configuration.
+func deleteStaleMetrics(oldIDs metricIdentities, newIDs metricIdentities) {
+	for manager := range oldIDs.managers {
+		if !newIDs.managers[manager] {
+			log.Infof("ConfigSettings::ParseConfig(): manager=%s no longer in configuration. deleting its metrics.", manager)
+			metrics.DeleteButlerManagerVals(manager)
+		}
+	}
+
+	for key := range oldIDs.repoFiles {
+		if !newIDs.repoFiles[key] {
+			log.Infof("ConfigSettings::ParseConfig(): repo=%s config_file=%s no longer in configuration. deleting its metrics.", key[0], key[1])
+			metrics.DeleteButlerRepoFileVals(key[0], key[1])
+		}
+	}
+
+	for file := range oldIDs.files {
+		if !newIDs.files[file] {
+			log.Infof("ConfigSettings::ParseConfig(): config_file=%s no longer in configuration. deleting its metrics.", file)
+			metrics.DeleteButlerWriteVal(file)
+		}
+	}
 }
